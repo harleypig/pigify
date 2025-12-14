@@ -13,7 +13,7 @@ from backend.app.api import auth, playlists
 from backend.app.config import settings
 
 app = FastAPI(
-    title="Spotify Web App",
+    title="Pigify",
     description="Custom Spotify frontend with playlist management",
     version="0.1.0"
 )

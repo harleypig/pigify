@@ -54,7 +54,7 @@ class SpotifyService {
     }
 
     this.player = new window.Spotify.Player({
-      name: 'Spotify Web App',
+      name: 'Pigify',
       getOAuthToken: (cb: (token: string) => void) => {
         cb(token)
       },

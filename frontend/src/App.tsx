@@ -54,7 +54,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Spotify Web App</h1>
+        <h1>Pigify</h1>
         {user && (
           <div className="user-info">
             <span>{user.display_name}</span>
