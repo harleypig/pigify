@@ -1,0 +1,7 @@
+.env
+.env.local
+
+# Secrets directory - ignore secret files but keep structure
+secrets/*.txt
+!secrets/.gitkeep
+!secrets/README.md
