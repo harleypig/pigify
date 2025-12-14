@@ -9,10 +9,10 @@ network or production environment.
 
 ## App Description (for Spotify Developer Dashboard)
 
-**Copy-paste ready (520 characters, exceeds 256 minimum):**
+**Copy-paste ready (254 characters, under 256 maximum):**
 
 ```
-Pigify is a custom web application that enhances your Spotify experience with improved playlist management and playback controls. Built with modern web technologies including FastAPI and React, Pigify provides a clean, intuitive interface for browsing your playlists and controlling music playback. The application runs as a self-hosted Docker container, giving you full control over your music experience while maintaining seamless integration with Spotify's platform. Pigify offers a personalized alternative to the standard Spotify web player, with enhanced features for playlist organization and music discovery. Perfect for users who want more control over their listening experience and prefer self-hosted solutions that respect their privacy and data ownership.
+Pigify is a custom Spotify web app for playlist management and playback. Built with FastAPI and React, it runs as a self-hosted Docker container with enhanced playlist features and privacy-focused hosting.
 ```
 
 ## Features
