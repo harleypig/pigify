@@ -29,7 +29,13 @@ and playback capabilities with a modern web interface.
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root by copying the template:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and fill in your Spotify API credentials and configuration:
 
 ```bash
 # Spotify API Configuration
@@ -44,6 +50,11 @@ FRONTEND_URL=http://localhost:3000
 
 # Environment
 ENVIRONMENT=development
+```
+
+**Note**: The `SECRET_KEY` should be a secure random string in production. Generate one using:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
 ### 3. Build and Run with Docker
