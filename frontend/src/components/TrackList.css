@@ -1,0 +1,118 @@
+.track-list {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.track-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.track-list-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.track-count {
+  color: #b3b3b3;
+  font-size: 0.875rem;
+}
+
+.track-list-items {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.track-item {
+  display: grid;
+  grid-template-columns: 40px 60px 1fr 200px 60px;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.track-item:hover {
+  background-color: #282828;
+}
+
+.track-number {
+  text-align: center;
+  color: #b3b3b3;
+  font-size: 0.875rem;
+}
+
+.track-image {
+  width: 50px;
+  height: 50px;
+}
+
+.track-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.track-placeholder {
+  width: 100%;
+  height: 100%;
+  background-color: #333;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #666;
+}
+
+.track-info {
+  min-width: 0;
+}
+
+.track-name {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-artists {
+  font-size: 0.875rem;
+  color: #b3b3b3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-album {
+  color: #b3b3b3;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-duration {
+  text-align: right;
+  color: #b3b3b3;
+  font-size: 0.875rem;
+}
+
+.track-list-loading,
+.track-list-error {
+  padding: 2rem;
+  text-align: center;
+  color: #b3b3b3;
+}
+
+.track-list-error {
+  color: #e22134;
+}
+
