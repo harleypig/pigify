@@ -23,13 +23,16 @@ async def spotify_login(request: Request):
     state = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
     
-    # Spotify OAuth scopes needed
+    # Spotify OAuth scopes needed (minimal set)
+    # Required for:
+    # - user-read-playback-state: Read current playback state
+    # - user-modify-playback-state: Control playback (play/pause)
+    # - playlist-read-private: Read user's private playlists
+    # - user-read-private: Get user profile information
     scopes = [
         "user-read-playback-state",
         "user-modify-playback-state",
         "playlist-read-private",
-        "playlist-read-collaborative",
-        "user-read-email",
         "user-read-private",
     ]
     

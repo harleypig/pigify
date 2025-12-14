@@ -39,6 +39,16 @@ experience while maintaining seamless integration with Spotify's platform.
 3. Note your Client ID and Client Secret
 4. Add redirect URI: `http://localhost:8000/api/auth/spotify/callback`
 
+**Required Scopes** (automatically requested, no manual configuration needed):
+- `user-read-playback-state` - Read current playback state
+- `user-modify-playback-state` - Control playback (play/pause)
+- `playlist-read-private` - Read your private playlists
+- `user-read-private` - Get your profile information
+
+**Note**: No additional APIs or SDKs need to be manually enabled in the dashboard.
+The Web API and Web Playback SDK are automatically available once you create
+the app and configure the redirect URI.
+
 ### 2. Configure Environment Variables and Secrets
 
 #### Option A: Using Docker Secrets (Recommended)
