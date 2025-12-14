@@ -1,5 +1,11 @@
 version: '3.8'
 
+secrets:
+  spotify_client_secret:
+    file: ./secrets/spotify_client_secret.txt
+  secret_key:
+    file: ./secrets/secret_key.txt
+
 services:
   backend:
     build:
@@ -9,12 +15,13 @@ services:
       - "8000:8000"
     environment:
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
-      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
       - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI:-http://localhost:8000/api/auth/spotify/callback}
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
       - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - ENVIRONMENT=${ENVIRONMENT:-development}
+    secrets:
+      - spotify_client_secret
+      - secret_key
     volumes:
       - ./backend:/app/backend
       - ./config:/app/config
@@ -37,4 +44,3 @@ services:
     profiles:
       - dev
     restart: unless-stopped
-

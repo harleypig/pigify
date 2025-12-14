@@ -65,3 +65,6 @@ Dockerfile*
 # Config (will be mounted as volume later)
 config/
 
+# Secrets (should not be copied into image)
+secrets/
+

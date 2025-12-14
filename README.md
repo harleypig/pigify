@@ -27,15 +27,55 @@ and playback capabilities with a modern web interface.
 3. Note your Client ID and Client Secret
 4. Add redirect URI: `http://localhost:8000/api/auth/spotify/callback`
 
-### 2. Configure Environment Variables
+### 2. Configure Environment Variables and Secrets
 
-Create a `.env` file in the project root by copying the template:
+#### Option A: Using Docker Secrets (Recommended)
+
+Create a `.env` file for non-sensitive configuration:
 
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
-Then edit `.env` and fill in your Spotify API credentials and configuration:
+Edit `.env` and fill in non-sensitive values:
+
+```bash
+# Spotify API Configuration (Client ID only - secret goes in secrets/)
+SPOTIFY_CLIENT_ID=your_spotify_client_id_here
+SPOTIFY_REDIRECT_URI=http://localhost:8000/api/auth/spotify/callback
+
+# URLs
+BACKEND_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:3000
+
+# Environment
+ENVIRONMENT=development
+```
+
+Create the secrets directory and add sensitive data:
+
+```bash
+mkdir -p secrets
+```
+
+Create `secrets/spotify_client_secret.txt` with your Spotify Client Secret:
+```bash
+echo "your_spotify_client_secret_here" > secrets/spotify_client_secret.txt
+```
+
+Create `secrets/secret_key.txt` with a secure secret key:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/secret_key.txt
+```
+
+Set appropriate permissions:
+```bash
+chmod 600 secrets/*.txt
+```
+
+#### Option B: Using Environment Variables (Development Only)
+
+For development, you can still use environment variables directly. Edit `.env`:
 
 ```bash
 # Spotify API Configuration
@@ -52,10 +92,7 @@ FRONTEND_URL=http://localhost:3000
 ENVIRONMENT=development
 ```
 
-**Note**: The `SECRET_KEY` should be a secure random string in production. Generate one using:
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
+**Note**: Docker secrets take precedence over environment variables. See `secrets/README.md` for more details.
 
 ### 3. Build and Run with Docker
 
