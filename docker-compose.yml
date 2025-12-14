@@ -12,11 +12,11 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${PORT:-8000}:8000"
     environment:
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
-      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI:-http://localhost:8000/api/auth/spotify/callback}
-      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
+      - BACKEND_URL=${BACKEND_URL}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
       - ENVIRONMENT=${ENVIRONMENT:-development}
     secrets:

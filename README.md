@@ -37,6 +37,7 @@ Pigify is a custom Spotify web app for playlist management and playback. Built w
 2. Create a new app
 3. Note your Client ID and Client Secret
 4. Add redirect URI: `http://localhost:8000/api/auth/spotify/callback`
+   (or `http://localhost:PORT/api/auth/spotify/callback` if using a custom port)
 
 **Required Scopes** (automatically requested, no manual configuration needed):
 - `user-read-playback-state` - Read current playback state
@@ -61,11 +62,19 @@ cp env.example .env
 Edit `.env` and fill in non-sensitive values:
 
 ```bash
+# Port Configuration
+# Change PORT if 8000 is already in use (e.g., PORT=8080)
+PORT=8000
+
 # Spotify API Configuration (Client ID only - secret goes in secrets/)
 SPOTIFY_CLIENT_ID=your_spotify_client_id_here
+# IMPORTANT: Update SPOTIFY_REDIRECT_URI to match your PORT
+# Example: If PORT=8080, use http://localhost:8080/api/auth/spotify/callback
 SPOTIFY_REDIRECT_URI=http://localhost:8000/api/auth/spotify/callback
 
 # URLs
+# IMPORTANT: Update BACKEND_URL to match your PORT
+# Example: If PORT=8080, use http://localhost:8080
 BACKEND_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:3000
 
@@ -127,8 +136,11 @@ docker-compose up
 
 The application will be available at:
 - Frontend: http://localhost:3000 (if using dev profile)
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+- Backend API: http://localhost:${PORT:-8000} (default: 8000, configurable via PORT env var)
+- API Docs: http://localhost:${PORT:-8000}/docs
+
+**Note**: If port 8000 is already in use, set `PORT` in your `.env` file to a different
+port (e.g., `PORT=8080`) and update `BACKEND_URL` and `SPOTIFY_REDIRECT_URI` accordingly.
 
 ### 4. Development Mode (Optional)
 
@@ -143,7 +155,8 @@ This will run the frontend dev server separately on port 3000.
 
 ## Usage
 
-1. Navigate to http://localhost:8000 (or http://localhost:3000 in dev mode)
+1. Navigate to http://localhost:${PORT:-8000} (or http://localhost:3000 in dev mode)
+   - Default port is 8000, or use the port you configured in `PORT`
 2. Click "Login with Spotify"
 3. Authorize the application
 4. Select a playlist from the sidebar
