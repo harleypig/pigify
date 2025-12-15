@@ -89,13 +89,6 @@ htmlcov/
 .nyc_output/
 coverage/
 
-# Documentation
-*.md
-!README.md
-
-# Docker
-docker-compose*.yml
-Dockerfile*
 
 # Config (will be mounted as volume later)
 config/
