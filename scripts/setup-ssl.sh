@@ -13,10 +13,8 @@ mkcert is not installed.
 
 Install mkcert:
   Ubuntu/Debian:
-    sudo apt install libnss3-tools
-    wget -O mkcert https://github.com/FiloSottile/mkcert/releases/latest/download/mkcert-v1.4.4-linux-amd64
-    chmod +x mkcert
-    sudo mv mkcert /usr/local/bin/
+    sudo apt update
+    sudo apt install mkcert
 
   macOS:
     brew install mkcert
