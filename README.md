@@ -152,6 +152,15 @@ ENVIRONMENT=development
 
 **Note**: Docker secrets take precedence over environment variables. See `secrets/README.md` for more details.
 
+#### Restart Policy
+The `RESTART_POLICY` environment variable controls container restart behavior:
+- `no` - Don't restart (good for development - exits on failure)
+- `unless-stopped` - Restart unless manually stopped (good for production)
+- `on-failure` - Restart only on failure
+- `always` - Always restart
+
+Default is `unless-stopped`. Override with `RESTART_POLICY=no docker compose up` for development.
+
 ### 3. Build and Run with Docker
 
 ```bash
