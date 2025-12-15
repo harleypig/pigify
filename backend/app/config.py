@@ -1,6 +1,7 @@
 """
 Application configuration using Pydantic settings.
 """
+import os
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from pathlib import Path
@@ -50,15 +51,6 @@ class Settings(BaseSettings):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        
-        # Override with Docker secrets if available
-        spotify_secret = read_secret_file("/run/secrets/spotify_client_secret")
-        if spotify_secret:
-            self.SPOTIFY_CLIENT_SECRET = spotify_secret
-        
-        secret_key = read_secret_file("/run/secrets/secret_key")
-        if secret_key:
-            self.SECRET_KEY = secret_key
 
 
 settings = Settings()
