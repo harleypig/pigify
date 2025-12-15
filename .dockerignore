@@ -50,6 +50,10 @@ dist-ssr/
 .env.*.local
 env.example
 
+# Docker build inputs
+docker-compose*.yml
+Dockerfile*
+
 # Testing
 .coverage
 .pytest_cache/
@@ -57,10 +61,8 @@ htmlcov/
 .nyc_output/
 coverage/
 
-
 # Config (will be mounted as volume later)
 config/
 
 # Secrets (should not be copied into image)
 secrets/
-
