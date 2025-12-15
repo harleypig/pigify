@@ -28,14 +28,18 @@ services:
       - ./certs:/app/certs:ro
     env_file:
       - .env
-    # Use HTTPS if certificates are available, otherwise fall back to HTTP
+    # Require SSL certificates - fail if not found (Spotify requires HTTPS)
     command: >
-      sh -c " if [ -f /app/certs/localhost+2.pem ] && [ -f /app/certs/localhost+2-key.pem ]; then
-        uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile /app/certs/localhost+2-key.pem --ssl-certfile /app/certs/localhost+2.pem
-      else
-        echo 'Warning: SSL certificates not found. Running without HTTPS. See docs/SPOTIFY_SETUP.md for HTTPS setup.'
-        uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
-      fi "
+      sh -c "
+      if [ ! -f /app/certs/localhost+2.pem ] || [ ! -f /app/certs/localhost+2-key.pem ]; then
+        echo 'ERROR: SSL certificates not found in /app/certs/'
+        echo 'Pigify requires HTTPS for Spotify OAuth. Please set up SSL certificates.'
+        echo 'Run: ./scripts/setup-ssl.sh'
+        echo 'See: docs/SPOTIFY_SETUP.md for details'
+        exit 1
+      fi
+      uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile /app/certs/localhost+2-key.pem --ssl-certfile /app/certs/localhost+2.pem
+      "
     restart: unless-stopped
 
   # Development frontend (optional, for hot-reload)

@@ -194,9 +194,10 @@ certificates are present. Simply:
 5. Access your app at `https://localhost:8000` (you may need to accept the
    certificate warning the first time)
 
-**Note**: The docker-compose.yml is configured to fall back to HTTP if
-certificates are not found, but Spotify requires HTTPS for redirect URIs, so
-you must set up certificates for the app to work.
+**Important**: The docker-compose.yml requires SSL certificates to be present.
+If certificates are not found, the container will fail to start. This is
+intentional - Spotify requires HTTPS for redirect URIs, so the app cannot run
+without SSL certificates.
 
 **Note**: For the simplest setup, consider using ngrok for quick testing, or
 mkcert for a more permanent local development setup.

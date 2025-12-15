@@ -170,9 +170,9 @@ The application will be available at:
 **Note**: If port 8000 is already in use, set `PORT` in your `.env` file to a different
 port (e.g., `PORT=8080`) and update `BACKEND_URL` and `SPOTIFY_REDIRECT_URI` accordingly.
 
-**SSL Certificates**: The app requires HTTPS. Make sure you've set up SSL certificates
-using mkcert (see `docs/SPOTIFY_SETUP.md`). The docker-compose.yml will automatically
-use HTTPS if certificates are found in the `certs/` directory.
+**SSL Certificates**: The app requires HTTPS and will fail to start without SSL
+certificates. Make sure you've set up SSL certificates using mkcert (see
+`docs/SPOTIFY_SETUP.md`). Run `./scripts/setup-ssl.sh` before starting the app.
 
 ### 4. Development Mode (Optional)
 
