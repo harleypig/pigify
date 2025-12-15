@@ -152,6 +152,8 @@ ENVIRONMENT=development
 
 **Note**: Docker secrets take precedence over environment variables. See `secrets/README.md` for more details.
 
+**Development Workflow**: After making code changes, run `docker compose up --build` to rebuild the container with your changes. Hot reloading is not available to prevent accidental secret leakage.
+
 #### Restart Policy
 The `RESTART_POLICY` environment variable controls container restart behavior:
 - `no` - Don't restart (good for development - exits on failure)
@@ -164,11 +166,11 @@ Default is `unless-stopped`. Override with `RESTART_POLICY=no docker compose up`
 ### 3. Build and Run with Docker
 
 ```bash
-# Build the Docker image
-docker-compose build
+# Build and start the application (rebuilds automatically on first run)
+docker compose up --build
 
-# Start the application
-docker-compose up
+# For development: rebuild container when you make code changes
+docker compose up --build
 ```
 
 The application will be available at:
