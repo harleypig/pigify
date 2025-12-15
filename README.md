@@ -31,49 +31,25 @@ Pigify is a custom Spotify web app for playlist management and playback. Built w
 
 ## Setup
 
-### 1. Get Spotify API Credentials
+### 1. Set Up Development Environment
 
-1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Create a new app
-3. Note your Client ID and Client Secret
-4. Add redirect URI: `https://localhost:8000/api/auth/spotify/callback`
-   (or `https://localhost:PORT/api/auth/spotify/callback` if using a custom port)
-   **Note**: Spotify requires HTTPS. See `docs/SPOTIFY_SETUP.md` for local HTTPS setup.
+**Required:** Set up SSL certificates for local development (Spotify requires
+HTTPS). See `docs/DEVELOP.md` for detailed instructions.
 
-**Required Scopes** (automatically requested, no manual configuration needed):
-- `user-read-playback-state` - Read current playback state
-- `user-modify-playback-state` - Control playback (play/pause)
-- `playlist-read-private` - Read your private playlists
-- `user-read-private` - Get your profile information
-
-**Note**: No additional APIs or SDKs need to be manually enabled in the dashboard.
-The Web API and Web Playback SDK are automatically available once you create
-the app and configure the redirect URI.
-
-**Important**: Spotify requires HTTPS for redirect URIs. Set up SSL certificates
-before proceeding. See step 2.5 below or `docs/SPOTIFY_SETUP.md` for details.
-
-### 2. Configure Environment Variables and Secrets
-
-#### 2.5 Set Up SSL Certificates (Required)
-
-Pigify uses HTTPS by default. Set up local SSL certificates:
-
-**Quick Setup (Recommended):**
+**Quick setup:**
 ```bash
 ./scripts/setup-ssl.sh
 ```
 
-This script will:
-- Check if mkcert is installed (install if needed)
-- Create a local Certificate Authority
-- Generate SSL certificates for localhost
-- Place them in the `certs/` directory
+### 2. Configure Spotify API
 
-**Manual Setup:**
-See `docs/SPOTIFY_SETUP.md` for detailed instructions.
+See `docs/SPOTIFY_SETUP.md` for complete Spotify Developer Dashboard setup
+instructions, including:
+- Creating a Spotify app
+- Configuring redirect URIs
+- Required OAuth scopes
 
-Once certificates are set up, continue with the configuration below.
+### 3. Configure Environment Variables and Secrets
 
 #### Option A: Using Docker Secrets (Recommended)
 
@@ -87,18 +63,13 @@ Edit `.env` and fill in non-sensitive values:
 
 ```bash
 # Port Configuration
-# Change PORT if 8000 is already in use (e.g., PORT=8080)
 PORT=8000
 
 # Spotify API Configuration (Client ID only - secret goes in secrets/)
 SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-# IMPORTANT: Update SPOTIFY_REDIRECT_URI to match your PORT
-# Example: If PORT=8080, use https://localhost:8080/api/auth/spotify/callback
 SPOTIFY_REDIRECT_URI=https://localhost:8000/api/auth/spotify/callback
 
 # URLs
-# IMPORTANT: Update BACKEND_URL to match your PORT
-# Example: If PORT=8080, use https://localhost:8080
 BACKEND_URL=https://localhost:8000
 FRONTEND_URL=https://localhost:3000
 
@@ -106,9 +77,8 @@ FRONTEND_URL=https://localhost:3000
 ENVIRONMENT=development
 ```
 
-**Important**: The app uses HTTPS by default. You'll need to set up SSL
-certificates for local development. See `docs/SPOTIFY_SETUP.md` for
-instructions using mkcert (recommended) or ngrok.
+**Note**: If you change the PORT, update `SPOTIFY_REDIRECT_URI` and
+`BACKEND_URL` accordingly. See `docs/DEVELOP.md` for details.
 
 Create the secrets directory and add sensitive data:
 
@@ -150,57 +120,28 @@ FRONTEND_URL=https://localhost:3000
 ENVIRONMENT=development
 ```
 
-**Note**: Docker secrets take precedence over environment variables. See `secrets/README.md` for more details.
+**Note**: Docker secrets take precedence over environment variables. See
+`secrets/README.md` for more details.
 
-**Development Workflow**: After making code changes, run `docker compose up --build` to rebuild the container with your changes. Hot reloading is not available to prevent accidental secret leakage.
-
-#### Restart Policy
-The `RESTART_POLICY` environment variable controls container restart behavior:
-- `no` - Don't restart (good for development - exits on failure)
-- `unless-stopped` - Restart unless manually stopped (good for production)
-- `on-failure` - Restart only on failure
-- `always` - Always restart
-
-Default is `unless-stopped`. Override with `RESTART_POLICY=no docker compose up` for development.
-
-### 3. Build and Run with Docker
+### 4. Build and Run with Docker
 
 ```bash
-# Build and start the application (rebuilds automatically on first run)
-docker compose up --build
-
-# For development: rebuild container when you make code changes
+# Build and start the application
 docker compose up --build
 ```
 
 The application will be available at:
-- Frontend: https://localhost:3000 (if using dev profile)
-- Backend API: https://localhost:${PORT:-8000} (default: 8000, configurable via PORT env var)
+- Backend API: https://localhost:${PORT:-8000} (default: 8000, configurable)
 - API Docs: https://localhost:${PORT:-8000}/docs
+- Frontend: https://localhost:3000 (if using dev profile)
 
-**Note**: If port 8000 is already in use, set `PORT` in your `.env` file to a different
-port (e.g., `PORT=8080`) and update `BACKEND_URL` and `SPOTIFY_REDIRECT_URI` accordingly.
-
-**SSL Certificates**: The app requires HTTPS and will fail to start without SSL
-certificates. Make sure you've set up SSL certificates using mkcert (see
-`docs/SPOTIFY_SETUP.md`). Run `./scripts/setup-ssl.sh` before starting the app.
-
-### 4. Development Mode (Optional)
-
-For frontend hot-reload during development:
-
-```bash
-# Start with dev profile
-docker-compose --profile dev up
-```
-
-This will run the frontend dev server separately on port 3000.
+**Note**: See `docs/DEVELOP.md` for development workflow and hot-reload
+options.
 
 ## Usage
 
-1. Navigate to https://localhost:${PORT:-8000} (or https://localhost:3000 in dev mode)
-   - Default port is 8000, or use the port you configured in `PORT`
-   - You may need to accept the SSL certificate warning the first time
+1. Navigate to https://localhost:${PORT:-8000}
+   (or https://localhost:3000 in dev mode)
 2. Click "Login with Spotify"
 3. Authorize the application
 4. Select a playlist from the sidebar
