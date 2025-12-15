@@ -8,20 +8,22 @@ echo "Setting up SSL certificates for local development..."
 
 # Check if mkcert is installed
 if ! command -v mkcert &> /dev/null; then
-    echo "mkcert is not installed."
-    echo ""
-    echo "Install mkcert:"
-    echo "  Ubuntu/Debian:"
-    echo "    sudo apt install libnss3-tools"
-    echo "    wget -O mkcert https://github.com/FiloSottile/mkcert/releases/latest/download/mkcert-v1.4.4-linux-amd64"
-    echo "    chmod +x mkcert"
-    echo "    sudo mv mkcert /usr/local/bin/"
-    echo ""
-    echo "  macOS:"
-    echo "    brew install mkcert"
-    echo ""
-    echo "  Windows (with Chocolatey):"
-    echo "    choco install mkcert"
+    cat <<EOF
+mkcert is not installed.
+
+Install mkcert:
+  Ubuntu/Debian:
+    sudo apt install libnss3-tools
+    wget -O mkcert https://github.com/FiloSottile/mkcert/releases/latest/download/mkcert-v1.4.4-linux-amd64
+    chmod +x mkcert
+    sudo mv mkcert /usr/local/bin/
+
+  macOS:
+    brew install mkcert
+
+  Windows (with Chocolatey):
+    choco install mkcert
+EOF
     exit 1
 fi
 

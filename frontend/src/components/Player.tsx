@@ -89,8 +89,6 @@ function Player({ trackUri }: PlayerProps) {
             Initializing player...
           </div>
         )}
-          </>
-        )}
       </div>
     </div>
   )
