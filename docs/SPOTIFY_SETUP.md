@@ -13,9 +13,12 @@ Dashboard for Pigify.
    - **App name**: Pigify
    - **App description**: (Use the description from README.md)
    - **Website**: (Your deployment URL or localhost for development)
-   - **Redirect URI**: `http://localhost:8000/api/auth/spotify/callback`
-     (See "Understanding Redirect URI" below for details)
+   - **Redirect URI**: `https://localhost:8000/api/auth/spotify/callback`
+     (See "Understanding Redirect URI" and "Local HTTPS Setup" below)
    - **App or Website**: Select "Website"
+
+**Important**: Spotify requires HTTPS for redirect URIs, even for local
+development. See "Local HTTPS Setup" section below for easy solutions.
 
 #### Understanding Redirect URI
 
@@ -86,8 +89,9 @@ In production, use your actual domain name instead of `localhost`. For
 example:
 
 - **Development**: `http://localhost:8000/api/auth/spotify/callback`
-- **Production**: `https://pigify.harleypig.com:8888/api/auth/spotify/callback`
-  (or `https://pigify.harleypig.com/api/auth/spotify/callback` if using
+- **Production**: `https://your-domain.com:PORT/api/auth/spotify/callback`
+  (replace `your-domain.com` with your actual domain and `PORT` with your
+  port, or use `https://your-domain.com/api/auth/spotify/callback` if using
   standard HTTPS port 443)
 
 **Important for Production:**
@@ -102,6 +106,100 @@ example:
 
 You can add multiple Redirect URIs in the Spotify Developer Dashboard (one for
 development, one for production) if needed.
+
+#### Local HTTPS Setup
+
+Since Spotify requires HTTPS redirect URIs, you'll need to set up HTTPS for
+local development. Here are the easiest options:
+
+**Option 1: Using mkcert (Recommended - Easiest)**
+
+`mkcert` creates locally-trusted SSL certificates that work in browsers
+without security warnings:
+
+1. Install mkcert:
+   ```bash
+   # On Ubuntu/Debian
+   sudo apt install libnss3-tools
+   wget -O mkcert https://github.com/FiloSottile/mkcert/releases/latest/download/mkcert-v1.4.4-linux-amd64
+   chmod +x mkcert
+   sudo mv mkcert /usr/local/bin/
+   
+   # On macOS
+   brew install mkcert
+   
+   # On Windows (with Chocolatey)
+   choco install mkcert
+   ```
+
+2. Create a local CA (Certificate Authority):
+   ```bash
+   mkcert -install
+   ```
+
+3. Generate certificates for localhost:
+   ```bash
+   mkcert localhost 127.0.0.1 ::1
+   ```
+   This creates `localhost+2.pem` (certificate) and `localhost+2-key.pem`
+   (private key).
+
+4. Update your docker-compose.yml to use HTTPS (see below for configuration)
+
+**Option 2: Using ngrok (Quick Testing)**
+
+`ngrok` creates an HTTPS tunnel to your local server:
+
+1. Install ngrok: https://ngrok.com/download
+2. Start your app on port 8000
+3. Run: `ngrok http 8000`
+4. Use the HTTPS URL provided (e.g., `https://abc123.ngrok.io`) as your
+   redirect URI
+5. Note: The URL changes each time you restart ngrok (unless you have a paid
+   account)
+
+**Option 3: Using a Reverse Proxy (More Control)**
+
+Set up nginx or Traefik as a reverse proxy with SSL certificates. This is
+more complex but gives you full control.
+
+**Configuring Docker with mkcert Certificates:**
+
+The `docker-compose.yml` is already configured to automatically use HTTPS if
+certificates are present. Simply:
+
+1. Run the setup script (easiest):
+   ```bash
+   ./scripts/setup-ssl.sh
+   ```
+   This will install mkcert (if needed), create the local CA, and generate
+   certificates in the `certs/` directory.
+
+2. Or manually generate certificates:
+   ```bash
+   mkdir -p certs
+   mkcert -cert-file certs/localhost+2.pem -key-file certs/localhost+2-key.pem localhost 127.0.0.1 ::1
+   ```
+
+3. The docker-compose.yml will automatically detect the certificates and use
+   HTTPS. No manual configuration needed!
+
+4. Update your `.env` file to use HTTPS URLs:
+   ```bash
+   SPOTIFY_REDIRECT_URI=https://localhost:8000/api/auth/spotify/callback
+   BACKEND_URL=https://localhost:8000
+   FRONTEND_URL=https://localhost:3000
+   ```
+
+5. Access your app at `https://localhost:8000` (you may need to accept the
+   certificate warning the first time)
+
+**Note**: The docker-compose.yml is configured to fall back to HTTP if
+certificates are not found, but Spotify requires HTTPS for redirect URIs, so
+you must set up certificates for the app to work.
+
+**Note**: For the simplest setup, consider using ngrok for quick testing, or
+mkcert for a more permanent local development setup.
 
 ### 2. No Additional APIs/SDKs to Enable
 

@@ -17,7 +17,7 @@ services:
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
       - BACKEND_URL=${BACKEND_URL}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - FRONTEND_URL=${FRONTEND_URL:-https://localhost:3000}
       - ENVIRONMENT=${ENVIRONMENT:-development}
     secrets:
       - spotify_client_secret
@@ -25,8 +25,17 @@ services:
     volumes:
       - ./backend:/app/backend
       - ./config:/app/config
+      - ./certs:/app/certs:ro
     env_file:
       - .env
+    # Use HTTPS if certificates are available, otherwise fall back to HTTP
+    command: >
+      sh -c " if [ -f /app/certs/localhost+2.pem ] && [ -f /app/certs/localhost+2-key.pem ]; then
+        uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --ssl-keyfile /app/certs/localhost+2-key.pem --ssl-certfile /app/certs/localhost+2.pem
+      else
+        echo 'Warning: SSL certificates not found. Running without HTTPS. See docs/SPOTIFY_SETUP.md for HTTPS setup.'
+        uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+      fi "
     restart: unless-stopped
 
   # Development frontend (optional, for hot-reload)
@@ -40,7 +49,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+      - VITE_BACKEND_URL=${BACKEND_URL:-https://localhost:8000}
     profiles:
       - dev
     restart: unless-stopped

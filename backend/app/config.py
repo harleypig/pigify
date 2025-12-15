@@ -28,16 +28,21 @@ class Settings(BaseSettings):
     # Spotify API Configuration
     SPOTIFY_CLIENT_ID: str
     SPOTIFY_CLIENT_SECRET: str
-    SPOTIFY_REDIRECT_URI: str = "http://localhost:8000/api/auth/spotify/callback"
+    SPOTIFY_REDIRECT_URI: str = "https://localhost:8000/api/auth/spotify/callback"
     
     # Application Configuration
     SECRET_KEY: str = "dev-secret-key-change-in-production"
-    BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:3000"
+    BACKEND_URL: str = "https://localhost:8000"
+    FRONTEND_URL: str = "https://localhost:3000"
     ENVIRONMENT: str = "development"
     
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
+        "https://localhost:3000",
+        "https://localhost:8000",
+        "https://127.0.0.1:3000",
+        "https://127.0.0.1:8000",
+        # Also allow HTTP for backwards compatibility if needed
         "http://localhost:3000",
         "http://localhost:8000",
         "http://127.0.0.1:3000",
