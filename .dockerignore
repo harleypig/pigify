@@ -48,11 +48,14 @@ dist-ssr/
 .env
 .env.local
 .env.*.local
+env.example
 
 # Testing
 .coverage
 .pytest_cache/
 htmlcov/
+.nyc_output/
+coverage/
 
 # Documentation
 *.md
