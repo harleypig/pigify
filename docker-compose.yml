@@ -23,7 +23,6 @@ services:
       - spotify_client_secret
       - secret_key
     volumes:
-      - ./backend:/app/backend
       - ./config:/app/config
       - ./certs:/app/certs:ro
     env_file:
