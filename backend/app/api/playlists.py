@@ -199,14 +199,12 @@ async def hydrate_tracks(
 
     # ----- Last.fm --------------------------------------------------------
     if "lastfm" in sources:
-        conn = get_connection(request, "lastfm")
+        conn = await get_connection(request, "lastfm")
         if conn.tier == "none":
             out["warnings"].append("lastfm not configured")
         else:
             username = (
-                (request.session.get("lastfm") or {}).get("username")
-                if conn.tier == "authenticated"
-                else None
+                conn.connected_account if conn.tier == "authenticated" else None
             )
             meta_by_id: Dict[str, Dict[str, str]] = {
                 m.get("id"): m for m in (body.track_meta or []) if m.get("id")
