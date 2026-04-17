@@ -567,7 +567,49 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
         cur_ids[new_pos] = moved_id
         pos[moved_id] = new_pos
 
-    return ops
+    return _coalesce_reorder_ops(ops)
+
+
+def _coalesce_reorder_ops(ops: List[Dict[str, int]]) -> List[Dict[str, int]]:
+    """Merge runs of single-item moves whose source/destination are
+    contiguous into a single ``range_length>1`` reorder op.
+
+    Spotify's reorder endpoint accepts a range, and a range move is
+    semantically equivalent to a specific sequence of single-item moves:
+
+      * Rightward (``range_start < insert_before``): a length-``L`` range
+        ``(R, I, L)`` is the same as ``L`` copies of ``(R, I, 1)``.
+      * Leftward (``range_start > insert_before``): a length-``L`` range
+        ``(R, I, L)`` is the same as ``(R, I, 1), (R+1, I+1, 1), ...,
+        (R+L-1, I+L-1, 1)``.
+
+    We scan the emitted ops in order and greedily extend a trailing op
+    whenever the next single-item op matches the appropriate pattern.
+    Coalescing only collapses ops that were already adjacent in the plan,
+    so the replay still reproduces the target order — it just uses fewer
+    HTTP calls.
+    """
+    out: List[Dict[str, int]] = []
+    for op in ops:
+        if not out:
+            out.append(dict(op))
+            continue
+        last = out[-1]
+        if op.get("range_length", 1) != 1:
+            out.append(dict(op))
+            continue
+        R, I, L = last["range_start"], last["insert_before"], last["range_length"]
+        r, i = op["range_start"], op["insert_before"]
+        # Rightward run: identical (R, I) repeated.
+        if R < I and r == R and i == I:
+            last["range_length"] = L + 1
+            continue
+        # Leftward run: each subsequent op shifts both R and I by +1.
+        if R > I and r == R + L and i == I + L:
+            last["range_length"] = L + 1
+            continue
+        out.append(dict(op))
+    return out
 
 
 @router.post("/{playlist_id}/reorder")

@@ -28,16 +28,24 @@ from backend.app.api.playlists import _compute_reorder_ops
 
 
 def apply_ops(current: List[str], ops) -> List[str]:
-    """Replay Spotify-style single-item reorder ops against ``current``."""
+    """Replay Spotify-style reorder ops against ``current``.
+
+    Supports ``range_length >= 1`` so coalesced range moves replay
+    correctly. Spotify semantics: pop the contiguous block at
+    ``[range_start, range_start + range_length)``, then insert it before
+    ``insert_before`` in the *original* indexing — which becomes
+    ``insert_before - range_length`` after the pop when the range was
+    to the left of the insertion point.
+    """
     cur = list(current)
     for op in ops:
         j = op["range_start"]
         ib = op["insert_before"]
-        assert op["range_length"] == 1
-        item = cur.pop(j)
-        # Spotify semantics: index shifts left by one when j < ib.
-        new_idx = ib - 1 if j < ib else ib
-        cur.insert(new_idx, item)
+        L = op.get("range_length", 1)
+        block = cur[j:j + L]
+        del cur[j:j + L]
+        new_idx = ib - L if j < ib else ib
+        cur[new_idx:new_idx] = block
     return cur
 
 
@@ -90,14 +98,18 @@ class TestReorderOpsCorrectness(unittest.TestCase):
         self.assertEqual(apply_ops(current, ops), target,
                          f"replaying ops did not produce target ({ops!r})")
         n = len(current)
-        # Op count must match the proven minimum N - LCS.
-        self.assertEqual(len(ops), n - lcs_length(current, target),
-                         f"op count {len(ops)} != N - LIS for {current}->{target}")
+        # Op count must never exceed the proven single-item minimum
+        # (N - LCS); coalescing can only reduce it further.
+        self.assertLessEqual(len(ops), n - lcs_length(current, target),
+                             f"op count {len(ops)} > N - LIS for {current}->{target}")
         if expected_ops is not None:
             self.assertEqual(len(ops), expected_ops)
-        # Every op must be range_length=1 (single-item) per the spec.
-        for op in ops:
-            self.assertEqual(op["range_length"], 1)
+        # The total items moved (sum of range_length) must still match the
+        # single-item lower bound N - LCS — coalescing only reduces the
+        # *call count*, never the number of items transported.
+        total_moved = sum(op["range_length"] for op in ops)
+        self.assertEqual(total_moved, n - lcs_length(current, target))
+        return ops
 
     # ------ identity / no-op cases ------
 
@@ -178,7 +190,14 @@ class TestFuzzedShuffles(unittest.TestCase):
             rng.shuffle(target)
             ops = _compute_reorder_ops(current, target)
             self.assertEqual(apply_ops(current, ops), target)
-            self.assertEqual(len(ops), n - lcs_length(current, target))
+            # Coalescing can only reduce call count, never increase it
+            # past the single-item lower bound.
+            self.assertLessEqual(len(ops), n - lcs_length(current, target))
+            # Total items transported still equals N - LCS exactly.
+            self.assertEqual(
+                sum(op["range_length"] for op in ops),
+                n - lcs_length(current, target),
+            )
 
     def test_distinct_shuffles_size_20(self):
         # Distinct elements: LCS == LIS of the position permutation.
@@ -192,6 +211,57 @@ class TestFuzzedShuffles(unittest.TestCase):
     def test_larger_distinct_size_100(self):
         self._run_fuzz(n=100, alphabet=list(range(100)),
                        trials=10, seed=3)
+
+
+class TestCoalescedRangeMoves(unittest.TestCase):
+    """Adjacent single-item moves that travel together must be collapsed
+    into a single ``range_length>1`` op, strictly reducing the call count
+    versus the single-item plan."""
+
+    def test_block_of_three_to_end_uses_one_range_op(self):
+        # Items X, Y, Z all need to land after the long kept run a..e.
+        # The LIS picks the long run, so all three moves emit identical
+        # (R, I) ops and coalesce into a single range_length=3 call.
+        current = ["X", "Y", "Z", "a", "b", "c", "d", "e"]
+        target = ["a", "b", "c", "d", "e", "X", "Y", "Z"]
+        ops = _compute_reorder_ops(current, target)
+        self.assertEqual(apply_ops(current, ops), target)
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["range_length"], 3)
+
+    def test_leftward_block_of_two_coalesces(self):
+        # Force the (R>I) coalesce branch: A, B sit after kept X, Y in
+        # current but should land before them in target.
+        current = ["X", "Y", "A", "B"]
+        target = ["A", "B", "X", "Y"]
+        ops = _compute_reorder_ops(current, target)
+        self.assertEqual(apply_ops(current, ops), target)
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["range_length"], 2)
+        self.assertGreater(ops[0]["range_start"], ops[0]["insert_before"])
+
+    def test_non_contiguous_moves_are_not_coalesced(self):
+        # Two moved items separated by a kept item must remain two ops.
+        current = ["X", "k", "Y", "a", "b"]
+        target = ["a", "X", "k", "Y", "b"]
+        ops = _compute_reorder_ops(current, target)
+        self.assertEqual(apply_ops(current, ops), target)
+        for op in ops:
+            self.assertEqual(op["range_length"], 1)
+
+    def test_coalescing_strictly_beats_single_item_count(self):
+        # A long block move where coalescing collapses 5 single-item ops
+        # into a single range op of length 5. This is the headline win
+        # the task is asking for.
+        current = list("ABCDEfghij")          # A..E move, f..j stay.
+        target = list("fghijABCDE")
+        ops = _compute_reorder_ops(current, target)
+        self.assertEqual(apply_ops(current, ops), target)
+        single_item_min = len(current) - lcs_length(current, target)
+        self.assertEqual(single_item_min, 5)
+        self.assertLess(len(ops), single_item_min)
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["range_length"], 5)
 
 
 class TestAgainstDPOracle(unittest.TestCase):
@@ -208,7 +278,11 @@ class TestAgainstDPOracle(unittest.TestCase):
             rng.shuffle(target)
             ops = _compute_reorder_ops(current, target)
             self.assertEqual(apply_ops(current, ops), target)
-            self.assertEqual(len(ops), n - lcs_length_dp(current, target))
+            self.assertLessEqual(len(ops), n - lcs_length_dp(current, target))
+            self.assertEqual(
+                sum(op["range_length"] for op in ops),
+                n - lcs_length_dp(current, target),
+            )
 
 
 if __name__ == "__main__":  # pragma: no cover
