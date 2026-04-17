@@ -11,7 +11,7 @@ packages = ["libxcrypt"]
 [userenv.shared]
 ENVIRONMENT = "development"
 BACKEND_URL = "http://localhost:8000"
-FRONTEND_URL = "http://localhost:5000"
+FRONTEND_URL = "https://4ddd1ea2-dac7-482e-b17f-001468a5dbdc-00-3t80y3jqljqo9.riker.replit.dev"
 PORT = "8000"
 SPOTIFY_REDIRECT_URI = "https://4ddd1ea2-dac7-482e-b17f-001468a5dbdc-00-3t80y3jqljqo9.riker.replit.dev/api/auth/spotify/callback"
 
