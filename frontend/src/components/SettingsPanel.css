@@ -390,3 +390,34 @@
   font-size: 11px;
   padding: 4px 8px;
 }
+.sp-changelog {
+  list-style: none;
+  margin: 0 0 8px 0;
+  padding: 0;
+}
+.sp-changelog-older {
+  margin-top: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 8px;
+}
+.sp-changelog-entry {
+  margin-bottom: 12px;
+}
+.sp-changelog-entry:last-child {
+  margin-bottom: 0;
+}
+.sp-changelog-head {
+  margin-bottom: 4px;
+}
+.sp-changelog-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #ccc;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sp-changelog-list li {
+  margin-bottom: 2px;
+}
