@@ -10,7 +10,7 @@ Per the graceful degradation policy:
 """
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
 
 from backend.app.config import settings
@@ -87,6 +87,42 @@ async def lastfm_status(request: Request):
         "connection": conn.model_dump(),
         "status": status,
     }
+
+
+# ----------------------------- Last.fm queue -----------------------------------
+
+def _require_spotify_id(request: Request) -> str:
+    spotify_id = request.session.get("spotify_user_id")
+    if not spotify_id:
+        raise HTTPException(401, "Sign in to Spotify first")
+    return spotify_id
+
+
+@router.get("/lastfm/queue")
+async def lastfm_queue(request: Request) -> Dict[str, Any]:
+    """List pending Last.fm scrobbles for the signed-in user."""
+    spotify_id = _require_spotify_id(request)
+    entries = await scrobbler.list_pending(spotify_id)
+    return {"entries": entries, "count": len(entries)}
+
+
+@router.post("/lastfm/queue/flush")
+async def lastfm_queue_flush(request: Request) -> Dict[str, Any]:
+    """Force a retry of every queued scrobble, ignoring backoff windows."""
+    spotify_id = _require_spotify_id(request)
+    return await scrobbler.flush_now(spotify_id)
+
+
+@router.delete("/lastfm/queue/{entry_id}")
+async def lastfm_queue_delete(
+    request: Request, entry_id: int = Path(..., ge=1)
+) -> Dict[str, Any]:
+    """Delete a single queued scrobble (e.g. a poison entry)."""
+    spotify_id = _require_spotify_id(request)
+    deleted = await scrobbler.delete_entry(spotify_id, entry_id)
+    if not deleted:
+        raise HTTPException(404, "Queue entry not found")
+    return {"deleted": True, "id": entry_id}
 
 
 # ----------------------------- Last.fm enrichment ------------------------------

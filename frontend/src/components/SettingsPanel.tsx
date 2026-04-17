@@ -3,6 +3,8 @@ import {
   apiService,
   ConnectionStatus,
   FavoritesStatus,
+  LastfmQueueEntry,
+  LastfmQueueFlushResult,
   LastfmStatus,
   Profile,
 } from '../services/api'
@@ -391,6 +393,7 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
               >
                 Disconnect
               </button>
+              <LastfmQueuePanel />
             </>
           ) : (
             <>
@@ -420,6 +423,144 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
             fetched automatically — no account needed.
           </p>
         </section>
+      )}
+    </div>
+  )
+}
+
+function formatRelative(iso?: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '—'
+  const diff = Date.now() - d.getTime()
+  const sec = Math.round(diff / 1000)
+  if (sec < 60) return `${sec}s ago`
+  if (sec < 3600) return `${Math.round(sec / 60)}m ago`
+  if (sec < 86400) return `${Math.round(sec / 3600)}h ago`
+  return d.toLocaleString()
+}
+
+function LastfmQueuePanel() {
+  const [entries, setEntries] = useState<LastfmQueueEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [flushResult, setFlushResult] = useState<LastfmQueueFlushResult | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const data = await apiService.getLastfmQueue()
+      setEntries(data.entries)
+      setError(null)
+    } catch {
+      setError('Failed to load queue')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  const flush = async () => {
+    setBusy(true)
+    setFlushResult(null)
+    try {
+      const result = await apiService.flushLastfmQueue()
+      setFlushResult(result)
+      await load()
+    } catch {
+      setError('Retry failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (id: number) => {
+    setBusy(true)
+    try {
+      await apiService.deleteLastfmQueueEntry(id)
+      setEntries((prev) => prev.filter((e) => e.id !== id))
+    } catch {
+      setError('Failed to delete entry')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="sp-queue">
+      <header className="sp-queue-head">
+        <h4>Pending scrobbles ({entries.length})</h4>
+        <div className="sp-queue-actions">
+          <button
+            className="sp-btn"
+            onClick={load}
+            disabled={loading || busy}
+            title="Reload queue"
+          >
+            Refresh
+          </button>
+          <button
+            className="sp-btn-primary"
+            onClick={flush}
+            disabled={busy || entries.length === 0}
+          >
+            {busy ? 'Retrying…' : 'Retry now'}
+          </button>
+        </div>
+      </header>
+
+      {loading && <p className="sp-meta">Loading queue…</p>}
+      {error && <p className="sp-error">{error}</p>}
+
+      {flushResult && (
+        <p className="sp-meta">
+          Retried {flushResult.attempted} · sent {flushResult.succeeded} ·{' '}
+          {flushResult.remaining} remaining
+          {flushResult.error ? ` · ${flushResult.error}` : ''}
+        </p>
+      )}
+
+      {!loading && entries.length === 0 ? (
+        <p className="sp-meta">
+          Nothing queued — all your plays have been delivered to Last.fm.
+        </p>
+      ) : (
+        <ul className="sp-queue-list">
+          {entries.map((e) => (
+            <li key={e.id} className="sp-queue-item">
+              <div className="sp-queue-info">
+                <strong>{e.track}</strong>
+                <span className="sp-queue-artist"> — {e.artist}</span>
+                <div className="sp-queue-meta">
+                  Queued {formatRelative(e.queued_at)} ·{' '}
+                  Played {new Date(e.timestamp * 1000).toLocaleString()} ·{' '}
+                  {e.attempts} {e.attempts === 1 ? 'attempt' : 'attempts'}
+                  {e.next_attempt_at
+                    ? ` · next retry ${formatRelative(e.next_attempt_at)}`
+                    : ''}
+                </div>
+                {e.last_error && (
+                  <div className="sp-queue-error" title={e.last_error}>
+                    Last error: {e.last_error}
+                  </div>
+                )}
+              </div>
+              <button
+                className="sp-btn-danger sp-queue-del"
+                onClick={() => remove(e.id)}
+                disabled={busy}
+                aria-label={`Delete ${e.track}`}
+                title="Delete this queued scrobble"
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

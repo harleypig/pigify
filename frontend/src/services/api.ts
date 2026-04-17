@@ -259,6 +259,20 @@ export const apiService = {
     await apiClient.post('/api/integrations/lastfm/disconnect')
   },
 
+  async getLastfmQueue(): Promise<LastfmQueueResponse> {
+    const r = await apiClient.get('/api/integrations/lastfm/queue')
+    return r.data
+  },
+
+  async flushLastfmQueue(): Promise<LastfmQueueFlushResult> {
+    const r = await apiClient.post('/api/integrations/lastfm/queue/flush')
+    return r.data
+  },
+
+  async deleteLastfmQueueEntry(id: number): Promise<void> {
+    await apiClient.delete(`/api/integrations/lastfm/queue/${id}`)
+  },
+
   async getTrackDetail(spotifyTrackId: string): Promise<TrackDetail> {
     const response = await apiClient.get(`/api/integrations/track-detail/${spotifyTrackId}`)
     return response.data
@@ -425,6 +439,31 @@ export interface ConnectionStatus {
   display_name: string
   connected_account?: string | null
   last_error?: string | null
+}
+
+export interface LastfmQueueEntry {
+  id: number
+  artist: string
+  track: string
+  album?: string | null
+  duration_sec?: number | null
+  timestamp: number
+  attempts: number
+  last_error?: string | null
+  next_attempt_at?: string | null
+  queued_at?: string | null
+}
+
+export interface LastfmQueueResponse {
+  entries: LastfmQueueEntry[]
+  count: number
+}
+
+export interface LastfmQueueFlushResult {
+  attempted: number
+  succeeded: number
+  remaining: number
+  error?: string | null
 }
 
 export interface LastfmStatus {

@@ -288,3 +288,70 @@
   outline: none;
   border-color: #1db954;
 }
+
+.sp-queue {
+  margin-top: 16px;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 12px;
+}
+.sp-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.sp-queue-head h4 {
+  margin: 0;
+  font-size: 13px;
+  color: #ddd;
+  font-weight: 600;
+}
+.sp-queue-actions {
+  display: flex;
+  gap: 8px;
+}
+.sp-queue-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.sp-queue-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #161616;
+  border: 1px solid #262626;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.sp-queue-info {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: #ddd;
+}
+.sp-queue-artist {
+  color: #aaa;
+}
+.sp-queue-meta {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
+}
+.sp-queue-error {
+  color: #ff8a8a;
+  font-size: 11px;
+  margin-top: 4px;
+  word-break: break-word;
+}
+.sp-queue-del {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 4px 8px;
+}
