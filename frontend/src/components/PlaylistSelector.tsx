@@ -36,7 +36,7 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
         <div className="playlist-selector-header">
           <h2>Your Playlists</h2>
         </div>
-        <div className="loading">Loading playlists...</div>
+        <div className="loading">Loading playlists…</div>
       </div>
     )
   }
@@ -59,18 +59,29 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
       </div>
       <div className="playlist-list">
         {playlists.map((playlist) => (
-          <div
+          <button
+            type="button"
             key={playlist.id}
             className={`playlist-item ${
               selectedPlaylist === playlist.id ? 'selected' : ''
             }`}
             onClick={() => onSelectPlaylist(playlist.id)}
+            aria-pressed={selectedPlaylist === playlist.id}
           >
             <div className="playlist-image">
               {playlist.images && playlist.images.length > 0 ? (
-                <img src={playlist.images[0].url} alt={playlist.name} />
+                /* Explicit dimensions reserve layout space so swapping
+                   playlists doesn't cause layout shift while images load. */
+                <img
+                  src={playlist.images[0].url}
+                  alt=""
+                  width={50}
+                  height={50}
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
-                <div className="playlist-placeholder">♪</div>
+                <div className="playlist-placeholder" aria-hidden="true">♪</div>
               )}
             </div>
             <div className="playlist-info">
@@ -79,7 +90,7 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
                 {playlist.track_count} tracks
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

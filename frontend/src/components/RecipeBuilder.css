@@ -33,7 +33,11 @@
   color: #fff;
   padding: 4px 2px;
 }
+/* Recipe-name is a borderless inline-edit field; the green underline is the
+   focus indicator for mouse use, and :focus-visible keeps a real ring for
+   keyboard navigation. */
 .recipe-name:focus { outline: none; border-bottom-color: #1db954; }
+.recipe-name:focus-visible { outline: 2px solid #1db954; outline-offset: 2px; }
 .bucket {
   border: 1px solid #2a2a2a;
   border-radius: 8px;
@@ -183,7 +187,13 @@
   color: #9cc4ff;
   text-decoration: none;
   border-bottom-style: solid;
+  /* Hover-style border swap is the focus indicator for mouse; keep a real
+     ring on keyboard focus via :focus-visible below. */
   outline: none;
+}
+.preview-source-link:focus-visible {
+  outline: 2px solid #9cc4ff;
+  outline-offset: 2px;
 }
 .preview-more { color: #666; padding: 4px 0; font-size: 12px; }
 .hint { color: #666; font-size: 12px; }

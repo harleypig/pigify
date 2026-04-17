@@ -86,7 +86,7 @@ function Player({ trackUri }: PlayerProps) {
         )}
         {!track && (
           <div className="player-status">
-            Initializing player...
+            Initializing player…
           </div>
         )}
       </div>

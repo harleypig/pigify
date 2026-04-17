@@ -182,7 +182,7 @@ function NowPlayingBar({ trackUri, onShowDetails, onTrackChange }: NowPlayingBar
     try { await apiService.seekTo(posMs) } catch (e) { console.error(e) }
   }
 
-  const handlePlainBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePlainBarClick = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     handleSeek((e.clientX - rect.left) / rect.width)
   }
@@ -198,9 +198,19 @@ function NowPlayingBar({ trackUri, onShowDetails, onTrackChange }: NowPlayingBar
       {/* Row 1: art · info · controls */}
       <div className="now-playing-row1">
         {albumArt ? (
-          <img src={albumArt} alt={track?.album?.name} className="now-playing-art" />
+          /* Explicit dimensions and decoding hints prevent the bar from
+             reflowing when art swaps between tracks. alt="" because the
+             album/track name is already shown next to it as text. */
+          <img
+            src={albumArt}
+            alt=""
+            width={56}
+            height={56}
+            decoding="async"
+            className="now-playing-art"
+          />
         ) : (
-          <div className="now-playing-art-placeholder" />
+          <div className="now-playing-art-placeholder" aria-hidden="true" />
         )}
 
         <div className="now-playing-info">
@@ -257,8 +267,24 @@ function NowPlayingBar({ trackUri, onShowDetails, onTrackChange }: NowPlayingBar
             {waveform.length > 0 ? (
               <WaveformBar bars={waveform} progress={displayProgress} onSeek={handleSeek} />
             ) : (
-              <div className="progress-plain-track" onClick={handlePlainBarClick} style={{ cursor: 'pointer' }}>
+              /* Native <input type="range"> gives us correct slider semantics
+                 plus the full keyboard model (arrows, Home, End, Page Up/Down)
+                 for free. We render it on top of a plain track + fill div so
+                 the visual bar still shows progress under the (transparent)
+                 native thumb. */
+              <div className="progress-plain-track" onClick={handlePlainBarClick}>
                 <div className="progress-plain-fill" style={{ width: `${displayProgress * 100}%` }} />
+                <input
+                  type="range"
+                  className="progress-plain-range"
+                  min={0}
+                  max={1000}
+                  step={1}
+                  value={Math.round(displayProgress * 1000)}
+                  onChange={(e) => handleSeek(Number(e.target.value) / 1000)}
+                  aria-label="Seek"
+                  aria-valuetext={`${Math.round(displayProgress * 100)} percent`}
+                />
               </div>
             )}
           </div>
