@@ -310,6 +310,23 @@
 .sp-queue-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.sp-queue-selectall {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 4px;
+  user-select: none;
+  cursor: pointer;
+}
+.sp-queue-check {
+  margin-top: 2px;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 .sp-queue-list {
   list-style: none;

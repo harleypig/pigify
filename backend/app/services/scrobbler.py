@@ -307,6 +307,36 @@ async def delete_entry(spotify_id: str, entry_id: int) -> bool:
         return True
 
 
+async def clear_queue(
+    spotify_id: str, entry_ids: Optional[list[int]] = None
+) -> Dict[str, Any]:
+    """Bulk-delete queued scrobbles.
+
+    If `entry_ids` is None, the entire queue is wiped. Otherwise only the
+    listed entries are removed (unknown IDs are ignored). Returns a small
+    summary including the new remaining count so the UI can sync state in
+    a single round-trip.
+    """
+    async with user_session_scope(spotify_id) as session:
+        if entry_ids is None:
+            deleted = await queue_repo.delete_all(session)
+        else:
+            deleted = await queue_repo.delete_many(session, entry_ids)
+
+        remaining = await queue_repo.count(session)
+
+        # Keep the UI status in sync — queued count drives the badge.
+        s = await _load_state(session)
+        status = dict(s.get("status") or {})
+        status["queued"] = remaining
+        s["status"] = status
+        await _save_state(session, summary=s, status="ok")
+
+        await session.commit()
+
+    return {"deleted": deleted, "remaining": remaining}
+
+
 async def flush_now(spotify_id: str) -> Dict[str, Any]:
     """Force a retry of every queued scrobble, ignoring backoff windows.
 
@@ -406,5 +436,6 @@ __all__ = [
     "reset_for_user",
     "list_pending",
     "delete_entry",
+    "clear_queue",
     "flush_now",
 ]

@@ -273,6 +273,15 @@ export const apiService = {
     await apiClient.delete(`/api/integrations/lastfm/queue/${id}`)
   },
 
+  async clearLastfmQueue(
+    ids?: number[]
+  ): Promise<LastfmQueueClearResult> {
+    const r = await apiClient.delete('/api/integrations/lastfm/queue', {
+      data: ids ? { ids } : {},
+    })
+    return r.data
+  },
+
   async getTrackDetail(spotifyTrackId: string): Promise<TrackDetail> {
     const response = await apiClient.get(`/api/integrations/track-detail/${spotifyTrackId}`)
     return response.data
@@ -470,6 +479,11 @@ export interface LastfmQueueFlushResult {
   succeeded: number
   remaining: number
   error?: string | null
+}
+
+export interface LastfmQueueClearResult {
+  deleted: number
+  remaining: number
 }
 
 export interface LastfmStatus {
