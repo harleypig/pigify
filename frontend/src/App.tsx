@@ -287,29 +287,31 @@ function App() {
           <RecipesSidebar />
         </div>
         <div className="content">
-          {selectedPlaylist && (
-            <TrackList
-              playlistId={selectedPlaylist}
-              onTrackSelect={setCurrentTrack}
-              onTrackFocus={focusPanelOnTrack}
+          {/* Settings lives in the main content panel rather than a floating
+              overlay — opening it temporarily takes over the track list area
+              and is dismissed back to the playlist via its × button. */}
+          {settingsPanelOpen ? (
+            <SettingsPanel
+              onClose={() => setSettingsPanelOpen(false)}
+              onProfileChange={setProfile}
+              initialTab={settingsInitialTab}
             />
+          ) : (
+            selectedPlaylist && (
+              <TrackList
+                playlistId={selectedPlaylist}
+                onTrackSelect={setCurrentTrack}
+                onTrackFocus={focusPanelOnTrack}
+              />
+            )
           )}
         </div>
       </main>
-      {!settingsPanelOpen && (
-        <TrackInfoPanel
-          trackId={panelTrackId}
-          collapsed={panelCollapsed}
-          onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
-        />
-      )}
-      {settingsPanelOpen && (
-        <SettingsPanel
-          onClose={() => setSettingsPanelOpen(false)}
-          onProfileChange={setProfile}
-          initialTab={settingsInitialTab}
-        />
-      )}
+      <TrackInfoPanel
+        trackId={panelTrackId}
+        collapsed={panelCollapsed}
+        onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
+      />
     </div>
   )
 }
