@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     # whichever comes first, and only for tracks longer than 30 seconds.
     SCROBBLE_MIN_TRACK_SEC: int = 30
     SCROBBLE_MIN_PLAYED_SEC: int = 240
+
+    # Background scrobble retry loop. Runs across every known user DB and
+    # drains entries whose backoff has elapsed. Set to 0 to disable.
+    SCROBBLE_RETRY_INTERVAL_SEC: int = 300  # 5 minutes
+    # Exponential backoff parameters for failed scrobble deliveries.
+    # next_attempt_at = now + min(BASE * 2^(attempts-1), MAX).
+    SCROBBLE_RETRY_BASE_SEC: int = 60
+    SCROBBLE_RETRY_MAX_SEC: int = 3600  # cap at 1 hour
     
     # Application Configuration
     SECRET_KEY: str = "dev-secret-key-change-in-production"

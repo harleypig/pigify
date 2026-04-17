@@ -237,6 +237,21 @@
   border-radius: 8px;
   margin-top: 12px;
 }
+.sp-reconnect-banner {
+  background: #3a1f1f;
+  border: 1px solid #7a2c2c;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.sp-reconnect-banner strong {
+  color: #ffb4b4;
+  font-size: 13px;
+}
 .sp-card:first-child {
   margin-top: 0;
 }
