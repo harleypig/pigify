@@ -167,3 +167,25 @@
 .preview-artist { color: #888; }
 .preview-more { color: #666; padding: 4px 0; font-size: 12px; }
 .hint { color: #666; font-size: 12px; }
+
+.bucket-source { margin-bottom: 8px; }
+.bucket-source-list {
+  margin: 4px 0 6px 96px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: #0e0e0e;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+.source-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #ccc;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.source-check input { accent-color: #1db954; }
+.bucket-source > .hint { margin-left: 96px; }

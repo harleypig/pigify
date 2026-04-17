@@ -56,6 +56,35 @@ function blankBucket(): RecipeBucket {
   }
 }
 
+type SourceKind = 'liked' | 'playlist' | 'playlists' | 'all_playlists'
+
+function parseSource(source: string): { kind: SourceKind; ids: string[] } {
+  if (source === 'liked') return { kind: 'liked', ids: [] }
+  if (source === 'all_playlists') return { kind: 'all_playlists', ids: [] }
+  if (source.startsWith('playlists:')) {
+    const ids = source
+      .slice('playlists:'.length)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    return { kind: 'playlists', ids }
+  }
+  if (source.startsWith('playlist:')) {
+    const id = source.slice('playlist:'.length).trim()
+    return { kind: 'playlist', ids: id ? [id] : [] }
+  }
+  return { kind: 'liked', ids: [] }
+}
+
+function buildSource(kind: SourceKind, ids: string[]): string {
+  if (kind === 'liked') return 'liked'
+  if (kind === 'all_playlists') return 'all_playlists'
+  const clean = ids.filter(Boolean)
+  if (clean.length === 0) return 'playlists:'
+  if (clean.length === 1) return `playlist:${clean[0]}`
+  return `playlists:${clean.join(',')}`
+}
+
 function blankRecipe(): Recipe {
   return { name: 'New filter', buckets: [blankBucket()], combine: 'in_order' }
 }
@@ -73,7 +102,25 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
   useEffect(() => {
     if (!open) return
     apiService.getSortFields().then((r) => setFields(r.fields)).catch(() => {})
-    apiService.getPlaylists(50, 0).then(setPlaylists).catch(() => {})
+    // Load all the user's playlists so the multi-select picker covers their
+    // full library, not just the first page.
+    ;(async () => {
+      const all: Playlist[] = []
+      const pageSize = 50
+      let offset = 0
+      while (offset < 1000) {
+        try {
+          const page = await apiService.getPlaylists(pageSize, offset)
+          if (!page || page.length === 0) break
+          all.push(...page)
+          if (page.length < pageSize) break
+          offset += pageSize
+        } catch {
+          break
+        }
+      }
+      setPlaylists(all)
+    })()
     if (initial) {
       setRecipe({
         name: initial.name,
@@ -314,18 +361,12 @@ function BucketEditor(props: {
         )}
       </div>
 
-      <div className="bucket-row">
-        <label>Source</label>
-        <select
-          value={bucket.source}
-          onChange={(e) => onChange({ source: e.target.value })}
-        >
-          <option value="liked">Liked Songs</option>
-          {playlists.map((p) => (
-            <option key={p.id} value={`playlist:${p.id}`}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+      <BucketSourcePicker
+        source={bucket.source}
+        playlists={playlists}
+        onChange={(s) => onChange({ source: s })}
+      />
+
 
       <div className="bucket-filters">
         <label>Filters</label>
@@ -435,6 +476,78 @@ function BucketEditor(props: {
         />
         <span className="hint">tracks</span>
       </div>
+    </div>
+  )
+}
+
+function BucketSourcePicker(props: {
+  source: string
+  playlists: Playlist[]
+  onChange: (source: string) => void
+}) {
+  const { source, playlists, onChange } = props
+  const parsed = parseSource(source)
+  const selected = new Set(parsed.ids)
+
+  const togglePlaylist = (id: string) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    onChange(buildSource('playlists', Array.from(next)))
+  }
+
+  const onKindChange = (kind: SourceKind) => {
+    if (kind === 'liked' || kind === 'all_playlists') {
+      onChange(buildSource(kind, []))
+    } else {
+      onChange(buildSource('playlists', parsed.ids))
+    }
+  }
+
+  const showList = parsed.kind === 'playlist' || parsed.kind === 'playlists'
+  const uiKind: SourceKind = parsed.kind === 'playlist' ? 'playlists' : parsed.kind
+
+  return (
+    <div className="bucket-source">
+      <div className="bucket-row">
+        <label>Source</label>
+        <select value={uiKind} onChange={(e) => onKindChange(e.target.value as SourceKind)}>
+          <option value="liked">Liked Songs</option>
+          <option value="playlists">Specific playlists…</option>
+          <option value="all_playlists">All my playlists</option>
+        </select>
+      </div>
+      {showList && (
+        <div className="bucket-source-list">
+          {playlists.length === 0 && (
+            <div className="hint">No playlists loaded yet.</div>
+          )}
+          {playlists.map((p) => (
+            <label key={p.id} className="source-check">
+              <input
+                type="checkbox"
+                checked={selected.has(p.id)}
+                onChange={() => togglePlaylist(p.id)}
+              />
+              <span>{p.name}</span>
+            </label>
+          ))}
+          {selected.size === 0 && playlists.length > 0 && (
+            <div className="hint">Pick at least one playlist.</div>
+          )}
+          {selected.size > 1 && (
+            <div className="hint">
+              {selected.size} playlists — duplicate tracks are merged.
+            </div>
+          )}
+        </div>
+      )}
+      {parsed.kind === 'all_playlists' && (
+        <div className="hint">
+          Pulls every playlist you own or follow; tracks appearing in multiple
+          playlists are counted once.
+        </div>
+      )}
     </div>
   )
 }
