@@ -195,6 +195,22 @@
   cursor: pointer;
 }
 .source-check input { accent-color: #1db954; }
+.source-cover {
+  width: 28px;
+  height: 28px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #2a2a2a;
+}
+.source-cover-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #777;
+  font-size: 14px;
+  line-height: 1;
+}
 .source-name { flex: 1; }
 .source-owner {
   color: #777;

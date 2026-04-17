@@ -85,6 +85,20 @@ function buildSource(kind: SourceKind, ids: string[]): string {
   return `playlists:${clean.join(',')}`
 }
 
+function pickCover(images?: Array<{ url: string; height?: number; width?: number }>): string | null {
+  if (!images || images.length === 0) return null
+  // Prefer the smallest image >= 32px tall; otherwise pick the smallest available.
+  const withSize = images.filter((i) => i && i.url)
+  if (withSize.length === 0) return null
+  const sized = withSize
+    .filter((i) => typeof i.height === 'number' && i.height! > 0)
+    .sort((a, b) => (a.height || 0) - (b.height || 0))
+  const small = sized.find((i) => (i.height || 0) >= 32)
+  if (small) return small.url
+  if (sized.length) return sized[0].url
+  return withSize[0].url
+}
+
 function blankRecipe(): Recipe {
   return { name: 'New filter', buckets: [blankBucket()], combine: 'in_order' }
 }
@@ -709,17 +723,25 @@ function BucketSourcePicker(props: {
             {recentItems.length > 0 && (
               <div className="source-group-block source-recent-block">
                 <div className="source-group-label">Recently used</div>
-                {recentItems.map((p) => (
+                {recentItems.map((p) => {
+                  const cover = pickCover(p.images)
+                  return (
                   <label key={`recent-${p.id}`} className="source-check">
                     <input
                       type="checkbox"
                       checked={selected.has(p.id)}
                       onChange={() => togglePlaylist(p.id)}
                     />
+                    {cover ? (
+                      <img className="source-cover" src={cover} alt="" loading="lazy" />
+                    ) : (
+                      <span className="source-cover source-cover-placeholder" aria-hidden="true">♪</span>
+                    )}
                     <span className="source-name">{p.name}</span>
                     {p.owner && <span className="source-owner">{p.owner}</span>}
                   </label>
-                ))}
+                  )
+                })}
               </div>
             )}
             {groups.map((g, gi) => (
@@ -727,19 +749,32 @@ function BucketSourcePicker(props: {
                 {g.label && groupBy !== 'none' && (
                   <div className="source-group-label">{g.label}</div>
                 )}
-                {g.items.map((p) => (
-                  <label key={p.id} className="source-check">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(p.id)}
-                      onChange={() => togglePlaylist(p.id)}
-                    />
-                    <span className="source-name">{p.name}</span>
-                    {groupBy !== 'owner' && p.owner && (
-                      <span className="source-owner">{p.owner}</span>
-                    )}
-                  </label>
-                ))}
+                {g.items.map((p) => {
+                  const cover = pickCover(p.images)
+                  return (
+                    <label key={p.id} className="source-check">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.id)}
+                        onChange={() => togglePlaylist(p.id)}
+                      />
+                      {cover ? (
+                        <img
+                          className="source-cover"
+                          src={cover}
+                          alt=""
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="source-cover source-cover-placeholder" aria-hidden="true">♪</span>
+                      )}
+                      <span className="source-name">{p.name}</span>
+                      {groupBy !== 'owner' && p.owner && (
+                        <span className="source-owner">{p.owner}</span>
+                      )}
+                    </label>
+                  )
+                })}
               </div>
             ))}
           </div>
