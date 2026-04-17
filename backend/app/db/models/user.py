@@ -89,7 +89,7 @@ class TrackStat(UserBase, TimestampMixin):
 
 
 class EnrichmentCache(UserBase, TimestampMixin):
-    """Cached responses from Last.fm / MusicBrainz / Songfacts.
+    """Cached responses from Last.fm / MusicBrainz / Wikipedia.
 
     Composite primary key (provider, kind, key) lets one row carry e.g.
     `("lastfm", "track-info", "<artist>|<title>")` without colliding with
