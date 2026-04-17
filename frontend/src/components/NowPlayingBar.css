@@ -1,0 +1,70 @@
+.now-playing-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: #242424;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 0.4rem 0.75rem;
+  max-width: 360px;
+  min-width: 200px;
+}
+
+.now-playing-idle {
+  font-size: 0.8rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.now-playing-art {
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.now-playing-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.now-playing-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.now-playing-artist {
+  font-size: 0.75rem;
+  color: #b3b3b3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.now-playing-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background-color: #1db954;
+  color: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.now-playing-btn:hover {
+  background-color: #1ed760;
+  transform: scale(1.08);
+}

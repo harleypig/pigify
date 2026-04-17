@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Login from './components/Login'
 import PlaylistSelector from './components/PlaylistSelector'
 import TrackList from './components/TrackList'
-import Player from './components/Player'
+import NowPlayingBar from './components/NowPlayingBar'
 import { apiService } from './services/api'
 import { spotifyService } from './services/spotify'
 import './App.css'
@@ -22,7 +22,6 @@ function App() {
       const userData = await apiService.getCurrentUser()
       setUser(userData)
       setIsAuthenticated(true)
-      // Initialize Spotify Web SDK with access token
       await spotifyService.initialize()
       const token = await apiService.getAccessToken()
       await spotifyService.setAccessToken(token)
@@ -54,7 +53,10 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Pigify</h1>
+        <h1 className="app-title">Pigify</h1>
+        <div className="app-header-center">
+          <NowPlayingBar trackUri={currentTrack} />
+        </div>
         {user && (
           <div className="user-info">
             <span>{user.display_name}</span>
@@ -78,12 +80,8 @@ function App() {
           )}
         </div>
       </main>
-      {currentTrack && (
-        <Player trackUri={currentTrack} />
-      )}
     </div>
   )
 }
 
 export default App
-
