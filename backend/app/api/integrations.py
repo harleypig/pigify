@@ -8,12 +8,15 @@ Per the graceful degradation policy:
 - Wikipedia replaces the previously-deferred Songfacts integration as the
   trivia/context provider (Songfacts has no public API).
 """
+from datetime import timedelta
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
 
 from backend.app.config import settings
+from backend.app.db.repositories import enrichment_cache
+from backend.app.db.session import user_session_scope
 from backend.app.services import lastfm, musicbrainz, scrobbler, wikipedia
 from backend.app.services.connections import (
     clear_lastfm_credentials,
@@ -22,6 +25,12 @@ from backend.app.services.connections import (
     save_lastfm_credentials,
 )
 from backend.app.services.spotify import SpotifyService
+
+# Cache TTLs per provider. Wikipedia/MusicBrainz change rarely so we keep
+# them for a week; Last.fm playcount/listeners drift more so 1 day.
+_TTL_LASTFM = timedelta(days=1)
+_TTL_MUSICBRAINZ = timedelta(days=7)
+_TTL_WIKIPEDIA = timedelta(days=7)
 
 router = APIRouter()
 
@@ -259,9 +268,16 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
     One-shot endpoint that gathers everything we can about a Spotify track
     from every available provider, respecting tiers. Sections that aren't
     available are simply omitted (per the degradation policy).
+
+    Provider responses (Last.fm track info & similar, MusicBrainz recording,
+    Wikipedia article) are memoized in the per-user enrichment cache so
+    repeat opens of the same track skip the outbound API round trips.
     """
     access_token = request.session.get("access_token")
     if not access_token:
+        raise HTTPException(401, "Not authenticated")
+    spotify_user_id = request.session.get("spotify_user_id")
+    if not spotify_user_id:
         raise HTTPException(401, "Not authenticated")
     spotify = SpotifyService(access_token)
     track = await spotify.get_track(spotify_track_id)
@@ -292,67 +308,145 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
     }
 
     lfm_conn = await get_connection(request, "lastfm")
-    if lfm_conn.tier != "none" and primary_artist and title:
-        username = (
-            lfm_conn.connected_account if lfm_conn.tier == "authenticated" else None
-        )
-        info, err = await lastfm.safe_call(
-            lastfm.get_track_info(primary_artist, title, username=username)
-        )
-        if info:
-            t = info.get("track", {})
-            tags = t.get("toptags", {}).get("tag", [])
-            if isinstance(tags, dict):
-                tags = [tags]
-            out["lastfm"] = {
-                "tier": lfm_conn.tier,
-                "url": t.get("url"),
-                "playcount": int(t.get("playcount") or 0) or None,
-                "listeners": int(t.get("listeners") or 0) or None,
-                "user_playcount": (
-                    int(t.get("userplaycount") or 0)
-                    if username and t.get("userplaycount") is not None
-                    else None
-                ),
-                "user_loved": (
-                    bool(int(t.get("userloved") or 0)) if username else None
-                ),
-                "tags": [tg.get("name") for tg in tags[:8] if tg.get("name")],
-                "summary": ((t.get("wiki") or {}).get("summary") or "")
-                .split("<a")[0]
-                .strip()
-                or None,
-            }
-        elif err:
-            out["lastfm"] = {"tier": lfm_conn.tier, "error": err}
+    pa_key = f"{primary_artist.lower()}|{title.lower()}"
 
-        sim, _ = await lastfm.safe_call(
-            lastfm.get_similar_tracks(primary_artist, title, 8)
-        )
-        if sim:
-            out.setdefault("lastfm", {})["similar"] = [
-                {
-                    "name": t.get("name"),
-                    "artist": (t.get("artist") or {}).get("name"),
+    async with user_session_scope(spotify_user_id) as db:
+        if lfm_conn.tier != "none" and primary_artist and title:
+            username = (
+                lfm_conn.connected_account
+                if lfm_conn.tier == "authenticated"
+                else None
+            )
+            # Per-user DB already scopes the cache, but include the auth
+            # tier in the key so we never serve an unauthenticated payload
+            # back when the user later connects Last.fm (or vice versa).
+            info_key = f"{pa_key}|{username or '_'}"
+            cached_info = await enrichment_cache.get(
+                db, "lastfm", "track-info", info_key
+            )
+            if cached_info is not None:
+                info, err = cached_info.get("info"), cached_info.get("err")
+            else:
+                info, err = await lastfm.safe_call(
+                    lastfm.get_track_info(
+                        primary_artist, title, username=username
+                    )
+                )
+                # Only cache successful responses; transient errors should
+                # be retried on the next open.
+                if info:
+                    await enrichment_cache.put(
+                        db,
+                        "lastfm",
+                        "track-info",
+                        info_key,
+                        {"info": info, "err": None},
+                        ttl=_TTL_LASTFM,
+                    )
+            if info:
+                t = info.get("track", {})
+                tags = t.get("toptags", {}).get("tag", [])
+                if isinstance(tags, dict):
+                    tags = [tags]
+                out["lastfm"] = {
+                    "tier": lfm_conn.tier,
                     "url": t.get("url"),
-                    "match": float(t.get("match") or 0),
+                    "playcount": int(t.get("playcount") or 0) or None,
+                    "listeners": int(t.get("listeners") or 0) or None,
+                    "user_playcount": (
+                        int(t.get("userplaycount") or 0)
+                        if username and t.get("userplaycount") is not None
+                        else None
+                    ),
+                    "user_loved": (
+                        bool(int(t.get("userloved") or 0)) if username else None
+                    ),
+                    "tags": [tg.get("name") for tg in tags[:8] if tg.get("name")],
+                    "summary": ((t.get("wiki") or {}).get("summary") or "")
+                    .split("<a")[0]
+                    .strip()
+                    or None,
                 }
-                for t in sim
-            ]
+            elif err:
+                out["lastfm"] = {"tier": lfm_conn.tier, "error": err}
 
-    # MusicBrainz is always public.
-    mb = await musicbrainz.resolve_spotify_track(
-        isrc=isrc, artist=primary_artist, title=title
-    )
-    if mb:
-        out["musicbrainz"] = mb
+            cached_sim = await enrichment_cache.get(
+                db, "lastfm", "similar", pa_key
+            )
+            if cached_sim is not None:
+                sim = cached_sim.get("similar")
+            else:
+                sim, _ = await lastfm.safe_call(
+                    lastfm.get_similar_tracks(primary_artist, title, 8)
+                )
+                if sim:
+                    await enrichment_cache.put(
+                        db,
+                        "lastfm",
+                        "similar",
+                        pa_key,
+                        {"similar": sim},
+                        ttl=_TTL_LASTFM,
+                    )
+            if sim:
+                out.setdefault("lastfm", {})["similar"] = [
+                    {
+                        "name": t.get("name"),
+                        "artist": (t.get("artist") or {}).get("name"),
+                        "url": t.get("url"),
+                        "match": float(t.get("match") or 0),
+                    }
+                    for t in sim
+                ]
 
-    # Wikipedia trivia/context — also fully public.
-    if primary_artist and title:
-        article = await wikipedia.resolve_song_article(
-            artist=primary_artist, title=title
-        )
-        if article:
-            out["wikipedia"] = {"tier": "public", **article}
+        # MusicBrainz is always public. Prefer ISRC as the cache key when
+        # available since it's a stable identifier; fall back to artist|title.
+        if primary_artist or isrc:
+            mb_key = f"isrc:{isrc}" if isrc else f"at:{pa_key}"
+            cached_mb = await enrichment_cache.get(
+                db, "musicbrainz", "recording", mb_key
+            )
+            if cached_mb is not None:
+                mb = cached_mb.get("data")
+            else:
+                mb = await musicbrainz.resolve_spotify_track(
+                    isrc=isrc, artist=primary_artist, title=title
+                )
+                if mb:
+                    await enrichment_cache.put(
+                        db,
+                        "musicbrainz",
+                        "recording",
+                        mb_key,
+                        {"data": mb},
+                        ttl=_TTL_MUSICBRAINZ,
+                    )
+            if mb:
+                out["musicbrainz"] = mb
+
+        # Wikipedia trivia/context — also fully public.
+        if primary_artist and title:
+            cached_wiki = await enrichment_cache.get(
+                db, "wikipedia", "article", pa_key
+            )
+            if cached_wiki is not None:
+                article = cached_wiki.get("article")
+            else:
+                article = await wikipedia.resolve_song_article(
+                    artist=primary_artist, title=title
+                )
+                if article:
+                    await enrichment_cache.put(
+                        db,
+                        "wikipedia",
+                        "article",
+                        pa_key,
+                        {"article": article},
+                        ttl=_TTL_WIKIPEDIA,
+                    )
+            if article:
+                out["wikipedia"] = {"tier": "public", **article}
+
+        await db.commit()
 
     return out

@@ -1,4 +1,4 @@
-"""Enrichment cache (lastfm/musicbrainz/songfacts) with TTL."""
+"""Enrichment cache (lastfm/musicbrainz/wikipedia) with TTL."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
