@@ -7,12 +7,13 @@ import NowPlayingBar from './components/NowPlayingBar'
 import SettingsModal from './components/SettingsModal'
 import TrackDetailModal from './components/TrackDetailModal'
 import Settings from './components/Settings'
-import { apiService } from './services/api'
+import { apiService, Profile } from './services/api'
 import './App.css'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -28,6 +29,12 @@ function App() {
       const userData = await apiService.getCurrentUser()
       setUser(userData)
       setIsAuthenticated(true)
+      try {
+        const prof = await apiService.getProfile()
+        setProfile(prof)
+      } catch {
+        setProfile(null)
+      }
     } catch (error) {
       setIsAuthenticated(false)
     }
@@ -42,6 +49,7 @@ function App() {
       await apiService.logout()
       setIsAuthenticated(false)
       setUser(null)
+      setProfile(null)
       setSelectedPlaylist(null)
       setCurrentTrack(null)
     } catch (error) {
@@ -67,14 +75,18 @@ function App() {
               onClick={() => setSettingsOpen(true)}
               title="Open settings"
             >
-              {user.display_name}
+              {profile?.display_name ?? user.display_name}
             </button>
             <button onClick={() => setShowFavoritesSettings(true)}>Favorites</button>
             <button onClick={handleLogout}>Logout</button>
           </div>
         )}
       </header>
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onProfileChange={setProfile}
+      />
       <TrackDetailModal trackId={detailTrackId} onClose={() => setDetailTrackId(null)} />
       <main className="app-main">
         <div className="sidebar">

@@ -24,6 +24,11 @@ class User(SystemBase, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     spotify_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(255))
+    # User-chosen display name overriding the Spotify-supplied one. Null
+    # means "use the default" (the stable Spotify user id, exposed via
+    # `spotify_id`). Trimmed empty strings are normalised to NULL by the
+    # repository so "cleared" reliably reverts to the default.
+    custom_display_name: Mapped[Optional[str]] = mapped_column(String(255))
     email: Mapped[Optional[str]] = mapped_column(String(320))
     db_path: Mapped[str] = mapped_column(Text, nullable=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))

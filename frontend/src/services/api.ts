@@ -90,6 +90,13 @@ export interface User {
   images: Array<{ url: string; height?: number; width?: number }>
 }
 
+export interface Profile {
+  spotify_id: string
+  spotify_display_name?: string | null
+  custom_display_name?: string | null
+  display_name: string
+}
+
 export const apiService = {
   async getCurrentUser(): Promise<User> {
     const response = await apiClient.get('/api/auth/me')
@@ -103,6 +110,18 @@ export const apiService = {
 
   async logout(): Promise<void> {
     await apiClient.post('/api/auth/logout')
+  },
+
+  async getProfile(): Promise<Profile> {
+    const r = await apiClient.get('/api/me/profile')
+    return r.data
+  },
+
+  async updateProfile(customDisplayName: string | null): Promise<Profile> {
+    const r = await apiClient.put('/api/me/profile', {
+      custom_display_name: customDisplayName,
+    })
+    return r.data
   },
 
   async getPlaylists(limit = 50, offset = 0): Promise<Playlist[]> {
