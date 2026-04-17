@@ -157,7 +157,7 @@
 }
 .preview-row {
   display: grid;
-  grid-template-columns: 32px 1fr 1fr;
+  grid-template-columns: 32px 1.4fr 1fr 1fr;
   gap: 8px;
   padding: 3px 0;
   font-size: 13px;
@@ -165,6 +165,13 @@
 }
 .preview-num { color: #666; }
 .preview-artist { color: #888; }
+.preview-source {
+  color: #6aa9ff;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .preview-more { color: #666; padding: 4px 0; font-size: 12px; }
 .hint { color: #666; font-size: 12px; }
 

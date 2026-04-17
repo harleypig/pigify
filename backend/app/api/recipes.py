@@ -240,10 +240,17 @@ async def _load_recipe_payload(request: Request, recipe_id: str) -> Dict[str, An
 # =============================== Resolve ====================================
 
 
+class TrackSource(BaseModel):
+    id: str
+    name: str
+
+
 class ResolveResponse(BaseModel):
     tracks: List[Track]
     warnings: List[str] = Field(default_factory=list)
     bucket_counts: List[int] = Field(default_factory=list)
+    # track_id -> ordered list of playlist sources the track was pulled from
+    track_sources: Dict[str, List[TrackSource]] = Field(default_factory=dict)
     resolved_at: str
 
 
@@ -256,6 +263,7 @@ async def resolve_adhoc(request: Request, recipe: Recipe):
         tracks=result.tracks,
         warnings=result.warnings,
         bucket_counts=result.bucket_counts,
+        track_sources=result.track_sources,
         resolved_at=_now(),
     )
 
@@ -270,6 +278,7 @@ async def resolve_saved(request: Request, recipe_id: str):
         tracks=result.tracks,
         warnings=result.warnings,
         bucket_counts=result.bucket_counts,
+        track_sources=result.track_sources,
         resolved_at=_now(),
     )
 

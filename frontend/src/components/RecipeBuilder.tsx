@@ -314,13 +314,22 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
               </ul>
             )}
             <div className="preview-list">
-              {preview.tracks.slice(0, 100).map((t: Track, i: number) => (
-                <div key={`${t.id}-${i}`} className="preview-row">
-                  <span className="preview-num">{i + 1}</span>
-                  <span className="preview-name">{t.name}</span>
-                  <span className="preview-artist">{t.artists.join(', ')}</span>
-                </div>
-              ))}
+              {preview.tracks.slice(0, 100).map((t: Track, i: number) => {
+                const sources = preview.track_sources?.[t.id] ?? []
+                const sourceLabel = sources.map((s) => s.name).join(', ')
+                return (
+                  <div key={`${t.id}-${i}`} className="preview-row">
+                    <span className="preview-num">{i + 1}</span>
+                    <span className="preview-name">{t.name}</span>
+                    <span className="preview-artist">{t.artists.join(', ')}</span>
+                    {sourceLabel && (
+                      <span className="preview-source" title={sourceLabel}>
+                        from {sourceLabel}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
               {preview.tracks.length > 100 && (
                 <div className="preview-more">… and {preview.tracks.length - 100} more</div>
               )}
