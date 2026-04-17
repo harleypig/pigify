@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Login from './components/Login'
 import PlaylistSelector from './components/PlaylistSelector'
+import RecipesSidebar from './components/RecipesSidebar'
 import TrackList from './components/TrackList'
 import NowPlayingBar from './components/NowPlayingBar'
 import SettingsModal from './components/SettingsModal'
@@ -81,6 +82,7 @@ function App() {
             onSelectPlaylist={setSelectedPlaylist}
             selectedPlaylist={selectedPlaylist}
           />
+          <RecipesSidebar />
         </div>
         <div className="content">
           {selectedPlaylist && (

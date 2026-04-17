@@ -203,6 +203,40 @@ class SpotifyService:
         body = {"uris": [track_uri]} if track_uri else None
         await self._put("/me/player/play", body=body, params=params)
 
+
+    async def play_uris(self, uris: List[str], device_id: Optional[str] = None) -> None:
+        """Start playback with an explicit list of URIs."""
+        params = {"device_id": device_id} if device_id else None
+        body = {"uris": uris[:500]}
+        await self._put("/me/player/play", body=body, params=params)
+
+    async def add_to_queue(self, uri: str, device_id: Optional[str] = None) -> None:
+        """Append a single URI to the user's playback queue."""
+        params: Dict[str, str] = {"uri": uri}
+        if device_id:
+            params["device_id"] = device_id
+        await self._post("/me/player/queue", params=params)
+
+    async def create_playlist(
+        self,
+        user_id: str,
+        name: str,
+        description: str = "",
+        public: bool = False,
+    ) -> Dict:
+        """Create a new playlist for the given user. Returns the raw playlist object."""
+        body = {"name": name, "description": description, "public": public}
+        data = await self._post(f"/users/{user_id}/playlists", body=body)
+        return data or {}
+
+    async def add_tracks_to_playlist(self, playlist_id: str, uris: List[str]) -> None:
+        """Append tracks to a playlist in 100-URI chunks."""
+        for i in range(0, len(uris), 100):
+            chunk = uris[i:i + 100]
+            if not chunk:
+                continue
+            await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
+
     async def pause_playback(self) -> None:
         """Pause playback."""
         await self._put("/me/player/pause")

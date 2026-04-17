@@ -293,6 +293,108 @@ export const apiService = {
   },
 }
 
+// ============================ Recipes (filtered playlists) ================
+
+export type FilterOp =
+  | 'lt' | 'lte' | 'gt' | 'gte' | 'eq' | 'ne'
+  | 'between' | 'contains' | 'in' | 'not_in'
+
+export interface RecipeFilter {
+  field: string
+  op: FilterOp
+  value?: any
+  value2?: any
+}
+
+export interface RecipeSort {
+  field: string
+  direction: SortDirection
+}
+
+export type CombineStrategy = 'in_order' | 'interleave' | 'shuffled'
+
+export interface RecipeBucket {
+  name?: string | null
+  source: string
+  filters: RecipeFilter[]
+  sort?: RecipeSort | null
+  count: number
+}
+
+export interface Recipe {
+  name: string
+  buckets: RecipeBucket[]
+  combine: CombineStrategy
+}
+
+export interface StoredRecipe extends Recipe {
+  id: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RecipeResolveResponse {
+  tracks: Track[]
+  warnings: string[]
+  bucket_counts: number[]
+  resolved_at: string
+}
+
+export interface RecipePlayResponse {
+  started: boolean
+  track_count: number
+  queued: number
+  warnings: string[]
+}
+
+export interface RecipeMaterializeResponse {
+  playlist_id: string
+  playlist_url: string | null
+  track_count: number
+}
+
+export const recipesApi = {
+  async list(): Promise<StoredRecipe[]> {
+    const r = await apiClient.get('/api/recipes')
+    return r.data
+  },
+  async create(recipe: Recipe): Promise<StoredRecipe> {
+    const r = await apiClient.post('/api/recipes', recipe)
+    return r.data
+  },
+  async update(id: string, recipe: Recipe): Promise<StoredRecipe> {
+    const r = await apiClient.put(`/api/recipes/${id}`, recipe)
+    return r.data
+  },
+  async remove(id: string): Promise<StoredRecipe[]> {
+    const r = await apiClient.delete(`/api/recipes/${id}`)
+    return r.data
+  },
+  async resolve(recipe: Recipe): Promise<RecipeResolveResponse> {
+    const r = await apiClient.post('/api/recipes/resolve', recipe)
+    return r.data
+  },
+  async resolveSaved(id: string): Promise<RecipeResolveResponse> {
+    const r = await apiClient.post(`/api/recipes/${id}/resolve`)
+    return r.data
+  },
+  async play(id: string, uris?: string[]): Promise<RecipePlayResponse> {
+    const r = await apiClient.post(`/api/recipes/${id}/play`, { uris: uris ?? null })
+    return r.data
+  },
+  async playAdhoc(recipe: Recipe): Promise<RecipePlayResponse> {
+    const r = await apiClient.post('/api/recipes/play-adhoc', recipe)
+    return r.data
+  },
+  async materialize(
+    id: string,
+    opts: { name?: string; description?: string; public?: boolean; uris?: string[] } = {}
+  ): Promise<RecipeMaterializeResponse> {
+    const r = await apiClient.post(`/api/recipes/${id}/materialize`, opts)
+    return r.data
+  },
+}
+
 export type Tier = 'none' | 'public' | 'authenticated'
 
 export interface ConnectionStatus {

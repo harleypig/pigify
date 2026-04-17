@@ -13,9 +13,9 @@ A custom Spotify web application for enhanced playlist management and music play
 ```
 backend/
   app/
-    api/          # auth, playlists, player, integrations, favorites, health
+    api/          # auth, playlists, player, integrations, favorites, health, recipes
     models/       # Pydantic schemas (playlist, favorites)
-    services/     # spotify, lastfm, musicbrainz, scrobbler, connections, favorites orchestration
+    services/     # spotify, lastfm, musicbrainz, scrobbler, connections, favorites, recipes (filtered playlists) orchestration
     db/           # SQLAlchemy engines/sessions, ORM models, repositories, migration bootstrap
     config.py     # Settings via pydantic-settings
     main.py       # App entry point
@@ -25,7 +25,7 @@ frontend/
   src/
     components/   # Login, Player, PlaylistSelector, TrackList,
                   # NowPlayingBar, SettingsModal, TrackDetailModal,
-                  # HeartButton, Settings
+                  # HeartButton, Settings, RecipeBuilder, RecipesSidebar
     services/     # API client, Spotify SDK wrapper
   vite.config.ts  # Port 5000, proxy /api to backend
 ```

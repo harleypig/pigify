@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import os
 from pathlib import Path
 
-from backend.app.api import auth, playlists, player, integrations, favorites, health
+from backend.app.api import auth, playlists, player, integrations, favorites, health, recipes
 from backend.app.config import settings
 from backend.app.db.bootstrap import bootstrap as db_bootstrap
 from backend.app.db.engines import dispose_all as db_dispose_all
@@ -58,6 +58,7 @@ app.include_router(player.router, prefix="/api/player", tags=["player"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(favorites.router, prefix="/api/favorites", tags=["favorites"])
 app.include_router(health.router, prefix="/api/health", tags=["health"])
+app.include_router(recipes.router, prefix="/api/recipes", tags=["recipes"])
 
 
 @app.get("/health")
