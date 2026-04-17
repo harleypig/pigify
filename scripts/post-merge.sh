@@ -1,22 +1,18 @@
 #!/bin/bash
 # Post-merge hook: pushes the current branch to GitHub after a task is merged.
 # Idempotent: if the remote is already up to date, the push is a no-op.
-# Non-interactive: pulls a fresh OAuth token from the Replit GitHub connector.
+# Non-interactive: uses GITHUB_PUSH_TOKEN secret for auth.
 set -e
 
-REMOTE_URL="https://github.com/harleypig/pigify.git"
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-
-echo "[post-merge] Branch: ${BRANCH}"
-echo "[post-merge] Fetching GitHub token from connector..."
-TOKEN="$(node /home/runner/workspace/scripts/get-github-token.mjs)"
-if [ -z "${TOKEN}" ]; then
-  echo "[post-merge] ERROR: Empty token returned" >&2
-  exit 1
+if [ -z "${GITHUB_PUSH_TOKEN}" ]; then
+  echo "[post-merge] GITHUB_PUSH_TOKEN is not set; skipping push." >&2
+  exit 0
 fi
 
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 echo "[post-merge] Pushing ${BRANCH} to GitHub..."
-# Use a one-shot URL with the token; never write it to git config.
-git push "https://oauth2:${TOKEN}@github.com/harleypig/pigify.git" "${BRANCH}:${BRANCH}"
+
+# One-shot URL with the token; never written to git config.
+git push "https://x-access-token:${GITHUB_PUSH_TOKEN}@github.com/harleypig/pigify.git" "${BRANCH}:${BRANCH}"
 
 echo "[post-merge] Push complete."
