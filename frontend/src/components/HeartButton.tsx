@@ -103,9 +103,7 @@ function HeartButton({
       aria-pressed={loved}
       aria-label={loved ? 'Unlove track' : 'Love track'}
       disabled={busy || !track.name || !track.artist}
-    >
-      {loved ? '♥' : '♡'}
-    </button>
+    />
   )
 }
 

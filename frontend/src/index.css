@@ -2,6 +2,9 @@
    and the autofill chrome render with the correct palette. */
 :root {
   color-scheme: dark;
+  --heart-liked-color: #e53935;
+  --heart-icon-liked: '\2665';
+  --heart-icon-default: '\2661';
 }
 
 * {
