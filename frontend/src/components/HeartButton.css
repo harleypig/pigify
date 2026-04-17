@@ -8,11 +8,11 @@
   transition: color 0.15s ease, transform 0.15s ease;
 }
 .heart-btn:hover:not(:disabled) {
-  color: #1db954;
+  color: var(--heart-liked-color, #e53935);
   transform: scale(1.1);
 }
 .heart-btn.is-loved {
-  color: #1db954;
+  color: var(--heart-liked-color, #e53935);
 }
 .heart-btn.is-busy {
   opacity: 0.6;
@@ -26,4 +26,11 @@
 }
 .heart-md {
   font-size: 22px;
+}
+
+.heart-btn::before {
+  content: var(--heart-icon-default, '\2661');
+}
+.heart-btn.is-loved::before {
+  content: var(--heart-icon-liked, '\2665');
 }
