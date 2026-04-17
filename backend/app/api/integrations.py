@@ -1,11 +1,12 @@
 """
-Integration endpoints for Last.fm, MusicBrainz, and (placeholder) Songfacts.
+Integration endpoints for Last.fm, MusicBrainz, and Wikipedia.
 
 Per the graceful degradation policy:
-- Always-public services (MusicBrainz) are reachable without auth.
+- Always-public services (MusicBrainz, Wikipedia) are reachable without auth.
 - Last.fm public methods (tags, similar, global playcount) work as soon as
   the app has an API key; personal play count and writes require user auth.
-- Songfacts has no public API; endpoint returns 503 with an explanatory body.
+- Wikipedia replaces the previously-deferred Songfacts integration as the
+  trivia/context provider (Songfacts has no public API).
 """
 from typing import Any, Dict, Optional
 
@@ -13,7 +14,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from backend.app.config import settings
-from backend.app.services import lastfm, musicbrainz, scrobbler
+from backend.app.services import lastfm, musicbrainz, scrobbler, wikipedia
 from backend.app.services.connections import (
     clear_lastfm_credentials,
     get_all_connections,
@@ -182,23 +183,36 @@ async def musicbrainz_track(spotify_track_id: str, request: Request):
     }
 
 
-# ---------------------------------- Songfacts ---------------------------------
+# ---------------------------------- Wikipedia ---------------------------------
 
-@router.get("/songfacts/track/{spotify_track_id}")
-async def songfacts_stub(spotify_track_id: str):
+@router.get("/wikipedia/track/{spotify_track_id}")
+async def wikipedia_track(spotify_track_id: str, request: Request):
     """
-    No public Songfacts API exists at the time of writing. We expose this
-    endpoint as a documented extension point: if/when an API becomes
-    available, slot the call in here. Returns 503 so callers can hide the UI.
+    Resolve a Spotify track to a Wikipedia article (if one exists) and return
+    a short summary suitable for a trivia/context panel.
+
+    Replaces the previously-deferred Songfacts integration. Wikipedia's
+    public REST + action APIs require no key.
     """
-    raise HTTPException(
-        status_code=503,
-        detail={
-            "service": "songfacts",
-            "tier": "none",
-            "reason": "No public API; integration deferred. See docs/INTEGRATIONS.md.",
-        },
+    access_token = request.session.get("access_token")
+    if not access_token:
+        raise HTTPException(401, "Spotify session required to look up the track")
+
+    spotify = SpotifyService(access_token)
+    track = await spotify.get_track(spotify_track_id)
+    if not track:
+        raise HTTPException(404, "Spotify track not found")
+
+    artists = [a.get("name", "") for a in track.get("artists", [])]
+    primary_artist = artists[0] if artists else ""
+    title = track.get("name", "")
+
+    article = await wikipedia.resolve_song_article(
+        artist=primary_artist, title=title
     )
+    if not article:
+        raise HTTPException(404, "No Wikipedia article found for this track")
+    return {"tier": "public", **article}
 
 
 # ------------------------------- Combined detail -------------------------------
@@ -296,5 +310,13 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
     )
     if mb:
         out["musicbrainz"] = mb
+
+    # Wikipedia trivia/context — also fully public.
+    if primary_artist and title:
+        article = await wikipedia.resolve_song_article(
+            artist=primary_artist, title=title
+        )
+        if article:
+            out["wikipedia"] = {"tier": "public", **article}
 
     return out

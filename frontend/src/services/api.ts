@@ -452,6 +452,14 @@ export interface TrackDetail {
     isrcs: string[]
     tags: string[]
   }
+  wikipedia?: {
+    tier: Tier
+    title: string
+    description?: string | null
+    extract: string
+    url: string
+    thumbnail?: string | null
+  }
 }
 
 export interface TrackIdentity {
