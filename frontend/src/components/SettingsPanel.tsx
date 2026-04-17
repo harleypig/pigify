@@ -9,6 +9,7 @@ import {
   Profile,
   VersionInfo,
 } from '../services/api'
+import { CHANGELOG, ChangelogEntry } from '../data/changelog'
 import './SettingsPanel.css'
 
 export type SettingsTabId = 'favorites' | 'connections' | 'about'
@@ -751,6 +752,59 @@ const PUBLIC_PROVIDERS: ProviderEntry[] = [
   },
 ]
 
+function ChangelogEntryView({ entry }: { entry: ChangelogEntry }) {
+  return (
+    <li className="sp-changelog-entry">
+      <div className="sp-changelog-head">
+        <strong>{entry.version}</strong>
+        {entry.date && <span className="sp-meta"> · {entry.date}</span>}
+      </div>
+      <ul className="sp-changelog-list">
+        {entry.highlights.map((h, i) => (
+          <li key={i}>{h}</li>
+        ))}
+      </ul>
+    </li>
+  )
+}
+
+function WhatsNewCard() {
+  const [showOlder, setShowOlder] = useState(false)
+  if (CHANGELOG.length === 0) return null
+  const [latest, ...older] = CHANGELOG
+
+  return (
+    <section className="sp-card">
+      <header>
+        <h3>What's new</h3>
+      </header>
+      <ul className="sp-changelog">
+        <ChangelogEntryView entry={latest} />
+      </ul>
+      {older.length > 0 && (
+        <>
+          <button
+            className="sp-btn"
+            onClick={() => setShowOlder((v) => !v)}
+            aria-expanded={showOlder}
+          >
+            {showOlder
+              ? 'Hide older releases'
+              : `Show older releases (${older.length})`}
+          </button>
+          {showOlder && (
+            <ul className="sp-changelog sp-changelog-older">
+              {older.map((entry) => (
+                <ChangelogEntryView key={entry.version} entry={entry} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
 function AboutTab() {
   const [info, setInfo] = useState<VersionInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -831,6 +885,8 @@ function AboutTab() {
           </li>
         </ul>
       </section>
+
+      <WhatsNewCard />
 
       <section className="sp-card">
         <header>
