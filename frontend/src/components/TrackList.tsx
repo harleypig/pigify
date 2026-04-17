@@ -1,5 +1,16 @@
-import { useState, useEffect } from 'react'
-import { apiService, Track } from '../services/api'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import {
+  apiService,
+  Track,
+  SortField,
+  SortPreset,
+} from '../services/api'
+import {
+  sortTracks,
+  requiredSources,
+  SortableHydration,
+} from '../services/sortEngine'
+import SortMenu, { SortSpec } from './SortMenu'
 import HeartButton from './HeartButton'
 import './TrackList.css'
 
@@ -8,20 +19,51 @@ interface TrackListProps {
   onTrackSelect: (trackUri: string) => void
 }
 
+const DEFAULT_SORT: SortSpec = {
+  primary: { field: 'added_at', direction: 'desc' },
+  secondary: null,
+}
+
 function TrackList({ playlistId, onTrackSelect }: TrackListProps) {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [lovedMap, setLovedMap] = useState<Record<string, { spotify: boolean | null; lastfm: boolean | null }>>({})
+  const [lovedMap, setLovedMap] = useState<
+    Record<string, { spotify: boolean | null; lastfm: boolean | null }>
+  >({})
 
+  // Sort state
+  const [fields, setFields] = useState<SortField[]>([])
+  const [presets, setPresets] = useState<SortPreset[]>([])
+  const [sortSpec, setSortSpec] = useState<SortSpec>(DEFAULT_SORT)
+  const [hydration, setHydration] = useState<SortableHydration>({
+    audio_features: {},
+    lastfm: {},
+  })
+  const [warnings, setWarnings] = useState<string[]>([])
+  const [hydrating, setHydrating] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [undoAvailable, setUndoAvailable] = useState(false)
+
+  // Load fields/presets once.
+  useEffect(() => {
+    apiService.getSortFields().then((r) => setFields(r.fields)).catch(() => {})
+    apiService.listSortPresets().then(setPresets).catch(() => {})
+  }, [])
+
+  // Load tracks + undo status when playlist changes.
   useEffect(() => {
     loadTracks()
+    refreshUndoStatus()
+    setHydration({ audio_features: {}, lastfm: {} })
+    setWarnings([])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playlistId])
 
   const loadTracks = async () => {
     try {
       setLoading(true)
-      const data = await apiService.getPlaylistTracks(playlistId)
+      const data = await apiService.getAllPlaylistTracks(playlistId)
       setTracks(data)
       setError(null)
       // Bulk-fetch loved state in one round trip
@@ -55,6 +97,122 @@ function TrackList({ playlistId, onTrackSelect }: TrackListProps) {
     }
   }
 
+  const refreshUndoStatus = async () => {
+    try {
+      const r = await apiService.getUndoStatus(playlistId)
+      setUndoAvailable(r.available)
+    } catch {
+      setUndoAvailable(false)
+    }
+  }
+
+  // Hydrate when sort spec needs data we don't have.
+  const ensureHydration = useCallback(
+    async (spec: SortSpec) => {
+      if (fields.length === 0 || tracks.length === 0) return
+      const sources = requiredSources(fields, spec.primary, spec.secondary)
+      if (sources.length === 0) return
+
+      const missing: typeof sources = []
+      for (const src of sources) {
+        const map = hydration[src]
+        const need = tracks.some((t) => !(t.id in map))
+        if (need) missing.push(src)
+      }
+      if (missing.length === 0) return
+
+      try {
+        setHydrating(true)
+        const meta = tracks.map((t) => ({
+          id: t.id,
+          name: t.name,
+          artist: t.artists[0] ?? '',
+        }))
+        const ids = tracks.map((t) => t.id).filter(Boolean)
+        const r = await apiService.hydrateTracks(playlistId, ids, missing, meta)
+        setHydration((prev) => ({
+          audio_features: { ...prev.audio_features, ...r.audio_features },
+          lastfm: { ...prev.lastfm, ...r.lastfm },
+        }))
+        setWarnings(r.warnings || [])
+      } catch (e) {
+        console.error('Hydration failed:', e)
+        setWarnings(['Failed to fetch extra data for sort'])
+      } finally {
+        setHydrating(false)
+      }
+    },
+    [fields, tracks, hydration, playlistId]
+  )
+
+  useEffect(() => {
+    ensureHydration(sortSpec)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortSpec, fields, tracks])
+
+  const sortedTracks = useMemo(() => {
+    if (fields.length === 0) return tracks
+    return sortTracks(tracks, fields, sortSpec.primary, sortSpec.secondary, hydration)
+  }, [tracks, fields, sortSpec, hydration])
+
+  const handleSavePreset = async (preset: SortPreset) => {
+    try {
+      const updated = await apiService.saveSortPreset(preset)
+      setPresets(updated)
+    } catch (e) {
+      console.error('Save preset failed:', e)
+    }
+  }
+
+  const handleDeletePreset = async (name: string) => {
+    try {
+      const updated = await apiService.deleteSortPreset(name)
+      setPresets(updated)
+    } catch (e) {
+      console.error('Delete preset failed:', e)
+    }
+  }
+
+  const handleApplyView = () => {
+    /* sorted view is already shown */
+  }
+
+  const handleApplyToPlaylist = async () => {
+    if (!sortedTracks.length) return
+    if (
+      !window.confirm(
+        `This will rewrite the playlist on Spotify in the new order (${sortedTracks.length} tracks). You can undo it once. Continue?`
+      )
+    )
+      return
+    try {
+      setApplying(true)
+      const targetUris = sortedTracks.map((t) => t.uri)
+      const result = await apiService.reorderPlaylist(playlistId, targetUris)
+      setUndoAvailable(result.undo_available)
+      await loadTracks()
+    } catch (e) {
+      console.error('Apply to playlist failed:', e)
+      alert('Failed to reorder playlist on Spotify.')
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  const handleUndo = async () => {
+    try {
+      setApplying(true)
+      await apiService.undoReorder(playlistId)
+      setUndoAvailable(false)
+      await loadTracks()
+    } catch (e) {
+      console.error('Undo failed:', e)
+      alert('Undo failed.')
+    } finally {
+      setApplying(false)
+    }
+  }
+
   const formatDuration = (ms: number): string => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)
@@ -73,13 +231,32 @@ function TrackList({ playlistId, onTrackSelect }: TrackListProps) {
   return (
     <div className="track-list">
       <div className="track-list-header">
-        <h2>Tracks</h2>
-        <span className="track-count">{tracks.length} tracks</span>
+        <div>
+          <h2>Tracks</h2>
+          <span className="track-count">
+            {sortedTracks.length} tracks
+            {hydrating && <span className="hydrating-tag"> · loading sort data…</span>}
+          </span>
+        </div>
+        <SortMenu
+          fields={fields}
+          presets={presets}
+          current={sortSpec}
+          onChange={setSortSpec}
+          onSavePreset={handleSavePreset}
+          onDeletePreset={handleDeletePreset}
+          onApplyView={handleApplyView}
+          onApplyToPlaylist={handleApplyToPlaylist}
+          onUndo={handleUndo}
+          applying={applying}
+          undoAvailable={undoAvailable}
+          warnings={warnings}
+        />
       </div>
       <div className="track-list-items">
-        {tracks.map((track, index) => (
+        {sortedTracks.map((track, index) => (
           <div
-            key={track.id}
+            key={`${track.id}-${index}`}
             className="track-item"
             onClick={() => onTrackSelect(track.uri)}
           >
@@ -131,4 +308,3 @@ function TrackList({ playlistId, onTrackSelect }: TrackListProps) {
 }
 
 export default TrackList
-

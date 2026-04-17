@@ -1,0 +1,258 @@
+.sort-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-trigger {
+  background: #282828;
+  color: #fff;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sort-trigger:hover {
+  background: #333;
+}
+
+.sort-trigger-summary {
+  color: #1db954;
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+.sort-undo {
+  background: transparent;
+  color: #b3b3b3;
+  border: 1px solid #3a3a3a;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.sort-undo:hover {
+  color: #fff;
+  border-color: #555;
+}
+
+.sort-popover {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  padding: 0.5rem 0;
+}
+
+.sort-popover-section {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.sort-popover-section:last-child {
+  border-bottom: none;
+}
+
+.sort-section-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.sort-quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+.sort-quick {
+  background: #252525;
+  color: #ddd;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sort-quick:hover {
+  background: #2f2f2f;
+}
+
+.sort-quick.active {
+  background: #1db95422;
+  border-color: #1db954;
+  color: #fff;
+}
+
+.sort-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 1fr;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.sort-row-label {
+  font-size: 0.75rem;
+  color: #b3b3b3;
+}
+
+.sort-field-select,
+.sort-dir-select {
+  background: #252525;
+  color: #fff;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.8rem;
+  min-width: 0;
+}
+
+.sort-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.sort-preset-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sort-preset-load {
+  flex: 1;
+  background: #252525;
+  color: #fff;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sort-preset-load:hover {
+  background: #2f2f2f;
+}
+
+.sort-preset-del {
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  color: #888;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sort-preset-del:hover {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+.sort-empty {
+  font-size: 0.78rem;
+  color: #666;
+  font-style: italic;
+}
+
+.sort-save-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sort-preset-name-input {
+  flex: 1;
+  background: #252525;
+  color: #fff;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.sort-preset-save-btn {
+  background: #1db954;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sort-preset-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sort-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.sort-apply-view,
+.sort-apply-playlist {
+  flex: 1;
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.sort-apply-view {
+  background: #2f2f2f;
+  color: #fff;
+}
+
+.sort-apply-view:hover {
+  background: #3a3a3a;
+}
+
+.sort-apply-playlist {
+  background: #1db954;
+  color: #000;
+}
+
+.sort-apply-playlist:hover:not(:disabled) {
+  background: #1ed760;
+}
+
+.sort-apply-playlist:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sort-warnings {
+  margin-top: 0.5rem;
+}
+
+.sort-warning {
+  font-size: 0.72rem;
+  color: #f0b34e;
+  margin-top: 0.2rem;
+}

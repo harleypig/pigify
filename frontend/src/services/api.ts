@@ -27,6 +27,60 @@ export interface Track {
   uri: string
   image_url: string
   explicit: boolean
+  added_at?: string | null
+  popularity?: number | null
+  release_date?: string | null
+  disc_number?: number | null
+  track_number?: number | null
+}
+
+export type SortType = 'string' | 'number' | 'date' | 'enum'
+export type SortSource = 'spotify_track' | 'audio_features' | 'lastfm'
+export type SortDirection = 'asc' | 'desc'
+
+export interface SortField {
+  key: string
+  label: string
+  type: SortType
+  source: SortSource
+  requires_hydration: boolean
+  group: string
+  default: boolean
+}
+
+export interface SortKeySpec {
+  field: string
+  direction: SortDirection
+}
+
+export interface SortPreset {
+  name: string
+  primary: SortKeySpec
+  secondary?: SortKeySpec | null
+}
+
+export interface AudioFeatures {
+  tempo?: number | null
+  energy?: number | null
+  danceability?: number | null
+  valence?: number | null
+  acousticness?: number | null
+  instrumentalness?: number | null
+  loudness?: number | null
+  speechiness?: number | null
+}
+
+export interface LastfmTrackHydration {
+  playcount?: number | null
+  listeners?: number | null
+  user_playcount?: number | null
+  tags?: string[]
+}
+
+export interface HydrationResult {
+  audio_features: Record<string, AudioFeatures | null>
+  lastfm: Record<string, LastfmTrackHydration | null>
+  warnings: string[]
 }
 
 export interface User {
@@ -71,6 +125,71 @@ export const apiService = {
     const response = await apiClient.get(`/api/playlists/${playlistId}/tracks`, {
       params: { limit, offset },
     })
+    return response.data
+  },
+
+  async getAllPlaylistTracks(playlistId: string): Promise<Track[]> {
+    const response = await apiClient.get(`/api/playlists/${playlistId}/tracks`, {
+      params: { all: true },
+    })
+    return response.data
+  },
+
+  async getSortFields(): Promise<{ fields: SortField[] }> {
+    const response = await apiClient.get('/api/playlists/sort/fields')
+    return response.data
+  },
+
+  async listSortPresets(): Promise<SortPreset[]> {
+    const response = await apiClient.get('/api/playlists/sort/presets')
+    return response.data
+  },
+
+  async saveSortPreset(preset: SortPreset): Promise<SortPreset[]> {
+    const response = await apiClient.post('/api/playlists/sort/presets', preset)
+    return response.data
+  },
+
+  async deleteSortPreset(name: string): Promise<SortPreset[]> {
+    const response = await apiClient.delete(
+      `/api/playlists/sort/presets/${encodeURIComponent(name)}`
+    )
+    return response.data
+  },
+
+  async hydrateTracks(
+    playlistId: string,
+    trackIds: string[],
+    sources: Array<'audio_features' | 'lastfm'>,
+    trackMeta?: Array<{ id: string; name: string; artist: string }>
+  ): Promise<HydrationResult> {
+    const response = await apiClient.post(
+      `/api/playlists/${playlistId}/hydrate`,
+      { track_ids: trackIds, sources, track_meta: trackMeta }
+    )
+    return response.data
+  },
+
+  async reorderPlaylist(
+    playlistId: string,
+    targetUris: string[]
+  ): Promise<{ applied: boolean; ops: number; snapshot_id: string | null; undo_available: boolean }> {
+    const response = await apiClient.post(
+      `/api/playlists/${playlistId}/reorder`,
+      { target_uris: targetUris }
+    )
+    return response.data
+  },
+
+  async undoReorder(playlistId: string): Promise<{ restored: boolean; tracks: number }> {
+    const response = await apiClient.post(`/api/playlists/${playlistId}/undo`)
+    return response.data
+  },
+
+  async getUndoStatus(
+    playlistId: string
+  ): Promise<{ available: boolean; applied_at: number | null }> {
+    const response = await apiClient.get(`/api/playlists/${playlistId}/undo-status`)
     return response.data
   },
 

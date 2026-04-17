@@ -30,6 +30,12 @@ class Track(BaseModel):
     uri: str
     image_url: str = ""
     explicit: bool = False
+    # Extra metadata used for sorting / display
+    added_at: Optional[str] = None
+    popularity: Optional[int] = None
+    release_date: Optional[str] = None
+    disc_number: Optional[int] = None
+    track_number: Optional[int] = None
 
 
 class Playlist(BaseModel):
@@ -41,4 +47,3 @@ class Playlist(BaseModel):
     owner: str = ""
     track_count: int = 0
     public: bool = False
-

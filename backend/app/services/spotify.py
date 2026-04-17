@@ -81,12 +81,32 @@ class SpotifyService:
             response = await client.put(url, headers=self.headers, json=body, params=params)
             response.raise_for_status()
 
-    async def _post(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> None:
+    async def _post(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> Optional[Dict]:
         """Make POST request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         async with httpx.AsyncClient() as client:
             response = await client.post(url, headers=self.headers, json=body, params=params)
             response.raise_for_status()
+            if response.status_code == 204 or not response.content:
+                return None
+            try:
+                return response.json()
+            except ValueError:
+                return None
+
+    async def _put_json(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> Optional[Dict]:
+        """Make PUT request to Spotify API and return the JSON body (for endpoints
+        like playlist reorder that return a snapshot_id)."""
+        url = f"{self.BASE_URL}{endpoint}"
+        async with httpx.AsyncClient() as client:
+            response = await client.put(url, headers=self.headers, json=body, params=params)
+            response.raise_for_status()
+            if response.status_code == 204 or not response.content:
+                return None
+            try:
+                return response.json()
+            except ValueError:
+                return None
 
     async def _delete(self, endpoint: str, params: Optional[Dict] = None) -> None:
         """Make DELETE request to Spotify API."""
@@ -259,51 +279,132 @@ class SpotifyService:
             public=data.get("public", False)
         )
     
+    @staticmethod
+    def _track_from_item(item: Dict) -> Optional[Track]:
+        track_data = item.get("track")
+        if not track_data or not track_data.get("id"):
+            return None
+        artists = [artist.get("name", "") for artist in track_data.get("artists", [])]
+        album = track_data.get("album") or {}
+        album_images = album.get("images", [])
+        image_url = album_images[0]["url"] if album_images else ""
+        return Track(
+            id=track_data["id"],
+            name=track_data.get("name", ""),
+            artists=artists,
+            album=album.get("name", ""),
+            duration_ms=track_data.get("duration_ms", 0),
+            uri=track_data.get("uri", ""),
+            image_url=image_url,
+            explicit=track_data.get("explicit", False),
+            added_at=item.get("added_at"),
+            popularity=track_data.get("popularity"),
+            release_date=album.get("release_date"),
+            disc_number=track_data.get("disc_number"),
+            track_number=track_data.get("track_number"),
+        )
+
     async def get_playlist_tracks(
         self,
         playlist_id: str,
         limit: int = 100,
         offset: int = 0
     ) -> List[Track]:
-        """
-        Get tracks from a specific playlist.
-        
-        Args:
-            playlist_id: Spotify playlist ID
-            limit: Maximum number of tracks to return
-            offset: Offset for pagination
-            
-        Returns:
-            List of Track objects
-        """
+        """Get a single page of tracks from a playlist."""
         data = await self._get(
             f"/playlists/{playlist_id}/tracks",
             params={"limit": limit, "offset": offset}
         )
-        
-        tracks = []
-        for item in data.get("items", []):
-            track_data = item.get("track")
-            if not track_data:
-                continue
-            
-            # Extract artist names
-            artists = [artist["name"] for artist in track_data.get("artists", [])]
-            
-            # Get album image
-            album_images = track_data.get("album", {}).get("images", [])
-            image_url = album_images[0]["url"] if album_images else ""
-            
-            tracks.append(Track(
-                id=track_data["id"],
-                name=track_data["name"],
-                artists=artists,
-                album=track_data.get("album", {}).get("name", ""),
-                duration_ms=track_data.get("duration_ms", 0),
-                uri=track_data["uri"],
-                image_url=image_url,
-                explicit=track_data.get("explicit", False)
-            ))
-        
+        tracks: List[Track] = []
+        for item in (data or {}).get("items", []):
+            t = self._track_from_item(item)
+            if t is not None:
+                tracks.append(t)
         return tracks
+
+    async def get_all_playlist_tracks(self, playlist_id: str) -> List[Track]:
+        """Fetch every track in a playlist, paginating through all pages.
+
+        Sorting needs the full list, not just the first 100, so the backend
+        owns the pagination loop here.
+        """
+        tracks: List[Track] = []
+        offset = 0
+        page_size = 100
+        while True:
+            data = await self._get(
+                f"/playlists/{playlist_id}/tracks",
+                params={"limit": page_size, "offset": offset}
+            )
+            items = (data or {}).get("items", []) or []
+            for item in items:
+                t = self._track_from_item(item)
+                if t is not None:
+                    tracks.append(t)
+            if len(items) < page_size or not (data or {}).get("next"):
+                break
+            offset += page_size
+        return tracks
+
+    async def get_audio_features(self, track_ids: List[str]) -> Dict[str, Optional[Dict]]:
+        """Batch-fetch audio features for up to N track IDs.
+
+        Spotify's /audio-features endpoint accepts up to 100 IDs per call.
+        Returns a {track_id: features_dict} map. If Spotify denies access
+        (some app tiers no longer expose this endpoint), returns an empty map
+        so the caller can degrade gracefully.
+        """
+        out: Dict[str, Optional[Dict]] = {}
+        if not track_ids:
+            return out
+        # De-dupe while preserving order
+        seen = set()
+        unique_ids = [t for t in track_ids if not (t in seen or seen.add(t))]
+        for i in range(0, len(unique_ids), 100):
+            chunk = unique_ids[i:i + 100]
+            try:
+                data = await self._get("/audio-features", params={"ids": ",".join(chunk)})
+            except httpx.HTTPStatusError:
+                # Endpoint unavailable for this app — return what we have so far.
+                return out
+            for feat in (data or {}).get("audio_features", []) or []:
+                if feat and feat.get("id"):
+                    out[feat["id"]] = feat
+        return out
+
+    async def reorder_playlist_item(
+        self,
+        playlist_id: str,
+        range_start: int,
+        insert_before: int,
+        range_length: int = 1,
+        snapshot_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """Move a contiguous slice of a playlist via Spotify's reorder API.
+
+        Returns the new snapshot_id if Spotify provided one.
+        """
+        body: Dict = {
+            "range_start": range_start,
+            "insert_before": insert_before,
+            "range_length": range_length,
+        }
+        if snapshot_id:
+            body["snapshot_id"] = snapshot_id
+        data = await self._put_json(f"/playlists/{playlist_id}/tracks", body=body)
+        return (data or {}).get("snapshot_id")
+
+    async def replace_playlist_uris(self, playlist_id: str, uris: List[str]) -> None:
+        """Replace the entire contents of a playlist with the given URI list.
+
+        Spotify's PUT only accepts up to 100 URIs, so the first 100 are sent
+        via PUT (which clears the playlist) and the remainder are appended in
+        100-track chunks via POST. Used by undo to restore a snapshot.
+        """
+        first = uris[:100]
+        # PUT replaces the playlist entirely (even with empty list).
+        await self._put(f"/playlists/{playlist_id}/tracks", body={"uris": first})
+        for i in range(100, len(uris), 100):
+            chunk = uris[i:i + 100]
+            await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
 
