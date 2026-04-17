@@ -13,6 +13,10 @@ from backend.app.api import auth, playlists, player, integrations, favorites, he
 from backend.app.config import settings
 from backend.app.db.bootstrap import bootstrap as db_bootstrap
 from backend.app.db.engines import dispose_all as db_dispose_all
+from backend.app.services.cache_cleanup import (
+    start_periodic_cleanup as start_cache_cleanup,
+    stop_periodic_cleanup as stop_cache_cleanup,
+)
 
 app = FastAPI(
     title="Pigify",
@@ -24,10 +28,12 @@ app = FastAPI(
 @app.on_event("startup")
 async def _db_startup() -> None:
     await db_bootstrap()
+    start_cache_cleanup()
 
 
 @app.on_event("shutdown")
 async def _db_shutdown() -> None:
+    await stop_cache_cleanup()
     await db_dispose_all()
 
 # Session middleware for OAuth state and tokens
