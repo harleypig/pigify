@@ -61,7 +61,7 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false)
   const [settingsInitialTab, setSettingsInitialTab] = useState<
-    'favorites' | 'connections'
+    'favorites' | 'connections' | 'about'
   >('favorites')
   const [scrobbleAlert, setScrobbleAlert] = useState<ScrobbleAlertState>({
     queued: 0,
