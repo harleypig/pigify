@@ -58,6 +58,59 @@
   color: #1db954;
 }
 
+.scrobble-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: #3a2a1a;
+  color: #fde0c0;
+  border-bottom: 1px solid #5a3f25;
+  font-size: 0.9rem;
+}
+.scrobble-banner.stale {
+  background: #4a1f24;
+  color: #ffd6db;
+  border-bottom-color: #6b2a31;
+}
+.scrobble-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+.scrobble-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.scrobble-banner-btn {
+  background: #1db954;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.35rem 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.scrobble-banner-btn:hover {
+  background: #1ed760;
+}
+.scrobble-banner-dismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.35rem;
+  opacity: 0.75;
+}
+.scrobble-banner-dismiss:hover {
+  opacity: 1;
+}
+
 .app-main {
   display: flex;
   flex: 1;
