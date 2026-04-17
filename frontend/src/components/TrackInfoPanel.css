@@ -187,3 +187,9 @@
   cursor: pointer;
 }
 .tip-copy:hover { background: #1ed760; }
+
+.tip-json-key { color: #79b8ff; }
+.tip-json-string { color: #c3e88d; }
+.tip-json-number { color: #f78c6c; }
+.tip-json-bool { color: #c792ea; }
+.tip-json-null { color: #ff6b8b; }
