@@ -1,8 +1,12 @@
 #!/bin/bash
-# Post-merge hook: pushes the current branch to GitHub after a task is merged.
-# Idempotent: if the remote is already up to date, the push is a no-op.
-# Non-interactive: uses GITHUB_PUSH_TOKEN secret for auth.
+# Post-merge hook: installs Python dependencies, then pushes to GitHub.
+# Idempotent: safe to run multiple times.
+# Non-interactive: no prompts.
 set -e
+
+echo "[post-merge] Installing Python dependencies..."
+uv pip install -r backend/requirements.txt --quiet
+echo "[post-merge] Dependencies installed."
 
 if [ -z "${GITHUB_PUSH_TOKEN}" ]; then
   echo "[post-merge] GITHUB_PUSH_TOKEN is not set; skipping push." >&2
