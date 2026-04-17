@@ -496,6 +496,32 @@ function BucketEditor(props: {
 
 type GroupBy = 'none' | 'owner' | 'alpha'
 
+const RECENT_PLAYLISTS_KEY = 'recipe.recentPlaylistIds'
+const RECENT_PLAYLISTS_LIMIT = 10
+
+function loadRecentPlaylistIds(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_PLAYLISTS_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    if (!Array.isArray(arr)) return []
+    return arr.filter((x): x is string => typeof x === 'string').slice(0, RECENT_PLAYLISTS_LIMIT)
+  } catch {
+    return []
+  }
+}
+
+function saveRecentPlaylistIds(ids: string[]) {
+  try {
+    localStorage.setItem(
+      RECENT_PLAYLISTS_KEY,
+      JSON.stringify(ids.slice(0, RECENT_PLAYLISTS_LIMIT))
+    )
+  } catch {
+    // ignore quota / disabled storage
+  }
+}
+
 function BucketSourcePicker(props: {
   source: string
   playlists: Playlist[]
@@ -507,16 +533,29 @@ function BucketSourcePicker(props: {
   const selected = new Set(parsed.ids)
   const [query, setQuery] = useState('')
   const [groupBy, setGroupBy] = useState<GroupBy>('none')
+  const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentPlaylistIds())
 
   const setSelected = (next: Set<string>) => {
     onChange(buildSource('playlists', Array.from(next)))
   }
 
+  const recordRecent = (ids: string[]) => {
+    if (ids.length === 0) return
+    const merged = [...ids, ...recentIds.filter((x) => !ids.includes(x))].slice(
+      0,
+      RECENT_PLAYLISTS_LIMIT
+    )
+    setRecentIds(merged)
+    saveRecentPlaylistIds(merged)
+  }
+
   const togglePlaylist = (id: string) => {
     const next = new Set(selected)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
+    const adding = !next.has(id)
+    if (adding) next.add(id)
+    else next.delete(id)
     setSelected(next)
+    if (adding) recordRecent([id])
   }
 
   const onKindChange = (kind: SourceKind) => {
@@ -583,14 +622,32 @@ function BucketSourcePicker(props: {
       }))
   }, [filtered, groupBy, meDisplayName])
 
+  const filteredById = useMemo(
+    () => new Map(filtered.map((p) => [p.id, p])),
+    [filtered]
+  )
+  const recentItems = useMemo(() => {
+    const out: Playlist[] = []
+    for (const id of recentIds) {
+      const p = filteredById.get(id)
+      if (p) out.push(p)
+    }
+    return out
+  }, [recentIds, filteredById])
+
   const visibleIds = useMemo(() => filtered.map((p) => p.id), [filtered])
   const allVisibleSelected =
     visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
 
   const selectAllVisible = () => {
     const next = new Set(selected)
-    for (const id of visibleIds) next.add(id)
+    const added: string[] = []
+    for (const id of visibleIds) {
+      if (!next.has(id)) added.push(id)
+      next.add(id)
+    }
     setSelected(next)
+    recordRecent(added)
   }
   const clearVisible = () => {
     const next = new Set(selected)
@@ -648,6 +705,22 @@ function BucketSourcePicker(props: {
             )}
             {playlists.length > 0 && filtered.length === 0 && (
               <div className="hint">No playlists match “{query}”.</div>
+            )}
+            {recentItems.length > 0 && (
+              <div className="source-group-block source-recent-block">
+                <div className="source-group-label">Recently used</div>
+                {recentItems.map((p) => (
+                  <label key={`recent-${p.id}`} className="source-check">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => togglePlaylist(p.id)}
+                    />
+                    <span className="source-name">{p.name}</span>
+                    {p.owner && <span className="source-owner">{p.owner}</span>}
+                  </label>
+                ))}
+              </div>
             )}
             {groups.map((g, gi) => (
               <div key={gi} className="source-group-block">

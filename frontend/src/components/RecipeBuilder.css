@@ -243,6 +243,14 @@
 .source-group-block + .source-group-block {
   margin-top: 6px;
 }
+.source-recent-block {
+  padding-bottom: 6px;
+  border-bottom: 1px solid #222;
+  margin-bottom: 6px;
+}
+.source-recent-block .source-group-label {
+  color: #1db954;
+}
 .source-group-label {
   color: #888;
   font-size: 11px;
