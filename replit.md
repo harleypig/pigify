@@ -76,6 +76,10 @@ automatically on startup; manual application via `python -m
 backend.app.db.cli upgrade`. Health: `GET /api/health/db`. See
 `docs/DATABASE.md`.
 
+## Task Workflow Preferences
+
+- New suggested tasks should default to **Drafts**. Do not auto-promote them for review/approval — leave them as drafts so the user can promote when ready.
+
 ## Deployment
 
 - Build: `cd frontend && npm run build && cp -r dist ../static`
