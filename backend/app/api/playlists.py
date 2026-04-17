@@ -18,6 +18,8 @@ presets are migrated into the DB on first authenticated access.
 """
 import asyncio
 import time
+from bisect import bisect_left
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Request, HTTPException
@@ -419,13 +421,29 @@ class ReorderRequest(BaseModel):
 
 
 def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str, int]]:
-    """Decompose `current -> target` into single-item reorder ops.
+    """Decompose ``current -> target`` into a minimal sequence of single-item
+    Spotify reorder ops.
 
-    Greedy walk: at each position i, if current[i] != target[i], find the
-    target item later in `current` and move it to position i. Each move is
-    one Spotify reorder call (range_length=1). At most N ops; for typical
-    "sort one column" workloads it's close to minimal because long stretches
-    of already-correct items are skipped.
+    The minimum number of single-item moves needed to transform one sequence
+    into another (same multiset) is ``N - LCS(current, target)``. For
+    permutations this LCS equals the longest increasing subsequence (LIS) of
+    the position-mapping ``P[t] = index in current of target[t]``. We
+    therefore:
+
+      1. Build ``P`` with duplicate-aware assignment (for each value, expand
+         each target occurrence into the list of current positions in
+         *descending* order so a strictly-increasing LIS picks at most one
+         position per occurrence — this gives the multiset LCS).
+      2. Reconstruct one such LIS via patience sorting + parent pointers.
+         The chosen ``(target_idx, current_idx)`` pairs form the "kept" set
+         that does not need to be moved.
+      3. Walk ``target`` left-to-right. For each kept item, do nothing.
+         For each moved item, emit one ``range_length=1`` reorder op that
+         inserts it immediately before the *next* kept item (or at the end
+         if no kept item follows). This produces exactly ``N - |LIS|`` ops.
+
+    For an already-sorted prefix every item is part of the LIS, so we emit
+    zero ops — same observable behaviour as before.
     """
     if current == target:
         return []
@@ -436,21 +454,119 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
             "(it changed underneath us — refresh and try again).",
         )
 
-    ops: List[Dict[str, int]] = []
-    cur = list(current)
-    for i in range(len(target)):
-        if cur[i] == target[i]:
+    n = len(current)
+
+    # ---- Step 1: assign each target position a current index via LIS ----
+    # For each URI, list of indices where it appears in `current` (ascending).
+    cur_positions_by_uri: Dict[str, List[int]] = defaultdict(list)
+    for i, u in enumerate(current):
+        cur_positions_by_uri[u].append(i)
+
+    # Expanded sequence: for each target position t, push the cur indices for
+    # target[t] in DESCENDING order. Strict-increasing LIS over this picks at
+    # most one entry per target position, which is exactly the multiset LCS.
+    expanded_cur_idx: List[int] = []
+    expanded_target_idx: List[int] = []
+    for t, u in enumerate(target):
+        for p in reversed(cur_positions_by_uri[u]):
+            expanded_cur_idx.append(p)
+            expanded_target_idx.append(t)
+
+    # Patience-sort LIS (strict) with parent pointers for reconstruction.
+    tails: List[int] = []          # smallest tail value per LIS length
+    tails_idx: List[int] = []      # index in `expanded_cur_idx` of that tail
+    parent = [-1] * len(expanded_cur_idx)
+    for i, x in enumerate(expanded_cur_idx):
+        k = bisect_left(tails, x)
+        parent[i] = tails_idx[k - 1] if k > 0 else -1
+        if k == len(tails):
+            tails.append(x)
+            tails_idx.append(i)
+        else:
+            tails[k] = x
+            tails_idx[k] = i
+
+    # Reconstruct LIS as ordered list of expanded indices.
+    lis_path: List[int] = []
+    if tails_idx:
+        i = tails_idx[-1]
+        while i != -1:
+            lis_path.append(i)
+            i = parent[i]
+        lis_path.reverse()
+
+    # kept_assignment: target_idx -> current_idx for the LIS-chosen pairs.
+    kept_assignment: Dict[int, int] = {}
+    for ei in lis_path:
+        kept_assignment[expanded_target_idx[ei]] = expanded_cur_idx[ei]
+    kept_target_idxs = set(kept_assignment.keys())
+    kept_cur_idxs = set(kept_assignment.values())
+
+    # ---- Step 2: assign moved target positions to remaining cur indices.
+    # For each URI, walk remaining (non-kept) current positions in order and
+    # match them to remaining (non-kept) target occurrences in order. This
+    # well-defined assignment is what each emitted move actually transports.
+    remaining_cur_by_uri: Dict[str, List[int]] = defaultdict(list)
+    for i, u in enumerate(current):
+        if i not in kept_cur_idxs:
+            remaining_cur_by_uri[u].append(i)
+    full_assignment: Dict[int, int] = dict(kept_assignment)
+    for t, u in enumerate(target):
+        if t in kept_target_idxs:
             continue
-        # Find target[i] somewhere after position i in cur.
-        try:
-            j = cur.index(target[i], i + 1)
-        except ValueError:
-            # Should not happen given the multiset check above, but bail safely.
-            raise HTTPException(500, "Reorder planning failed")
-        # Spotify semantics: moving range_start=j to insert_before=i.
-        ops.append({"range_start": j, "insert_before": i, "range_length": 1})
-        item = cur.pop(j)
-        cur.insert(i, item)
+        full_assignment[t] = remaining_cur_by_uri[u].pop(0)
+
+    # ---- Step 3: emit ops by walking target left-to-right.
+    # Maintain `cur_ids` as a list of stable item ids (the original cur idx
+    # of each item) and `pos` as the inverse map. Each move updates both.
+    cur_ids = list(range(n))
+    pos = {i: i for i in range(n)}
+
+    # Precompute, for each target position, the next kept target index > t.
+    next_kept: List[Optional[int]] = [None] * (n + 1)
+    nxt: Optional[int] = None
+    for t in range(n - 1, -1, -1):
+        next_kept[t] = nxt
+        if t in kept_target_idxs:
+            nxt = t
+
+    ops: List[Dict[str, int]] = []
+    for t in range(n):
+        if t in kept_target_idxs:
+            continue
+        moved_id = full_assignment[t]
+        j = pos[moved_id]
+        nk = next_kept[t]
+        if nk is None:
+            insert_before = n
+        else:
+            insert_before = pos[kept_assignment[nk]]
+
+        # Skip no-ops: moving an item to its own slot or to immediately
+        # after itself does not change the list.
+        if insert_before == j or insert_before == j + 1:
+            continue
+
+        ops.append(
+            {"range_start": j, "insert_before": insert_before, "range_length": 1}
+        )
+
+        # Apply the move to cur_ids/pos with Spotify's semantics:
+        #   if range_start < insert_before: new index = insert_before - 1
+        #   else (range_start > insert_before): new index = insert_before
+        if j < insert_before:
+            new_pos = insert_before - 1
+            for k in range(j, new_pos):
+                cur_ids[k] = cur_ids[k + 1]
+                pos[cur_ids[k]] = k
+        else:
+            new_pos = insert_before
+            for k in range(j, new_pos, -1):
+                cur_ids[k] = cur_ids[k - 1]
+                pos[cur_ids[k]] = k
+        cur_ids[new_pos] = moved_id
+        pos[moved_id] = new_pos
+
     return ops
 
 
