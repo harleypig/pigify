@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Login from './components/Login'
 import PlaylistSelector from './components/PlaylistSelector'
 import RecipesSidebar from './components/RecipesSidebar'
 import TrackList from './components/TrackList'
 import NowPlayingBar from './components/NowPlayingBar'
 import SettingsModal from './components/SettingsModal'
-import TrackDetailModal from './components/TrackDetailModal'
+import TrackInfoPanel from './components/TrackInfoPanel'
 import Settings from './components/Settings'
 import { apiService, Profile } from './services/api'
 import './App.css'
+
+const PANEL_COLLAPSED_KEY = 'pigify.trackInfoPanel.collapsed'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -17,8 +19,26 @@ function App() {
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [detailTrackId, setDetailTrackId] = useState<string | null>(null)
   const [showFavoritesSettings, setShowFavoritesSettings] = useState(false)
+
+  // Track Info Panel state
+  const [nowPlayingTrackId, setNowPlayingTrackId] = useState<string | null>(null)
+  const [panelOverrideTrackId, setPanelOverrideTrackId] = useState<string | null>(null)
+  const [panelCollapsed, setPanelCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(PANEL_COLLAPSED_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PANEL_COLLAPSED_KEY, panelCollapsed ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [panelCollapsed])
 
   useEffect(() => {
     checkAuth()
@@ -52,9 +72,25 @@ function App() {
       setProfile(null)
       setSelectedPlaylist(null)
       setCurrentTrack(null)
+      setPanelOverrideTrackId(null)
+      setNowPlayingTrackId(null)
     } catch (error) {
       console.error('Logout error:', error)
     }
+  }
+
+  // Effective track id displayed in the panel: explicit selection wins,
+  // otherwise mirror the now-playing track.
+  const panelTrackId = panelOverrideTrackId ?? nowPlayingTrackId
+
+  const focusPanelOnNowPlaying = () => {
+    setPanelOverrideTrackId(null)
+    setPanelCollapsed(false)
+  }
+
+  const focusPanelOnTrack = (trackId: string) => {
+    setPanelOverrideTrackId(trackId)
+    setPanelCollapsed(false)
   }
 
   if (!isAuthenticated) {
@@ -66,7 +102,11 @@ function App() {
       <header className="app-header">
         <h1 className="app-title">Pigify</h1>
         <div className="app-header-center">
-          <NowPlayingBar trackUri={currentTrack} onShowDetails={setDetailTrackId} />
+          <NowPlayingBar
+            trackUri={currentTrack}
+            onShowDetails={focusPanelOnNowPlaying}
+            onTrackChange={setNowPlayingTrackId}
+          />
         </div>
         {user && (
           <div className="user-info">
@@ -87,7 +127,6 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         onProfileChange={setProfile}
       />
-      <TrackDetailModal trackId={detailTrackId} onClose={() => setDetailTrackId(null)} />
       <main className="app-main">
         <div className="sidebar">
           <PlaylistSelector
@@ -101,10 +140,16 @@ function App() {
             <TrackList
               playlistId={selectedPlaylist}
               onTrackSelect={setCurrentTrack}
+              onTrackFocus={focusPanelOnTrack}
             />
           )}
         </div>
       </main>
+      <TrackInfoPanel
+        trackId={panelTrackId}
+        collapsed={panelCollapsed}
+        onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
+      />
       {showFavoritesSettings && <Settings onClose={() => setShowFavoritesSettings(false)} />}
     </div>
   )

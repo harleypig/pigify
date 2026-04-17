@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiService, TrackDetail } from '../services/api'
-import './TrackDetailModal.css'
+import './TrackInfoPanel.css'
 
 interface Props {
   trackId: string | null
-  onClose: () => void
+  collapsed: boolean
+  onToggleCollapsed: () => void
 }
 
 function formatDuration(ms?: number): string {
@@ -13,57 +14,112 @@ function formatDuration(ms?: number): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 }
 
-function TrackDetailModal({ trackId, onClose }: Props) {
+function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   const [data, setData] = useState<TrackDetail | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showRaw, setShowRaw] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const reqRef = useRef(0)
 
   useEffect(() => {
     if (!trackId) {
       setData(null)
+      setError(null)
       return
     }
-    let cancelled = false
+    const reqId = ++reqRef.current
     setLoading(true)
     setError(null)
-    setData(null)
     apiService
       .getTrackDetail(trackId)
       .then((d) => {
-        if (!cancelled) setData(d)
+        if (reqRef.current === reqId) setData(d)
       })
       .catch((e) => {
-        if (!cancelled) setError(e?.response?.data?.detail || e.message || 'Failed to load')
+        if (reqRef.current === reqId) {
+          setError(e?.response?.data?.detail || e.message || 'Failed to load')
+          setData(null)
+        }
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (reqRef.current === reqId) setLoading(false)
       })
-    return () => {
-      cancelled = true
-    }
   }, [trackId])
 
-  if (!trackId) return null
+  const handleCopy = async () => {
+    if (!data) return
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch (e) {
+      console.error('Copy failed', e)
+    }
+  }
+
+  if (collapsed) {
+    return (
+      <div className="track-info-panel collapsed">
+        <button
+          className="tip-toggle"
+          onClick={onToggleCollapsed}
+          aria-label="Expand track info panel"
+          title="Show track info"
+        >
+          ⓘ
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <div className="track-detail-overlay" onClick={onClose}>
-      <div className="track-detail-modal" onClick={(e) => e.stopPropagation()}>
-        <button className="track-detail-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+    <aside className="track-info-panel" aria-label="Track info">
+      <header className="tip-header">
+        <span className="tip-title-tag">Track info</span>
+        <div className="tip-header-actions">
+          <label className="tip-raw-toggle" title="Toggle raw JSON view">
+            <input
+              type="checkbox"
+              checked={showRaw}
+              onChange={(e) => setShowRaw(e.target.checked)}
+            />
+            <span>Show raw</span>
+          </label>
+          <button
+            className="tip-toggle"
+            onClick={onToggleCollapsed}
+            aria-label="Collapse track info panel"
+            title="Collapse"
+          >
+            ×
+          </button>
+        </div>
+      </header>
 
-        {loading && <p className="td-loading">Loading track details…</p>}
-        {error && <p className="td-error">{error}</p>}
+      <div className="tip-body">
+        {!trackId && <p className="tip-empty">No track selected.</p>}
+        {trackId && loading && <p className="tip-empty">Loading…</p>}
+        {trackId && error && <p className="tip-error">{error}</p>}
 
-        {data && (
+        {data && showRaw && (
+          <div className="tip-raw">
+            <button className="tip-copy" onClick={handleCopy}>
+              {copied ? 'Copied!' : 'Copy JSON'}
+            </button>
+            <pre>{JSON.stringify(data, null, 2)}</pre>
+          </div>
+        )}
+
+        {data && !showRaw && (
           <>
-            <header className="td-header">
-              <h2>{data.spotify.name}</h2>
-              <p className="td-sub">
+            <section className="tip-section tip-head-section">
+              <h3 className="tip-track-name">{data.spotify.name}</h3>
+              <p className="tip-sub">
                 {data.spotify.artists.join(', ')}
                 {data.spotify.album ? ` · ${data.spotify.album}` : ''}
               </p>
-              <p className="td-meta">
+              <p className="tip-meta">
                 {formatDuration(data.spotify.duration_ms)}
                 {data.spotify.release_date ? ` · ${data.spotify.release_date}` : ''}
                 {data.spotify.isrc ? ` · ISRC ${data.spotify.isrc}` : ''}
@@ -71,7 +127,7 @@ function TrackDetailModal({ trackId, onClose }: Props) {
               </p>
               {data.spotify.external_url && (
                 <a
-                  className="td-extlink"
+                  className="tip-extlink"
                   href={data.spotify.external_url}
                   target="_blank"
                   rel="noreferrer"
@@ -79,21 +135,21 @@ function TrackDetailModal({ trackId, onClose }: Props) {
                   Open in Spotify
                 </a>
               )}
-            </header>
+            </section>
 
             {data.lastfm && (
-              <section className="td-section">
-                <h3>
+              <section className="tip-section">
+                <h4>
                   Last.fm
-                  <span className={`td-tier td-tier-${data.lastfm.tier}`}>
+                  <span className={`tip-tier tip-tier-${data.lastfm.tier}`}>
                     {data.lastfm.tier === 'authenticated' ? 'connected' : 'public'}
                   </span>
-                </h3>
+                </h4>
                 {data.lastfm.error ? (
-                  <p className="td-meta">Last.fm lookup failed: {data.lastfm.error}</p>
+                  <p className="tip-meta">Lookup failed: {data.lastfm.error}</p>
                 ) : (
                   <>
-                    <p className="td-stats">
+                    <p className="tip-stats">
                       {data.lastfm.user_playcount != null && (
                         <span>
                           Your plays: <strong>{data.lastfm.user_playcount}</strong>
@@ -102,37 +158,39 @@ function TrackDetailModal({ trackId, onClose }: Props) {
                       )}
                       {data.lastfm.playcount != null && (
                         <span>
-                          Global plays: <strong>{data.lastfm.playcount.toLocaleString()}</strong>
+                          Global plays:{' '}
+                          <strong>{data.lastfm.playcount.toLocaleString()}</strong>
                         </span>
                       )}
                       {data.lastfm.listeners != null && (
                         <span>
-                          Listeners: <strong>{data.lastfm.listeners.toLocaleString()}</strong>
+                          Listeners:{' '}
+                          <strong>{data.lastfm.listeners.toLocaleString()}</strong>
                         </span>
                       )}
                     </p>
                     {data.lastfm.tags && data.lastfm.tags.length > 0 && (
-                      <div className="td-tags">
+                      <div className="tip-tags">
                         {data.lastfm.tags.map((t) => (
-                          <span key={t} className="td-tag">
+                          <span key={t} className="tip-tag">
                             {t}
                           </span>
                         ))}
                       </div>
                     )}
                     {data.lastfm.summary && (
-                      <p className="td-summary">{data.lastfm.summary}</p>
+                      <p className="tip-summary">{data.lastfm.summary}</p>
                     )}
                     {data.lastfm.similar && data.lastfm.similar.length > 0 && (
                       <>
-                        <h4 className="td-h4">Similar tracks</h4>
-                        <ul className="td-similar">
+                        <h5 className="tip-h5">Similar tracks</h5>
+                        <ul className="tip-similar">
                           {data.lastfm.similar.map((s, i) => (
                             <li key={i}>
                               <a href={s.url} target="_blank" rel="noreferrer">
                                 {s.name}
                               </a>{' '}
-                              <span className="td-similar-artist">— {s.artist}</span>
+                              <span className="tip-similar-artist">— {s.artist}</span>
                             </li>
                           ))}
                         </ul>
@@ -144,12 +202,12 @@ function TrackDetailModal({ trackId, onClose }: Props) {
             )}
 
             {data.musicbrainz && (
-              <section className="td-section">
-                <h3>
+              <section className="tip-section">
+                <h4>
                   MusicBrainz
-                  <span className="td-tier td-tier-public">public</span>
-                </h3>
-                <p className="td-stats">
+                  <span className="tip-tier tip-tier-public">public</span>
+                </h4>
+                <p className="tip-stats">
                   <span>
                     MBID: <code>{data.musicbrainz.mbid}</code>
                   </span>
@@ -159,9 +217,9 @@ function TrackDetailModal({ trackId, onClose }: Props) {
                 </p>
                 {data.musicbrainz.releases.length > 0 && (
                   <>
-                    <h4 className="td-h4">Releases</h4>
-                    <ul className="td-releases">
-                      {data.musicbrainz.releases.map((r) => (
+                    <h5 className="tip-h5">Releases</h5>
+                    <ul className="tip-releases">
+                      {data.musicbrainz.releases.slice(0, 8).map((r) => (
                         <li key={r.mbid}>
                           {r.title}
                           {r.date ? ` (${r.date})` : ''}
@@ -173,9 +231,9 @@ function TrackDetailModal({ trackId, onClose }: Props) {
                   </>
                 )}
                 {data.musicbrainz.tags.length > 0 && (
-                  <div className="td-tags">
+                  <div className="tip-tags">
                     {data.musicbrainz.tags.map((t) => (
-                      <span key={t} className="td-tag">
+                      <span key={t} className="tip-tag">
                         {t}
                       </span>
                     ))}
@@ -185,17 +243,17 @@ function TrackDetailModal({ trackId, onClose }: Props) {
             )}
 
             {data.wikipedia && (
-              <section className="td-section">
-                <h3>
+              <section className="tip-section">
+                <h4>
                   Wikipedia
-                  <span className="td-tier td-tier-public">public</span>
-                </h3>
+                  <span className="tip-tier tip-tier-public">public</span>
+                </h4>
                 {data.wikipedia.description && (
-                  <p className="td-meta">{data.wikipedia.description}</p>
+                  <p className="tip-meta">{data.wikipedia.description}</p>
                 )}
-                <p className="td-summary">{data.wikipedia.extract}</p>
+                <p className="tip-summary">{data.wikipedia.extract}</p>
                 <a
-                  className="td-extlink"
+                  className="tip-extlink"
                   href={data.wikipedia.url}
                   target="_blank"
                   rel="noreferrer"
@@ -205,17 +263,16 @@ function TrackDetailModal({ trackId, onClose }: Props) {
               </section>
             )}
 
-            {/* If no providers returned anything, show a quiet note. */}
             {!data.lastfm && !data.musicbrainz && !data.wikipedia && (
-              <p className="td-meta">
+              <p className="tip-meta">
                 No external metadata providers available for this track.
               </p>
             )}
           </>
         )}
       </div>
-    </div>
+    </aside>
   )
 }
 
-export default TrackDetailModal
+export default TrackInfoPanel

@@ -5,7 +5,8 @@ import './NowPlayingBar.css'
 
 interface NowPlayingBarProps {
   trackUri: string | null
-  onShowDetails?: (trackId: string) => void
+  onShowDetails?: () => void
+  onTrackChange?: (trackId: string | null) => void
 }
 
 function formatMs(ms: number): string {
@@ -65,7 +66,7 @@ function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
   )
 }
 
-function NowPlayingBar({ trackUri, onShowDetails }: NowPlayingBarProps) {
+function NowPlayingBar({ trackUri, onShowDetails, onTrackChange }: NowPlayingBarProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [track, setTrack] = useState<any>(null)
   const [durationMs, setDurationMs] = useState(0)
@@ -141,6 +142,11 @@ function NowPlayingBar({ trackUri, onShowDetails }: NowPlayingBarProps) {
       .then((data) => setWaveform(data.bars))
       .catch(() => setWaveform([]))
   }, [track?.id])
+
+  // Notify parent when the now-playing track id changes.
+  useEffect(() => {
+    onTrackChange?.(track?.id ?? null)
+  }, [track?.id, onTrackChange])
 
   const handlePlayPause = async () => {
     try {
@@ -230,10 +236,9 @@ function NowPlayingBar({ trackUri, onShowDetails }: NowPlayingBarProps) {
           {onShowDetails && (
             <button
               className="now-playing-ctrl-btn"
-              onClick={() => track?.id && onShowDetails(track.id)}
-              aria-label="Track details"
-              title="Track details"
-              disabled={!track?.id}
+              onClick={() => onShowDetails()}
+              aria-label="Show track info panel"
+              title="Show track info"
             >
               ⓘ
             </button>
