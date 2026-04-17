@@ -9,7 +9,7 @@ from starlette.middleware.sessions import SessionMiddleware
 import os
 from pathlib import Path
 
-from backend.app.api import auth, playlists
+from backend.app.api import auth, playlists, player
 from backend.app.config import settings
 
 app = FastAPI(
@@ -42,6 +42,7 @@ app.add_middleware(
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(playlists.router, prefix="/api/playlists", tags=["playlists"])
+app.include_router(player.router, prefix="/api/player", tags=["player"])
 
 
 @app.get("/health")

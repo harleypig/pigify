@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { spotifyService } from '../services/spotify'
+import { useState, useEffect, useRef } from 'react'
+import { apiService } from '../services/api'
 import './NowPlayingBar.css'
 
 interface NowPlayingBarProps {
@@ -8,86 +8,113 @@ interface NowPlayingBarProps {
 
 function NowPlayingBar({ trackUri }: NowPlayingBarProps) {
   const [isPlaying, setIsPlaying] = useState(false)
-  const [currentState, setCurrentState] = useState<any>(null)
+  const [track, setTrack] = useState<any>(null)
+  const lastUriRef = useRef<string | null>(null)
 
+  // When a track is selected from the playlist, play it
   useEffect(() => {
-    if (trackUri) {
-      playTrack(trackUri)
+    if (trackUri && trackUri !== lastUriRef.current) {
+      lastUriRef.current = trackUri
+      apiService.playTrack(trackUri).catch(console.error)
     }
   }, [trackUri])
 
+  // Poll Spotify REST API for cross-device playback state
   useEffect(() => {
-    const interval = setInterval(updateState, 1000)
+    const poll = async () => {
+      try {
+        const state = await apiService.getPlaybackState()
+        setTrack(state?.item ?? null)
+        setIsPlaying(state?.is_playing ?? false)
+      } catch {
+        // no active session or error — leave as-is
+      }
+    }
+
+    poll()
+    const interval = setInterval(poll, 2000)
     return () => clearInterval(interval)
   }, [])
-
-  const playTrack = async (uri: string) => {
-    try {
-      await spotifyService.play(uri)
-      setIsPlaying(true)
-    } catch (error) {
-      console.error('Error playing track:', error)
-    }
-  }
-
-  const updateState = async () => {
-    try {
-      const state = await spotifyService.getCurrentState()
-      setCurrentState(state)
-      if (state) {
-        setIsPlaying(!state.paused)
-      }
-    } catch {
-      // silently ignore
-    }
-  }
 
   const handlePlayPause = async () => {
     try {
       if (isPlaying) {
-        await spotifyService.pause()
+        await apiService.pausePlayback()
         setIsPlaying(false)
       } else {
-        await spotifyService.resume()
+        await apiService.playTrack()
         setIsPlaying(true)
       }
-    } catch (error) {
-      console.error('Error toggling play/pause:', error)
+    } catch (e) {
+      console.error('Play/pause error:', e)
     }
   }
 
-  const track = currentState?.track_window?.current_track
-
-  if (!track) {
-    return (
-      <div className="now-playing-bar">
-        <span className="now-playing-idle">No track selected</span>
-      </div>
-    )
+  const handlePrevious = async () => {
+    try {
+      await apiService.previousTrack()
+    } catch (e) {
+      console.error('Previous error:', e)
+    }
   }
+
+  const handleNext = async () => {
+    try {
+      await apiService.nextTrack()
+    } catch (e) {
+      console.error('Next error:', e)
+    }
+  }
+
+  const albumArt = track?.album?.images?.[0]?.url
+  const trackName = track?.name
+  const artistNames = track?.artists?.map((a: any) => a.name).join(', ')
 
   return (
     <div className="now-playing-bar">
-      {track.album?.images?.[0]?.url && (
-        <img
-          src={track.album.images[0].url}
-          alt={track.album?.name}
-          className="now-playing-art"
-        />
+      {albumArt ? (
+        <img src={albumArt} alt={track?.album?.name} className="now-playing-art" />
+      ) : (
+        <div className="now-playing-art-placeholder" />
       )}
+
       <div className="now-playing-info">
-        <span className="now-playing-title">{track.name}</span>
-        <span className="now-playing-artist">
-          {track.artists.map((a: any) => a.name).join(', ')}
-        </span>
+        {trackName ? (
+          <>
+            <span className="now-playing-title">{trackName}</span>
+            <span className="now-playing-artist">{artistNames}</span>
+          </>
+        ) : (
+          <span className="now-playing-idle">Nothing playing</span>
+        )}
       </div>
-      <button
-        className="now-playing-btn"
-        onClick={handlePlayPause}
-        aria-label={isPlaying ? 'Pause' : 'Play'}
-      >
-        {isPlaying ? '⏸' : '▶'}
-      </button>
+
+      <div className="now-playing-controls">
+        <button
+          className="now-playing-ctrl-btn"
+          onClick={handlePrevious}
+          aria-label="Previous"
+          disabled={!track}
+        >
+          ⏮
+        </button>
+        <button
+          className="now-playing-btn"
+          onClick={handlePlayPause}
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          disabled={!track}
+        >
+          {isPlaying ? '⏸' : '▶'}
+        </button>
+        <button
+          className="now-playing-ctrl-btn"
+          onClick={handleNext}
+          aria-label="Next"
+          disabled={!track}
+        >
+          ⏭
+        </button>
+      </div>
     </div>
   )
 }

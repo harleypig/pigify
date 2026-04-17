@@ -4,7 +4,6 @@ import PlaylistSelector from './components/PlaylistSelector'
 import TrackList from './components/TrackList'
 import NowPlayingBar from './components/NowPlayingBar'
 import { apiService } from './services/api'
-import { spotifyService } from './services/spotify'
 import './App.css'
 
 function App() {
@@ -22,9 +21,6 @@ function App() {
       const userData = await apiService.getCurrentUser()
       setUser(userData)
       setIsAuthenticated(true)
-      await spotifyService.initialize()
-      const token = await apiService.getAccessToken()
-      await spotifyService.setAccessToken(token)
     } catch (error) {
       setIsAuthenticated(false)
     }

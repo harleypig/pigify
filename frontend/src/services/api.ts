@@ -73,5 +73,26 @@ export const apiService = {
     })
     return response.data
   },
+
+  async getPlaybackState(): Promise<any> {
+    const response = await apiClient.get('/api/player/state')
+    return response.data
+  },
+
+  async playTrack(trackUri?: string, deviceId?: string): Promise<void> {
+    await apiClient.put('/api/player/play', { track_uri: trackUri ?? null, device_id: deviceId ?? null })
+  },
+
+  async pausePlayback(): Promise<void> {
+    await apiClient.put('/api/player/pause')
+  },
+
+  async nextTrack(): Promise<void> {
+    await apiClient.post('/api/player/next')
+  },
+
+  async previousTrack(): Promise<void> {
+    await apiClient.post('/api/player/previous')
+  },
 }
 

@@ -64,23 +64,52 @@ class SpotifyService:
             response.raise_for_status()
             return response.json()
     
-    async def _get(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
-        """
-        Make GET request to Spotify API.
-        
-        Args:
-            endpoint: API endpoint (without base URL)
-            params: Query parameters
-            
-        Returns:
-            JSON response data
-        """
+    async def _get(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
+        """Make GET request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         async with httpx.AsyncClient() as client:
             response = await client.get(url, headers=self.headers, params=params)
+            if response.status_code == 204:
+                return None
             response.raise_for_status()
             return response.json()
+
+    async def _put(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> None:
+        """Make PUT request to Spotify API."""
+        url = f"{self.BASE_URL}{endpoint}"
+        async with httpx.AsyncClient() as client:
+            response = await client.put(url, headers=self.headers, json=body, params=params)
+            response.raise_for_status()
+
+    async def _post(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> None:
+        """Make POST request to Spotify API."""
+        url = f"{self.BASE_URL}{endpoint}"
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, headers=self.headers, json=body, params=params)
+            response.raise_for_status()
     
+    async def get_playback_state(self) -> Optional[Dict]:
+        """Get the current playback state across all devices."""
+        return await self._get("/me/player")
+
+    async def play_track(self, track_uri: Optional[str] = None, device_id: Optional[str] = None) -> None:
+        """Start or resume playback, optionally for a specific track."""
+        params = {"device_id": device_id} if device_id else None
+        body = {"uris": [track_uri]} if track_uri else None
+        await self._put("/me/player/play", body=body, params=params)
+
+    async def pause_playback(self) -> None:
+        """Pause playback."""
+        await self._put("/me/player/pause")
+
+    async def next_track(self) -> None:
+        """Skip to next track."""
+        await self._post("/me/player/next")
+
+    async def previous_track(self) -> None:
+        """Skip to previous track."""
+        await self._post("/me/player/previous")
+
     async def get_current_user(self) -> User:
         """
         Get current authenticated user information.
