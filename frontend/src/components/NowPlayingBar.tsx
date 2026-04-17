@@ -1,7 +1,40 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { apiService } from '../services/api'
 import HeartButton from './HeartButton'
 import './NowPlayingBar.css'
+
+/**
+ * Returns true when the referenced element's text content is being clipped
+ * by `text-overflow: ellipsis`. We re-measure whenever the element resizes
+ * (window resize, sidebar toggle, etc.) so the truncation flag stays in
+ * sync with the layout.
+ */
+function useIsTruncated<T extends HTMLElement>(
+  text: string | undefined,
+): [(node: T | null) => void, boolean] {
+  // Use a callback ref so we can re-run the measurement (and reset the
+  // ResizeObserver) whenever React swaps the underlying DOM node, without
+  // tripping over the stricter RefObject<T> typing in this project.
+  const [node, setNode] = useState<T | null>(null)
+  const [truncated, setTruncated] = useState(false)
+
+  useLayoutEffect(() => {
+    if (!node) {
+      setTruncated(false)
+      return
+    }
+    const measure = () => {
+      setTruncated(node.scrollWidth > node.clientWidth + 1)
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(node)
+    return () => ro.disconnect()
+  }, [node, text])
+
+  return [setNode, truncated]
+}
 
 interface NowPlayingBarProps {
   trackUri: string | null
@@ -213,16 +246,7 @@ function NowPlayingBar({ trackUri, onShowDetails, onTrackChange }: NowPlayingBar
           <div className="now-playing-art-placeholder" aria-hidden="true" />
         )}
 
-        <div className="now-playing-info">
-          {trackName ? (
-            <>
-              <span className="now-playing-title">{trackName}</span>
-              <span className="now-playing-artist">{artistNames}</span>
-            </>
-          ) : (
-            <span className="now-playing-idle">Nothing playing</span>
-          )}
-        </div>
+        <NowPlayingInfo trackName={trackName} artistNames={artistNames} />
 
         <div className="now-playing-controls">
           {track && (
@@ -290,6 +314,49 @@ function NowPlayingBar({ trackUri, onShowDetails, onTrackChange }: NowPlayingBar
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Renders the centered title + artist block. Each line gets its own ref so
+ * we can attach a `title=` tooltip *only* when the text is actually clipped
+ * by the ellipsis — that way short titles don't trigger a stray hover bubble.
+ */
+function NowPlayingInfo({
+  trackName,
+  artistNames,
+}: {
+  trackName?: string
+  artistNames?: string
+}) {
+  const [titleRef, titleTruncated] = useIsTruncated<HTMLSpanElement>(trackName)
+  const [artistRef, artistTruncated] = useIsTruncated<HTMLSpanElement>(artistNames)
+
+  if (!trackName) {
+    return (
+      <div className="now-playing-info">
+        <span className="now-playing-idle">Nothing playing</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="now-playing-info">
+      <span
+        className="now-playing-title"
+        ref={titleRef}
+        title={titleTruncated ? trackName : undefined}
+      >
+        {trackName}
+      </span>
+      <span
+        className="now-playing-artist"
+        ref={artistRef}
+        title={artistTruncated ? artistNames : undefined}
+      >
+        {artistNames}
+      </span>
     </div>
   )
 }
