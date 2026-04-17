@@ -17,6 +17,10 @@ from backend.app.services.cache_cleanup import (
     start_periodic_cleanup as start_cache_cleanup,
     stop_periodic_cleanup as stop_cache_cleanup,
 )
+from backend.app.services.scrobble_retry import (
+    start_periodic_retry as start_scrobble_retry,
+    stop_periodic_retry as stop_scrobble_retry,
+)
 
 app = FastAPI(
     title="Pigify",
@@ -29,11 +33,13 @@ app = FastAPI(
 async def _db_startup() -> None:
     await db_bootstrap()
     start_cache_cleanup()
+    start_scrobble_retry()
 
 
 @app.on_event("shutdown")
 async def _db_shutdown() -> None:
     await stop_cache_cleanup()
+    await stop_scrobble_retry()
     await db_dispose_all()
 
 # Session middleware for OAuth state and tokens

@@ -465,6 +465,7 @@ export interface ConnectionStatus {
   display_name: string
   connected_account?: string | null
   last_error?: string | null
+  needs_reconnect?: boolean
 }
 
 export interface LastfmQueueEntry {

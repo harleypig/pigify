@@ -378,6 +378,19 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
           </header>
           {lastfm.tier === 'authenticated' ? (
             <>
+              {lastfm.needs_reconnect && (
+                <div className="sp-reconnect-banner" role="alert">
+                  <strong>Reconnect Last.fm</strong>
+                  <p className="sp-meta">
+                    Last.fm rejected your saved session
+                    {lastfm.last_error ? `: ${lastfm.last_error}` : '.'} Queued
+                    scrobbles will keep waiting until you sign in again.
+                  </p>
+                  <a className="sp-btn-primary" href="/api/integrations/lastfm/login">
+                    Reconnect Last.fm
+                  </a>
+                </div>
+              )}
               <p className="sp-meta">
                 Signed in as <strong>{lastfm.connected_account}</strong>. Plays will be
                 scrobbled automatically.

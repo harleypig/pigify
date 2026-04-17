@@ -36,11 +36,47 @@ from backend.app.db.repositories import scrobble_queue as queue_repo
 from backend.app.db.repositories import sync_state as sync_repo
 from backend.app.db.session import user_session_scope
 from backend.app.services import lastfm
-from backend.app.services.connections import get_lastfm_credentials
+from backend.app.services.connections import (
+    flag_lastfm_needs_reconnect,
+    get_lastfm_credentials,
+)
 
 
 _SCROBBLER_DOMAIN = "scrobbler"
-_RETRY_BACKOFF_SEC = 60
+
+
+def _next_backoff(attempts: int) -> timedelta:
+    """Return the next-attempt delay for a row with `attempts` failures.
+
+    Exponential: BASE * 2^(attempts-1) capped at MAX. `attempts` is the
+    count *after* incrementing for the new failure (i.e. >= 1).
+    """
+    base = max(1, int(settings.SCROBBLE_RETRY_BASE_SEC))
+    cap = max(base, int(settings.SCROBBLE_RETRY_MAX_SEC))
+    n = max(1, int(attempts))
+    # Guard against overflow on absurd attempt counts.
+    shift = min(n - 1, 20)
+    delay = min(cap, base * (1 << shift))
+    return timedelta(seconds=delay)
+
+
+# Last.fm error codes that indicate the user must reconnect; retrying
+# with the same session key will keep failing forever. Detected from
+# the formatted message we raise as `LastFMError("Last.fm error N: ...")`.
+# Reference: https://www.last.fm/api/errorcodes
+_AUTH_FATAL_CODES = {4, 9, 10, 14, 26}
+
+
+def _is_auth_fatal(error: str) -> bool:
+    if not error:
+        return False
+    msg = error.lower()
+    if "last.fm error" not in msg:
+        return False
+    for code in _AUTH_FATAL_CODES:
+        if f"last.fm error {code}:" in msg or f"last.fm error {code} " in msg:
+            return True
+    return False
 
 
 def _track_summary(item: Dict[str, Any]) -> Dict[str, Any]:
@@ -87,13 +123,18 @@ async def _save_state(
 
 async def _flush_queue(
     session: AsyncSession, session_key: str
-) -> Optional[int]:
+) -> tuple[int, Optional[int]]:
     """Try to deliver every due queued scrobble.
 
-    Returns the unix timestamp of the last successful delivery, or
-    None if nothing was sent.
+    Returns ``(succeeded_count, last_success_ts)``. ``last_success_ts``
+    is the unix timestamp of the most recent confirmed delivery, or
+    ``None`` if nothing was sent. Tracking the count explicitly (rather
+    than diffing the queue depth) ensures auth-fatal bail-outs and
+    backoff transitions don't get miscounted as successes.
     """
+    succeeded = 0
     last_success_ts: Optional[int] = None
+    auth_fatal_seen = False
     due = await queue_repo.list_due(session)
     for entry in due:
         try:
@@ -106,17 +147,33 @@ async def _flush_queue(
                 duration_sec=entry.duration_sec,
             )
         except Exception as exc:  # noqa: BLE001
+            err = str(exc)
+            attempts_after = (entry.attempts or 0) + 1
             await queue_repo.mark_failed(
                 session,
                 entry.id,
-                error=str(exc),
+                error=err,
                 next_attempt_at=datetime.now(timezone.utc)
-                + timedelta(seconds=_RETRY_BACKOFF_SEC),
+                + _next_backoff(attempts_after),
             )
+            if _is_auth_fatal(err):
+                auth_fatal_seen = True
+                # No point hammering Last.fm with a dead session key —
+                # bail out, the periodic retry will pick up where we
+                # left off once the user reconnects.
+                await record_lastfm_error_safely(session, err)
+                break
             continue
         await queue_repo.delete(session, entry.id)
+        succeeded += 1
         last_success_ts = int(time.time())
-    return last_success_ts
+    if auth_fatal_seen:
+        await flag_lastfm_needs_reconnect(session, True)
+    elif last_success_ts is not None:
+        # A successful delivery proves the session key still works, so
+        # clear any stale "needs reconnect" flag.
+        await flag_lastfm_needs_reconnect(session, False)
+    return succeeded, last_success_ts
 
 
 async def process_state(request: Request, state: Optional[Dict[str, Any]]) -> None:
@@ -153,7 +210,7 @@ async def _process_state_locked(
     s.setdefault("status", {})
 
     # First, try to flush any queued scrobbles (offline retry).
-    flushed_ts = await _flush_queue(session, session_key)
+    _flushed_count, flushed_ts = await _flush_queue(session, session_key)
     last_success_ts: Optional[int] = flushed_ts
 
     item = state.get("item") if state else None
@@ -356,6 +413,7 @@ async def flush_now(spotify_id: str) -> Dict[str, Any]:
     succeeded = 0
     attempted = 0
     last_error: Optional[str] = None
+    auth_fatal_seen = False
 
     async with user_session_scope(spotify_id) as session:
         rows = await queue_repo.list_all(session)
@@ -372,16 +430,27 @@ async def flush_now(spotify_id: str) -> Dict[str, Any]:
                 )
             except Exception as exc:  # noqa: BLE001
                 last_error = str(exc)
+                attempts_after = (entry.attempts or 0) + 1
                 await queue_repo.mark_failed(
                     session,
                     entry.id,
                     error=last_error,
                     next_attempt_at=datetime.now(timezone.utc)
-                    + timedelta(seconds=_RETRY_BACKOFF_SEC),
+                    + _next_backoff(attempts_after),
                 )
+                if _is_auth_fatal(last_error):
+                    auth_fatal_seen = True
+                    await record_lastfm_error_safely(session, last_error)
+                    break
                 continue
             await queue_repo.delete(session, entry.id)
             succeeded += 1
+
+        if auth_fatal_seen:
+            await flag_lastfm_needs_reconnect(session, True)
+        elif succeeded:
+            # A clean delivery means the session key is healthy again.
+            await flag_lastfm_needs_reconnect(session, False)
 
         # Update bookkeeping summary so the existing status reflects flush.
         if succeeded:

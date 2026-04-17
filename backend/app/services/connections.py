@@ -32,6 +32,11 @@ class ConnectionStatus(BaseModel):
     display_name: str
     connected_account: Optional[str] = None
     last_error: Optional[str] = None
+    # True when the persisted credentials are known to be invalid (e.g.
+    # Last.fm session key revoked) and the user must reconnect for
+    # writes (scrobble / love) to succeed again. The UI surfaces this
+    # as a reconnect prompt; reads continue to work via public tier.
+    needs_reconnect: bool = False
 
 
 async def _load_lastfm_record(spotify_id: Optional[str]) -> Dict[str, Optional[str]]:
@@ -53,11 +58,13 @@ async def _load_lastfm_record(spotify_id: Optional[str]) -> Dict[str, Optional[s
     if row is None:
         return {}
     creds = row.credentials or {}
+    prefs = row.preferences or {}
     return {
         "session_key": creds.get("session_key"),
         "subscriber": creds.get("subscriber"),
         "username": row.account_name,
         "last_error": row.last_error,
+        "needs_reconnect": bool(prefs.get("needs_reconnect")),
     }
 
 
@@ -90,6 +97,9 @@ async def _lastfm_status(request: Request) -> ConnectionStatus:
         display_name="Last.fm",
         connected_account=username if tier == "authenticated" else None,
         last_error=last_error,
+        # Only meaningful when we have a session key on file at all —
+        # otherwise the user already needs to (re)connect from scratch.
+        needs_reconnect=bool(record.get("needs_reconnect")) and tier == "authenticated",
     )
 
 
@@ -153,10 +163,14 @@ async def save_lastfm_credentials(
                 "subscriber": subscriber,
             },
         )
-        # Clear any previous error now that we have a fresh session.
+        # Clear any previous error and reconnect flag now that we have a
+        # fresh session — the queued retries will start succeeding again.
         row = await conn_repo.get(session, LASTFM_SERVICE)
         if row is not None:
             row.last_error = None
+            prefs = dict(row.preferences or {})
+            if prefs.pop("needs_reconnect", None) is not None:
+                row.preferences = prefs
         await session.commit()
 
 
@@ -175,3 +189,26 @@ async def record_lastfm_error(spotify_id: str, error: Optional[str]) -> None:
             return
         row.last_error = (error or None)
         await session.commit()
+
+
+async def flag_lastfm_needs_reconnect(
+    session, needs_reconnect: bool
+) -> None:
+    """Set/clear the persistent-failure flag on the lastfm connection row.
+
+    Lives in the existing `preferences` JSON column so we don't need a
+    schema migration. Caller is responsible for committing the
+    surrounding session.
+    """
+    row = await conn_repo.get(session, LASTFM_SERVICE)
+    if row is None:
+        return
+    prefs = dict(row.preferences or {})
+    if needs_reconnect:
+        if prefs.get("needs_reconnect"):
+            return
+        prefs["needs_reconnect"] = True
+    else:
+        if not prefs.pop("needs_reconnect", None):
+            return
+    row.preferences = prefs
