@@ -347,6 +347,19 @@ export const apiService = {
     })
     return r.data
   },
+
+  async getVersionInfo(): Promise<VersionInfo> {
+    const r = await apiClient.get('/api/version')
+    return r.data
+  },
+}
+
+export interface VersionInfo {
+  backend_version: string
+  python_version: string
+  fastapi_version: string
+  git_commit: string | null
+  schema_version: string | null
 }
 
 // ============================ Recipes (filtered playlists) ================

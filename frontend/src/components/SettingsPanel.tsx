@@ -7,26 +7,30 @@ import {
   LastfmQueueFlushResult,
   LastfmStatus,
   Profile,
+  VersionInfo,
 } from '../services/api'
 import './SettingsPanel.css'
 
-type TabId = 'favorites' | 'connections'
+export type SettingsTabId = 'favorites' | 'connections' | 'about'
 
 interface Props {
   onClose: () => void
   onProfileChange?: (profile: Profile) => void
-  initialTab?: TabId
+  initialTab?: SettingsTabId
 }
 
 interface TabDef {
-  id: TabId
+  id: SettingsTabId
   label: string
 }
 
 const TABS: TabDef[] = [
   { id: 'favorites', label: 'Favorites' },
   { id: 'connections', label: 'Connections' },
+  { id: 'about', label: 'About' },
 ]
+
+const GITHUB_REPO_URL = 'https://github.com/harleypig/pigify'
 
 function tierLabel(tier: string): string {
   if (tier === 'authenticated') return 'Connected'
@@ -41,7 +45,7 @@ function tierClass(tier: string): string {
 }
 
 function SettingsPanel({ onClose, onProfileChange, initialTab = 'favorites' }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab)
 
   useEffect(() => {
     setActiveTab(initialTab)
@@ -79,6 +83,9 @@ function SettingsPanel({ onClose, onProfileChange, initialTab = 'favorites' }: P
         </div>
         <div hidden={activeTab !== 'connections'} role="tabpanel">
           <ConnectionsTab onProfileChange={onProfileChange} />
+        </div>
+        <div hidden={activeTab !== 'about'} role="tabpanel">
+          <AboutTab />
         </div>
       </div>
     </aside>
@@ -325,7 +332,6 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
   }
 
   const lastfm = connections.lastfm
-  const mb = connections.musicbrainz
 
   return (
     <div className="sp-tabpanel">
@@ -416,30 +422,14 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
           ) : (
             <>
               <p className="sp-meta">
-                Tags, similar tracks and global play counts work without signing in.
                 Connect your Last.fm account to scrobble plays and see your personal
-                play counts.
+                play counts. See the About tab for what works without signing in.
               </p>
               <a className="sp-btn-primary" href="/api/integrations/lastfm/login">
                 Connect Last.fm
               </a>
             </>
           )}
-        </section>
-      )}
-
-      {mb && mb.tier !== 'none' && (
-        <section className="sp-card">
-          <header>
-            <h3>MusicBrainz</h3>
-            <span className={`sp-tier-pill ${tierClass(mb.tier)}`}>
-              {tierLabel(mb.tier)}
-            </span>
-          </header>
-          <p className="sp-meta">
-            MusicBrainz is fully public. Track identifiers, releases and credits are
-            fetched automatically — no account needed.
-          </p>
         </section>
       )}
 
@@ -730,6 +720,138 @@ function LastfmQueuePanel() {
           </ul>
         </>
       )}
+    </div>
+  )
+}
+
+interface ProviderEntry {
+  name: string
+  url: string
+  description: string
+}
+
+const PUBLIC_PROVIDERS: ProviderEntry[] = [
+  {
+    name: 'MusicBrainz',
+    url: 'https://musicbrainz.org/',
+    description:
+      'Open music encyclopedia. Pigify uses it to look up track identifiers, releases and credits — no account needed.',
+  },
+  {
+    name: 'Wikipedia',
+    url: 'https://www.wikipedia.org/',
+    description:
+      'Free encyclopedia. Used to pull short artist and album summaries shown in the track detail panel.',
+  },
+  {
+    name: 'Last.fm (public)',
+    url: 'https://www.last.fm/',
+    description:
+      'Without signing in, Last.fm provides tags, similar tracks and global play counts. Connect your account in the Connections tab to also scrobble plays and see your personal play counts.',
+  },
+]
+
+function AboutTab() {
+  const [info, setInfo] = useState<VersionInfo | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    apiService
+      .getVersionInfo()
+      .then((v) => {
+        if (!cancelled) {
+          setInfo(v)
+          setError(null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError('Backend version info unavailable')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const frontendVersion = __APP_VERSION__
+  const fmt = (v: string | null | undefined): string =>
+    v && v.length > 0 ? v : 'unavailable'
+
+  return (
+    <div className="sp-tabpanel">
+      <section className="sp-card">
+        <header>
+          <h3>Pigify</h3>
+        </header>
+        <p className="sp-meta">
+          Custom Spotify frontend with playlist management.
+        </p>
+        <p className="sp-meta">
+          Source code:{' '}
+          <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">
+            {GITHUB_REPO_URL}
+          </a>
+        </p>
+      </section>
+
+      <section className="sp-card">
+        <header>
+          <h3>Versions</h3>
+        </header>
+        {loading && <p className="sp-meta">Loading version info…</p>}
+        {error && <p className="sp-meta">{error}</p>}
+        <ul className="sp-list">
+          <li className="sp-conn">
+            <span className="sp-conn-name">Frontend</span>
+            <span className="sp-conn-detail">{frontendVersion}</span>
+          </li>
+          <li className="sp-conn">
+            <span className="sp-conn-name">Backend</span>
+            <span className="sp-conn-detail">{fmt(info?.backend_version)}</span>
+          </li>
+          <li className="sp-conn">
+            <span className="sp-conn-name">Python</span>
+            <span className="sp-conn-detail">{fmt(info?.python_version)}</span>
+          </li>
+          <li className="sp-conn">
+            <span className="sp-conn-name">FastAPI</span>
+            <span className="sp-conn-detail">{fmt(info?.fastapi_version)}</span>
+          </li>
+          <li className="sp-conn">
+            <span className="sp-conn-name">Git commit</span>
+            <span className="sp-conn-detail">{fmt(info?.git_commit)}</span>
+          </li>
+          <li className="sp-conn">
+            <span className="sp-conn-name">DB schema</span>
+            <span className="sp-conn-detail">{fmt(info?.schema_version)}</span>
+          </li>
+        </ul>
+      </section>
+
+      <section className="sp-card">
+        <header>
+          <h3>Public providers</h3>
+        </header>
+        <p className="sp-meta">
+          External data sources Pigify uses out of the box, with no sign-in required.
+        </p>
+        <ul className="sp-list">
+          {PUBLIC_PROVIDERS.map((p) => (
+            <li key={p.name} className="sp-conn">
+              <span className="sp-conn-name">
+                <a href={p.url} target="_blank" rel="noopener noreferrer">
+                  {p.name}
+                </a>
+              </span>
+              <span className="sp-conn-detail">{p.description}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   )
 }
