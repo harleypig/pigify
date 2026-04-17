@@ -336,9 +336,30 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
                     <span className="preview-num">{i + 1}</span>
                     <span className="preview-name">{t.name}</span>
                     <span className="preview-artist">{t.artists.join(', ')}</span>
-                    {sourceLabel && (
+                    {sources.length > 0 && (
                       <span className="preview-source" title={sourceLabel}>
-                        from {sourceLabel}
+                        from{' '}
+                        {sources.map((s, idx) => {
+                          const href =
+                            s.id === 'liked'
+                              ? 'https://open.spotify.com/collection/tracks'
+                              : `https://open.spotify.com/playlist/${s.id}`
+                          return (
+                            <span key={`${s.id}-${idx}`}>
+                              {idx > 0 && ', '}
+                              <a
+                                className="preview-source-link"
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`Open "${s.name}" in Spotify`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {s.name}
+                              </a>
+                            </span>
+                          )
+                        })}
                       </span>
                     )}
                   </div>
