@@ -21,6 +21,7 @@ from backend.app.services.scrobble_retry import (
     start_periodic_retry as start_scrobble_retry,
     stop_periodic_retry as stop_scrobble_retry,
 )
+from backend.app.services.spotify import close_shared_client as close_spotify_client
 
 app = FastAPI(
     title="Pigify",
@@ -40,28 +41,37 @@ async def _db_startup() -> None:
 async def _db_shutdown() -> None:
     await stop_cache_cleanup()
     await stop_scrobble_retry()
+    await close_spotify_client()
     await db_dispose_all()
 
-# Session middleware for OAuth state and tokens
-# https_only=True + same_site="none" ensures the cookie survives the
-# cross-origin OAuth redirect through Spotify and back
+# Session middleware for OAuth state and tokens.
+# `same_site="lax"` is the right default: the Spotify OAuth round-trip is a
+# top-level navigation (302 GETs), and lax cookies are sent on those, so the
+# OAuth flow still works while CSRF risk on POST/PUT/DELETE drops to zero.
+# Outside dev we also force `https_only`; in dev we relax it so localhost
+# (which is plain http) still works.
+_secure_cookies = settings.ENVIRONMENT.lower() != "development"
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.SECRET_KEY,
     max_age=3600 * 24 * 7,  # 7 days
-    https_only=True,
-    same_site="none",
+    https_only=_secure_cookies,
+    same_site="lax",
 )
 
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
+# CORS configuration. The regex (when set) is matched with re.fullmatch by
+# Starlette, so it must describe the entire origin string. The default
+# restricts to https Replit dev subdomains; anything else has to be added
+# explicitly via CORS_ORIGINS.
+_cors_kwargs: dict = dict(
     allow_origins=settings.CORS_ORIGINS,
-    allow_origin_regex=r"https?://.*\.replit\.dev(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+if settings.CORS_ORIGIN_REGEX:
+    _cors_kwargs["allow_origin_regex"] = settings.CORS_ORIGIN_REGEX
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])

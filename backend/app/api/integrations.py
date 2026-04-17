@@ -9,10 +9,11 @@ Per the graceful degradation policy:
   trivia/context provider (Songfacts has no public API).
 """
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel, Field
 
 from backend.app.config import settings
 from backend.app.db.repositories import enrichment_cache
@@ -122,10 +123,19 @@ async def lastfm_queue_flush(request: Request) -> Dict[str, Any]:
     return await scrobbler.flush_now(spotify_id)
 
 
+class LastfmQueueClearRequest(BaseModel):
+    """Body for `DELETE /lastfm/queue`. Omitted entirely → clear all."""
+
+    ids: Optional[List[int]] = Field(
+        default=None,
+        description="Specific queue entry ids to delete. Omit to clear all.",
+    )
+
+
 @router.delete("/lastfm/queue")
 async def lastfm_queue_clear(
     request: Request,
-    payload: Optional[Dict[str, Any]] = Body(default=None),
+    payload: Optional[LastfmQueueClearRequest] = Body(default=None),
 ) -> Dict[str, Any]:
     """Bulk-delete queued scrobbles.
 
@@ -135,15 +145,7 @@ async def lastfm_queue_clear(
     can refresh its counts in one call instead of issuing N requests.
     """
     spotify_id = _require_spotify_id(request)
-    entry_ids: Optional[list[int]] = None
-    if payload and "ids" in payload:
-        raw = payload.get("ids") or []
-        if not isinstance(raw, list):
-            raise HTTPException(400, "`ids` must be an array of integers")
-        try:
-            entry_ids = [int(x) for x in raw]
-        except (TypeError, ValueError):
-            raise HTTPException(400, "`ids` must be an array of integers")
+    entry_ids = payload.ids if payload is not None else None
     return await scrobbler.clear_queue(spotify_id, entry_ids)
 
 

@@ -3,12 +3,18 @@
 One engine per database file. Engines are cached so that a given user's
 SQLite file isn't opened/closed on every request, while still letting us
 dispose them all on shutdown.
+
+The per-user engine cache is bounded (LRU) so a long-running process with
+many users doesn't accumulate engines (and the file descriptors / SQLite
+connections they hold) without limit. Evicted engines are disposed in the
+background.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
+from collections import OrderedDict
 from typing import Dict, Optional
 
 from sqlalchemy import event
@@ -20,7 +26,7 @@ from backend.app.db.paths import is_sqlite_url, system_db_url, user_db_url
 log = logging.getLogger(__name__)
 
 _system_engine: Optional[AsyncEngine] = None
-_user_engines: Dict[str, AsyncEngine] = {}
+_user_engines: "OrderedDict[str, AsyncEngine]" = OrderedDict()
 _lock = asyncio.Lock()
 
 
@@ -79,17 +85,45 @@ def get_system_engine() -> AsyncEngine:
     return _system_engine
 
 
+def _evict_if_needed() -> Optional[AsyncEngine]:
+    """If the cache is over capacity, pop and return the LRU engine.
+
+    The caller is responsible for disposing the returned engine (we don't do
+    it inline because callers hold ``_lock`` and ``engine.dispose()`` is an
+    awaitable that may take a moment).
+    """
+    cap = max(1, int(settings.USER_ENGINE_CACHE_MAX))
+    if len(_user_engines) <= cap:
+        return None
+    _, evicted = _user_engines.popitem(last=False)
+    return evicted
+
+
 async def get_user_engine(spotify_id: str) -> AsyncEngine:
-    """Return (creating if necessary) the engine for one user's DB."""
+    """Return (creating if necessary) the engine for one user's DB.
+
+    Promotes the entry to most-recently-used on every access so the LRU
+    eviction always targets genuinely cold users.
+    """
     eng = _user_engines.get(spotify_id)
     if eng is not None:
+        _user_engines.move_to_end(spotify_id)
         return eng
     async with _lock:
         eng = _user_engines.get(spotify_id)
         if eng is None:
             eng = _make_engine(user_db_url(spotify_id))
             _user_engines[spotify_id] = eng
-        return eng
+            evicted = _evict_if_needed()
+        else:
+            _user_engines.move_to_end(spotify_id)
+            evicted = None
+    if evicted is not None:
+        try:
+            await evicted.dispose()
+        except Exception:  # noqa: BLE001
+            log.exception("failed to dispose evicted user engine")
+    return eng
 
 
 def known_user_engines() -> Dict[str, AsyncEngine]:

@@ -94,11 +94,7 @@ async def _list_payloads(session: AsyncSession) -> List[Dict[str, Any]]:
 
 
 async def _find_row_by_recipe_id(session: AsyncSession, recipe_id: str):
-    for row in await saved_filters_repo.list_all(session):
-        payload = row.definition or {}
-        if payload.get("id") == recipe_id:
-            return row
-    return None
+    return await saved_filters_repo.get_by_recipe_id(session, recipe_id)
 
 
 async def _unique_name(session: AsyncSession, name: str, *, exclude_id: Optional[int] = None) -> str:
