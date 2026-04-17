@@ -166,11 +166,37 @@
 
 /* Plain fallback bar */
 .progress-plain-track {
+  /* Container for the visual fill + an invisible native <input type="range">
+     overlay that handles keyboard/SR semantics. */
+  position: relative;
+  display: block;
   width: 100%;
   height: 4px;
   background-color: #444;
   border-radius: 2px;
   overflow: hidden;
+  cursor: pointer;
+}
+
+/* The native range input sits on top of the visual track so all keyboard,
+   pointer, and screen-reader interactions go through it; we make it
+   transparent so the colored fill below shows through. */
+.progress-plain-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  opacity: 0;
+}
+.progress-plain-range:focus-visible {
+  /* Make the bar itself glow on keyboard focus since the thumb is hidden. */
+  opacity: 1;
 }
 
 .progress-plain-fill {

@@ -251,8 +251,25 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
   }
 
   return (
-    <div className="recipe-modal-backdrop" onClick={onClose}>
-      <div className="recipe-modal" onClick={(e) => e.stopPropagation()}>
+    /* Backdrop is intentionally a div with click-to-close + ESC keyboard
+       handler (in the parent) rather than a real button — making the entire
+       overlay a button conflicts with the form controls inside it. The visible
+       × close-button below provides the canonical keyboard-reachable dismiss. */
+    <div
+      className="recipe-modal-backdrop"
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose()
+      }}
+      role="presentation"
+    >
+      <div
+        className="recipe-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit recipe"
+      >
         <div className="recipe-modal-head">
           <input
             className="recipe-name"
@@ -260,7 +277,14 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
             onChange={(e) => setRecipe((r) => ({ ...r, name: e.target.value }))}
             placeholder="Recipe name"
           />
-          <button className="ghost" onClick={onClose}>×</button>
+          <button
+            className="ghost"
+            onClick={onClose}
+            aria-label="Close recipe editor"
+            title="Close"
+          >
+            ×
+          </button>
         </div>
 
         <div className="recipe-buckets">
@@ -405,7 +429,14 @@ function BucketEditor(props: {
           placeholder={`Bucket ${index + 1}`}
         />
         {canRemove && (
-          <button className="ghost" onClick={onRemove} title="Remove bucket">×</button>
+          <button
+            className="ghost"
+            onClick={onRemove}
+            aria-label="Remove bucket"
+            title="Remove bucket"
+          >
+            ×
+          </button>
         )}
       </div>
 
@@ -474,7 +505,14 @@ function BucketEditor(props: {
                   onChange={(e) => onUpdateFilter(fIdx, { value2: e.target.value })}
                 />
               )}
-              <button className="ghost" onClick={() => onRemoveFilter(fIdx)}>×</button>
+              <button
+                className="ghost"
+                onClick={() => onRemoveFilter(fIdx)}
+                aria-label="Remove filter"
+                title="Remove filter"
+              >
+                ×
+              </button>
             </div>
           )
         })}

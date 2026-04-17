@@ -1,3 +1,9 @@
+/* Tells the browser this is a dark UI so native form controls, scrollbars
+   and the autofill chrome render with the correct palette. */
+:root {
+  color-scheme: dark;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -18,3 +24,33 @@ body {
   min-height: 100vh;
 }
 
+/* Default focus ring for any interactive element that hasn't opted into a
+   custom one. Uses :focus-visible so mouse clicks don't show the ring,
+   only keyboard navigation does. Per-component CSS may override this. */
+:focus-visible {
+  outline: 2px solid #1db954;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Cuts the 300ms double-tap delay on touch devices for any interactive
+   surface — buttons, links, role=button divs alike. */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* Honor users who request reduced motion. We don't use any showy animations
+   (just short color/background transitions), so collapsing them to ~0ms is
+   safe and removes any motion-sickness risk. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

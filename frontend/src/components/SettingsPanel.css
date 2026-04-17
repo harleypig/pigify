@@ -300,8 +300,14 @@
   font-size: 13px;
 }
 .sp-input:focus {
+  /* Replace the native ring with a colored border so the field still has a
+     clearly visible focus state — never strip outline without a substitute. */
   outline: none;
   border-color: #1db954;
+}
+.sp-input:focus-visible {
+  outline: 2px solid #1db954;
+  outline-offset: 1px;
 }
 
 .sp-queue {

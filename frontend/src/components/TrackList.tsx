@@ -221,7 +221,7 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
   }
 
   if (loading) {
-    return <div className="track-list-loading">Loading tracks...</div>
+    return <div className="track-list-loading">Loading tracks…</div>
   }
 
   if (error) {
@@ -255,20 +255,50 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
       </div>
       <div className="track-list-items">
         {sortedTracks.map((track, index) => (
+          /* The row is rendered as a div with role="button" rather than a real
+             <button> because it contains another interactive child (HeartButton),
+             and nesting buttons is invalid HTML. We provide keyboard equivalents
+             (Enter / Space) and an aria-label so this is still operable.
+             Long playlists are not virtualized — the typical Pigify use case is
+             a few hundred rows, well within what the DOM handles smoothly. */
           <div
             key={`${track.id}-${index}`}
             className="track-item"
+            role="button"
+            tabIndex={0}
+            aria-label={`Play ${track.name} by ${track.artists.join(', ')}`}
             onClick={() => {
               onTrackSelect(track.uri)
               onTrackFocus?.(track.id)
+            }}
+            onKeyDown={(e) => {
+              // Only act when the row itself is focused — ignore Enter/Space
+              // forwarded from the nested HeartButton or any other inner
+              // control, otherwise toggling the heart would also trigger
+              // playback of the track.
+              if (e.target !== e.currentTarget) return
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onTrackSelect(track.uri)
+                onTrackFocus?.(track.id)
+              }
             }}
           >
             <div className="track-number">{index + 1}</div>
             <div className="track-image">
               {track.image_url ? (
-                <img src={track.image_url} alt={track.name} />
+                /* Explicit dimensions match the .track-image CSS box and
+                   prevent CLS as rows scroll into view. */
+                <img
+                  src={track.image_url}
+                  alt=""
+                  width={40}
+                  height={40}
+                  loading="lazy"
+                  decoding="async"
+                />
               ) : (
-                <div className="track-placeholder">♪</div>
+                <div className="track-placeholder" aria-hidden="true">♪</div>
               )}
             </div>
             <div className="track-info">
@@ -278,6 +308,8 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
               </div>
             </div>
             <div className="track-album">{track.album}</div>
+            {/* stopPropagation prevents heart clicks from triggering the
+                row-level "play this track" handler. */}
             <div className="track-heart" onClick={(e) => e.stopPropagation()}>
               <HeartButton
                 track={{

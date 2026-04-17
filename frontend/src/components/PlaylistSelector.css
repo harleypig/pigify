@@ -20,12 +20,21 @@
 }
 
 .playlist-item {
+  /* Rendered as a real <button> for keyboard/screen-reader semantics; the
+     overrides below strip the native button chrome so it still looks like
+     a list row. */
   display: flex;
   align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #222;
+  color: inherit;
+  font: inherit;
   padding: 1rem 1.5rem;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-bottom: 1px solid #222;
 }
 
 .playlist-item:hover {

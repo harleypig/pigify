@@ -95,6 +95,7 @@ function KeyRow({
         <button
           type="button"
           className="sort-row-btn"
+          aria-label="Move sort key up"
           title="Move up"
           onClick={() => onMove(index, index - 1)}
           disabled={index === 0}
@@ -104,6 +105,7 @@ function KeyRow({
         <button
           type="button"
           className="sort-row-btn"
+          aria-label="Move sort key down"
           title="Move down"
           onClick={() => onMove(index, index + 1)}
           disabled={index === total - 1}
@@ -113,6 +115,7 @@ function KeyRow({
         <button
           type="button"
           className="sort-row-btn sort-row-remove"
+          aria-label="Remove this sort key"
           title="Remove this sort key"
           onClick={onRemove}
           disabled={total <= 1}
@@ -289,6 +292,7 @@ function SortMenu(props: SortMenuProps) {
                     <button
                       className="sort-preset-del"
                       onClick={() => onDeletePreset(p.name)}
+                      aria-label={`Delete preset ${p.name}`}
                       title="Delete preset"
                     >
                       ×

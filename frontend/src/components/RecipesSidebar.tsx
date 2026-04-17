@@ -104,22 +104,32 @@ export default function RecipesSidebar() {
                 </span>
               </div>
               <div className="recipe-row-actions">
+                {/* Icon-only buttons each carry an aria-label as well as a
+                    title, so screen readers and tooltip users both get the
+                    action name. We deliberately use window.confirm/prompt for
+                    delete and materialize-as-playlist — the app has no styled
+                    modal infra yet, and native dialogs still satisfy the
+                    "destructive actions need confirmation" guideline. */}
                 <button
                   onClick={() => handlePlay(r)}
                   disabled={busyId === r.id}
+                  aria-label={`Play recipe ${r.name}`}
                   title="Resolve and play"
                 >▶</button>
                 <button
                   onClick={() => setEditing(r)}
+                  aria-label={`Edit recipe ${r.name}`}
                   title="Edit"
                 >✎</button>
                 <button
                   onClick={() => handleMaterialize(r)}
                   disabled={busyId === r.id}
+                  aria-label={`Save ${r.name} as a Spotify playlist`}
                   title="Save as Spotify playlist"
                 >＋</button>
                 <button
                   onClick={() => handleDelete(r)}
+                  aria-label={`Delete recipe ${r.name}`}
                   title="Delete"
                   className="danger"
                 >×</button>
