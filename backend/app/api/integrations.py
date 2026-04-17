@@ -13,8 +13,13 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
 from backend.app.config import settings
-from backend.app.services import lastfm, musicbrainz
-from backend.app.services.connections import get_all_connections, get_connection
+from backend.app.services import lastfm, musicbrainz, scrobbler
+from backend.app.services.connections import (
+    clear_lastfm_credentials,
+    get_all_connections,
+    get_connection,
+    save_lastfm_credentials,
+)
 from backend.app.services.spotify import SpotifyService
 
 router = APIRouter()
@@ -25,7 +30,9 @@ router = APIRouter()
 @router.get("/connections")
 async def list_connections(request: Request) -> Dict[str, Any]:
     """Return tier + status for every known external integration."""
-    return {k: v.model_dump() for k, v in get_all_connections(request).items()}
+    return {
+        k: v.model_dump() for k, v in (await get_all_connections(request)).items()
+    }
 
 
 # --------------------------------- Last.fm auth --------------------------------
@@ -42,33 +49,42 @@ async def lastfm_login(request: Request):
 async def lastfm_callback(request: Request, token: Optional[str] = None):
     if not token:
         raise HTTPException(400, "Missing token from Last.fm")
+    spotify_id = request.session.get("spotify_user_id")
+    if not spotify_id:
+        # Without a known Spotify user we have nowhere durable to put
+        # the session key — sign in to Spotify first.
+        raise HTTPException(401, "Sign in to Spotify before connecting Last.fm")
     try:
         session = await lastfm.get_session(token)
     except lastfm.LastFMError as e:
         raise HTTPException(502, f"Last.fm auth failed: {e}")
 
-    request.session["lastfm"] = {
-        "session_key": session["session_key"],
-        "username": session["username"],
-        "subscriber": session.get("subscriber"),
-        "last_error": None,
-    }
+    await save_lastfm_credentials(
+        spotify_id,
+        session_key=session["session_key"],
+        username=session["username"],
+        subscriber=session.get("subscriber"),
+    )
     return RedirectResponse(url=f"{settings.FRONTEND_URL}/?lastfm=connected")
 
 
 @router.post("/lastfm/disconnect")
 async def lastfm_disconnect(request: Request):
-    request.session.pop("lastfm", None)
-    request.session.pop("scrobbler", None)
+    spotify_id = request.session.get("spotify_user_id")
+    if spotify_id:
+        await clear_lastfm_credentials(spotify_id)
+        await scrobbler.reset_for_user(spotify_id)
     return {"status": "disconnected"}
 
 
 @router.get("/lastfm/status")
 async def lastfm_status(request: Request):
-    sess = request.session.get("lastfm") or {}
+    spotify_id = request.session.get("spotify_user_id")
+    status = await scrobbler.get_status(spotify_id) if spotify_id else {}
+    conn = await get_connection(request, "lastfm")
     return {
-        "connection": get_connection(request, "lastfm").model_dump(),
-        "status": sess.get("status") or {},
+        "connection": conn.model_dump(),
+        "status": status,
     }
 
 
@@ -80,12 +96,10 @@ async def lastfm_track_info(
     artist: str = Query(..., min_length=1),
     track: str = Query(..., min_length=1),
 ):
-    conn = get_connection(request, "lastfm")
+    conn = await get_connection(request, "lastfm")
     if conn.tier == "none":
         raise HTTPException(404, "Last.fm not available")
-    username = None
-    if conn.tier == "authenticated":
-        username = (request.session.get("lastfm") or {}).get("username")
+    username = conn.connected_account if conn.tier == "authenticated" else None
     try:
         data = await lastfm.get_track_info(artist, track, username=username)
     except lastfm.LastFMError as e:
@@ -121,7 +135,7 @@ async def lastfm_similar(
     track: str = Query(...),
     limit: int = Query(10, ge=1, le=30),
 ):
-    if get_connection(request, "lastfm").tier == "none":
+    if (await get_connection(request, "lastfm")).tier == "none":
         raise HTTPException(404, "Last.fm not available")
     try:
         sim = await lastfm.get_similar_tracks(artist, track, limit)
@@ -222,16 +236,15 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
             "external_url": (track.get("external_urls") or {}).get("spotify"),
         },
         "connections": {
-            k: v.model_dump() for k, v in get_all_connections(request).items()
+            k: v.model_dump()
+            for k, v in (await get_all_connections(request)).items()
         },
     }
 
-    lfm_conn = get_connection(request, "lastfm")
+    lfm_conn = await get_connection(request, "lastfm")
     if lfm_conn.tier != "none" and primary_artist and title:
         username = (
-            (request.session.get("lastfm") or {}).get("username")
-            if lfm_conn.tier == "authenticated"
-            else None
+            lfm_conn.connected_account if lfm_conn.tier == "authenticated" else None
         )
         info, err = await lastfm.safe_call(
             lastfm.get_track_info(primary_artist, title, username=username)

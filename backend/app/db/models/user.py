@@ -40,6 +40,35 @@ class ServiceConnection(UserBase, TimestampMixin):
     last_error: Mapped[Optional[str]] = mapped_column(Text)
 
 
+class ScrobbleQueueEntry(UserBase, TimestampMixin):
+    """Pending Last.fm scrobble awaiting delivery.
+
+    Rows are created when a `track.scrobble` call fails (network error,
+    rate-limit, missing key, etc.) and deleted on successful retry. The
+    queue is unbounded — durability beats the old cookie-bound 25-entry
+    cap. `attempts` and `last_error` aid diagnostics; `next_attempt_at`
+    is set to a future time on failure so we can back off without
+    blocking other entries.
+    """
+
+    __tablename__ = "scrobble_queue"
+    __table_args__ = (
+        Index("ix_scrobble_queue_next_attempt_at", "next_attempt_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    artist: Mapped[str] = mapped_column(String(512), nullable=False)
+    track: Mapped[str] = mapped_column(String(512), nullable=False)
+    album: Mapped[Optional[str]] = mapped_column(String(512))
+    duration_sec: Mapped[Optional[int]] = mapped_column(Integer)
+    timestamp: Mapped[int] = mapped_column(Integer, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    last_error: Mapped[Optional[str]] = mapped_column(Text)
+
+
 class TrackStat(UserBase, TimestampMixin):
     """Pigify-local play/skip counters per Spotify track."""
 
