@@ -6,22 +6,21 @@ interface NowPlayingBarProps {
   trackUri: string | null
 }
 
-/** Format remaining time as -M:SS */
-function formatTimeLeft(progressMs: number, durationMs: number): string {
-  const remainMs = Math.max(0, durationMs - progressMs)
-  const totalSec = Math.floor(remainMs / 1000)
+function formatMs(ms: number): string {
+  const totalSec = Math.floor(Math.max(0, ms) / 1000)
   const mins = Math.floor(totalSec / 60)
   const secs = totalSec % 60
-  return `-${mins}:${String(secs).padStart(2, '0')}`
+  return `${mins}:${String(secs).padStart(2, '0')}`
 }
 
 interface WaveformBarProps {
   bars: number[]
   progress: number // 0–1
+  onSeek: (fraction: number) => void
 }
 
-/** SVG waveform — played portion in green, unplayed in dim gray */
-function WaveformBar({ bars, progress }: WaveformBarProps) {
+/** SVG waveform — played portion in green, unplayed in dim gray. Click to seek. */
+function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
   if (bars.length === 0) return null
   const n = bars.length
   const barW = 0.7
@@ -29,12 +28,20 @@ function WaveformBar({ bars, progress }: WaveformBarProps) {
   const totalW = n * gap
   const maxH = 20
 
+  const handleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const fraction = (e.clientX - rect.left) / rect.width
+    onSeek(Math.max(0, Math.min(1, fraction)))
+  }
+
   return (
     <svg
       className="progress-waveform"
       viewBox={`0 0 ${totalW} ${maxH}`}
       preserveAspectRatio="none"
       aria-hidden="true"
+      onClick={handleClick}
+      style={{ cursor: 'pointer' }}
     >
       {bars.map((v, i) => {
         const h = Math.max(2, v * maxH)
@@ -157,10 +164,26 @@ function NowPlayingBar({ trackUri }: NowPlayingBarProps) {
     try { await apiService.nextTrack() } catch (e) { console.error(e) }
   }
 
+  const handleSeek = async (fraction: number) => {
+    if (!durationMs) return
+    const posMs = Math.round(fraction * durationMs)
+    // Optimistically update local progress
+    syncedProgressRef.current = posMs
+    syncedAtRef.current = Date.now()
+    setDisplayProgress(fraction)
+    try { await apiService.seekTo(posMs) } catch (e) { console.error(e) }
+  }
+
+  const handlePlainBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    handleSeek((e.clientX - rect.left) / rect.width)
+  }
+
   const albumArt = track?.album?.images?.[0]?.url
   const trackName = track?.name
   const artistNames = track?.artists?.map((a: any) => a.name).join(', ')
   const progressMs = durationMs > 0 ? displayProgress * durationMs : 0
+  const remainMs = Math.max(0, durationMs - progressMs)
 
   return (
     <div className="now-playing-bar">
@@ -195,13 +218,15 @@ function NowPlayingBar({ trackUri }: NowPlayingBarProps) {
       {/* Row 2: progress */}
       {track && durationMs > 0 && (
         <div className="now-playing-progress-row">
-          <span className="progress-time-left">{formatTimeLeft(progressMs, durationMs)}</span>
+          <span className="progress-time-left">
+            {formatMs(remainMs)}<span className="progress-time-sep">/</span>{formatMs(durationMs)}
+          </span>
           <span className="progress-pct">{Math.round(displayProgress * 100)}%</span>
           <div className="progress-bar-wrap">
             {waveform.length > 0 ? (
-              <WaveformBar bars={waveform} progress={displayProgress} />
+              <WaveformBar bars={waveform} progress={displayProgress} onSeek={handleSeek} />
             ) : (
-              <div className="progress-plain-track">
+              <div className="progress-plain-track" onClick={handlePlainBarClick} style={{ cursor: 'pointer' }}>
                 <div className="progress-plain-fill" style={{ width: `${displayProgress * 100}%` }} />
               </div>
             )}

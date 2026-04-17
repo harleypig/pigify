@@ -81,6 +81,17 @@ async def previous_track(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/seek")
+async def seek(request: Request, position_ms: int = Query(..., ge=0)):
+    """Seek to a position in the current track."""
+    spotify = SpotifyService(_get_token(request))
+    try:
+        await spotify._put("/me/player/seek", params={"position_ms": position_ms})
+        return {"status": "ok", "position_ms": position_ms}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/analysis/{track_id}")
 async def get_audio_analysis(
     request: Request,

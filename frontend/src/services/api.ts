@@ -95,6 +95,10 @@ export const apiService = {
     await apiClient.post('/api/player/previous')
   },
 
+  async seekTo(positionMs: number): Promise<void> {
+    await apiClient.put(`/api/player/seek?position_ms=${Math.round(positionMs)}`)
+  },
+
   async getAudioAnalysis(trackId: string, bars = 80): Promise<{ bars: number[]; duration: number }> {
     const response = await apiClient.get(`/api/player/analysis/${trackId}`, { params: { bars } })
     return response.data

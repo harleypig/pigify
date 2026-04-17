@@ -136,6 +136,11 @@
   flex-shrink: 0;
 }
 
+.progress-time-sep {
+  color: #555;
+  margin: 0 0.1rem;
+}
+
 .progress-pct {
   font-size: 0.7rem;
   color: #777;
