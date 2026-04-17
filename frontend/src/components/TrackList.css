@@ -28,13 +28,18 @@
 
 .track-item {
   display: grid;
-  grid-template-columns: 40px 60px 1fr 200px 60px;
+  grid-template-columns: 40px 60px 1fr 200px 36px 60px;
   gap: 1rem;
   align-items: center;
   padding: 0.75rem;
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s;
+}
+
+.track-heart {
+  display: flex;
+  justify-content: center;
 }
 
 .track-item:hover {

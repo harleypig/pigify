@@ -5,7 +5,8 @@ Last.fm has two relevant tiers:
 - Public methods (require only an API key tied to the application): track.getInfo,
   track.getSimilar, artist.getTopTags, etc.
 - Authenticated methods (require a per-user session key obtained via web auth):
-  track.scrobble, track.updateNowPlaying, track.love.
+  track.scrobble, track.updateNowPlaying, track.love, track.unlove,
+  user.getLovedTracks (when used with a session-scoped username).
 
 Web auth flow used here:
   1. Redirect the user to https://www.last.fm/api/auth/?api_key=...&cb=<callback>
@@ -107,7 +108,7 @@ async def _request(
 
     if resp.status_code >= 500:
         raise LastFMError(f"Last.fm server error {resp.status_code}")
-    data = resp.json()
+    data = resp.json() if resp.text else {}
     if isinstance(data, dict) and "error" in data:
         raise LastFMError(f"Last.fm error {data['error']}: {data.get('message')}")
     return data
@@ -224,6 +225,85 @@ async def scrobble(
         signed=True,
         http_method="POST",
     )
+
+
+async def love_track(session_key: str, artist: str, track: str) -> None:
+    """track.love (authenticated write)."""
+    await _request(
+        "track.love",
+        {"artist": artist, "track": track, "sk": session_key},
+        signed=True,
+        http_method="POST",
+    )
+
+
+async def unlove_track(session_key: str, artist: str, track: str) -> None:
+    """track.unlove (authenticated write)."""
+    await _request(
+        "track.unlove",
+        {"artist": artist, "track": track, "sk": session_key},
+        signed=True,
+        http_method="POST",
+    )
+
+
+async def is_loved(
+    artist: str, track: str, *, username: Optional[str]
+) -> Optional[bool]:
+    """
+    Return True/False/None for the user's love state on a track.
+    None means undeterminable (no API key, no username, or call failed).
+    """
+    if not settings.LASTFM_API_KEY or not username:
+        return None
+    try:
+        data = await get_track_info(artist, track, username=username)
+    except (LastFMError, httpx.HTTPError, asyncio.TimeoutError):
+        return None
+    t = (data or {}).get("track") or {}
+    v = t.get("userloved")
+    if v is None:
+        return None
+    return str(v) == "1"
+
+
+async def get_loved_tracks(
+    username: str, *, limit: int = 200, max_pages: int = 4
+) -> List[Tuple[str, str]]:
+    """Return (artist, name) pairs for the given user's loved tracks (best-effort)."""
+    if not settings.LASTFM_API_KEY or not username:
+        return []
+    out: List[Tuple[str, str]] = []
+    page = 1
+    page_size = min(200, max(1, limit))
+    while page <= max_pages and len(out) < limit:
+        try:
+            data = await _request(
+                "user.getLovedTracks",
+                {"user": username, "limit": page_size, "page": page},
+            )
+        except (LastFMError, httpx.HTTPError, asyncio.TimeoutError):
+            break
+        section = (data or {}).get("lovedtracks") or {}
+        tracks = section.get("track") or []
+        if isinstance(tracks, dict):
+            tracks = [tracks]
+        if not tracks:
+            break
+        for t in tracks:
+            name = t.get("name", "")
+            artist = (t.get("artist") or {}).get("name", "")
+            if name and artist:
+                out.append((artist, name))
+        attr = section.get("@attr") or {}
+        try:
+            total_pages = int(attr.get("totalPages", "1"))
+        except (TypeError, ValueError):
+            total_pages = 1
+        if page >= total_pages:
+            break
+        page += 1
+    return out[:limit]
 
 
 # ---------- Helpers ----------

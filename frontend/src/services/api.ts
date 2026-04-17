@@ -122,6 +122,56 @@ export const apiService = {
     const response = await apiClient.get(`/api/integrations/track-detail/${spotifyTrackId}`)
     return response.data
   },
+
+  // -------- Favorites / likes sync --------
+  async getFavoritesStatus(): Promise<FavoritesStatus> {
+    const r = await apiClient.get('/api/favorites/status')
+    return r.data
+  },
+
+  async checkFavorites(
+    items: Array<{ track_id?: string; name: string; artist: string }>
+  ): Promise<Favorite[]> {
+    if (items.length === 0) return []
+    const params = new URLSearchParams()
+    for (const it of items) {
+      params.append('track_id', it.track_id ?? '')
+      params.append('name', it.name)
+      params.append('artist', it.artist)
+    }
+    const r = await apiClient.get(`/api/favorites/check?${params.toString()}`)
+    return r.data
+  },
+
+  async loveTrack(track: FavoriteWriteBody): Promise<WriteThroughResult> {
+    const r = await apiClient.post('/api/favorites/love', track)
+    return r.data
+  },
+
+  async unloveTrack(track: FavoriteWriteBody): Promise<WriteThroughResult> {
+    const r = await apiClient.post('/api/favorites/unlove', track)
+    return r.data
+  },
+
+  async syncFavorites(maxTracks = 500): Promise<SyncSummary> {
+    const r = await apiClient.post('/api/favorites/sync', { max_tracks: maxTracks })
+    return r.data
+  },
+
+  async resolveFavoriteConflict(
+    index: number,
+    choice: 'love_both' | 'unlove_both' | 'keep'
+  ): Promise<WriteThroughResult> {
+    const r = await apiClient.post('/api/favorites/resolve-conflict', { index, choice })
+    return r.data
+  },
+
+  async updateFavoritesSettings(intervalMinutes: number): Promise<FavoritesStatus> {
+    const r = await apiClient.put('/api/favorites/settings', {
+      background_interval_minutes: intervalMinutes,
+    })
+    return r.data
+  },
 }
 
 export type Tier = 'none' | 'public' | 'authenticated'
@@ -181,5 +231,65 @@ export interface TrackDetail {
     isrcs: string[]
     tags: string[]
   }
+}
+
+export interface TrackIdentity {
+  spotify_id?: string | null
+  spotify_uri?: string | null
+  name: string
+  artist: string
+  album?: string | null
+  image_url?: string | null
+}
+
+export interface FavoriteWriteBody extends TrackIdentity {}
+
+export interface Favorite {
+  track: TrackIdentity
+  sources: Record<string, boolean | null>
+  loved_at: Record<string, string | null>
+}
+
+export interface ServiceResult {
+  service: string
+  ok: boolean
+  skipped: boolean
+  error?: string | null
+}
+
+export interface WriteThroughResult {
+  track_id?: string | null
+  action: 'love' | 'unlove'
+  results: ServiceResult[]
+}
+
+export interface Conflict {
+  track: TrackIdentity
+  loved_on: string[]
+  not_loved_on: string[]
+}
+
+export interface SyncSummary {
+  ran_at: string
+  services_checked: string[]
+  spotify_count: number
+  lastfm_count: number
+  matched: number
+  conflicts: Conflict[]
+  error?: string | null
+}
+
+export interface FavoritesConnectionStatus {
+  service: string
+  connected: boolean
+  username?: string | null
+  detail?: string | null
+}
+
+export interface FavoritesStatus {
+  connections: FavoritesConnectionStatus[]
+  last_sync: SyncSummary | null
+  background_interval_minutes: number
+  pending_conflicts: Conflict[]
 }
 

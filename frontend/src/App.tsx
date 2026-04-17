@@ -5,6 +5,7 @@ import TrackList from './components/TrackList'
 import NowPlayingBar from './components/NowPlayingBar'
 import SettingsModal from './components/SettingsModal'
 import TrackDetailModal from './components/TrackDetailModal'
+import Settings from './components/Settings'
 import { apiService } from './services/api'
 import './App.css'
 
@@ -15,6 +16,7 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [detailTrackId, setDetailTrackId] = useState<string | null>(null)
+  const [showFavoritesSettings, setShowFavoritesSettings] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -66,6 +68,7 @@ function App() {
             >
               {user.display_name}
             </button>
+            <button onClick={() => setShowFavoritesSettings(true)}>Favorites</button>
             <button onClick={handleLogout}>Logout</button>
           </div>
         )}
@@ -88,6 +91,7 @@ function App() {
           )}
         </div>
       </main>
+      {showFavoritesSettings && <Settings onClose={() => setShowFavoritesSettings(false)} />}
     </div>
   )
 }

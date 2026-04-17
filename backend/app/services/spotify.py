@@ -87,6 +87,83 @@ class SpotifyService:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, headers=self.headers, json=body, params=params)
             response.raise_for_status()
+
+    async def _delete(self, endpoint: str, params: Optional[Dict] = None) -> None:
+        """Make DELETE request to Spotify API."""
+        url = f"{self.BASE_URL}{endpoint}"
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(url, headers=self.headers, params=params)
+            response.raise_for_status()
+
+    # --- Saved tracks (favorites) ---
+
+    async def check_saved_tracks(self, track_ids: List[str]) -> List[bool]:
+        """Return whether each given track id is in the user's Saved Tracks."""
+        if not track_ids:
+            return []
+        results: List[bool] = []
+        for i in range(0, len(track_ids), 50):
+            chunk = track_ids[i:i + 50]
+            data = await self._get("/me/tracks/contains", params={"ids": ",".join(chunk)})
+            if isinstance(data, list):
+                results.extend(bool(x) for x in data)
+            else:
+                results.extend([False] * len(chunk))
+        return results
+
+    async def save_tracks(self, track_ids: List[str]) -> None:
+        """Add tracks to the user's Saved Tracks."""
+        if not track_ids:
+            return
+        for i in range(0, len(track_ids), 50):
+            chunk = track_ids[i:i + 50]
+            await self._put("/me/tracks", body={"ids": chunk})
+
+    async def remove_saved_tracks(self, track_ids: List[str]) -> None:
+        """Remove tracks from the user's Saved Tracks."""
+        if not track_ids:
+            return
+        for i in range(0, len(track_ids), 50):
+            chunk = track_ids[i:i + 50]
+            await self._delete("/me/tracks", params={"ids": ",".join(chunk)})
+
+    async def get_saved_tracks(self, max_tracks: int = 500) -> List[Dict]:
+        """
+        Fetch the user's Saved Tracks (most recent first).
+        Returns simplified dicts: {id, name, artist, artists, album, image_url, uri, added_at}.
+        Capped to ``max_tracks`` to keep reconciliation responsive.
+        """
+        out: List[Dict] = []
+        offset = 0
+        page_size = 50
+        while len(out) < max_tracks:
+            limit = min(page_size, max_tracks - len(out))
+            data = await self._get(
+                "/me/tracks", params={"limit": limit, "offset": offset}
+            )
+            items = (data or {}).get("items", [])
+            if not items:
+                break
+            for item in items:
+                t = item.get("track") or {}
+                if not t.get("id"):
+                    continue
+                artists = [a.get("name", "") for a in t.get("artists", [])]
+                imgs = (t.get("album") or {}).get("images") or []
+                out.append({
+                    "id": t["id"],
+                    "uri": t.get("uri", ""),
+                    "name": t.get("name", ""),
+                    "artist": artists[0] if artists else "",
+                    "artists": artists,
+                    "album": (t.get("album") or {}).get("name", ""),
+                    "image_url": imgs[0]["url"] if imgs else "",
+                    "added_at": item.get("added_at"),
+                })
+            if len(items) < limit:
+                break
+            offset += limit
+        return out
     
     async def get_track(self, track_id: str) -> Optional[Dict]:
         """Get full track object (includes external_ids.isrc)."""

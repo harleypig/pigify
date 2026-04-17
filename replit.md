@@ -13,16 +13,17 @@ A custom Spotify web application for enhanced playlist management and music play
 ```
 backend/
   app/
-    api/          # auth, playlists, player, integrations
-    models/       # Pydantic schemas
-    services/     # spotify, lastfm, musicbrainz, scrobbler, connections
+    api/          # auth, playlists, player, integrations, favorites
+    models/       # Pydantic schemas (playlist, favorites)
+    services/     # spotify, lastfm, musicbrainz, scrobbler, connections, favorites orchestration
     config.py     # Settings via pydantic-settings
     main.py       # App entry point
   requirements.txt
 frontend/
   src/
     components/   # Login, Player, PlaylistSelector, TrackList,
-                  # NowPlayingBar, SettingsModal, TrackDetailModal
+                  # NowPlayingBar, SettingsModal, TrackDetailModal,
+                  # HeartButton, Settings
     services/     # API client, Spotify SDK wrapper
   vite.config.ts  # Port 5000, proxy /api to backend
 ```
@@ -36,6 +37,12 @@ frontend/
 
 - `SPOTIFY_CLIENT_ID` — From Spotify Developer Dashboard
 - `SPOTIFY_CLIENT_SECRET` — From Spotify Developer Dashboard
+- `LASTFM_API_KEY` (optional) — App-level key for Last.fm; favorites sync degrades gracefully without it
+- `LASTFM_API_SECRET` (optional) — Required to write loves to Last.fm
+
+## Favorites Sync
+
+`/api/favorites/*` provides write-through love/unlove across Spotify Saved Tracks and Last.fm, manual reconciliation with conflict surfacing, and a Settings panel for connection status, manual "sync now", interval-based background sync (frontend-driven), and conflict resolution. Last.fm operations are skipped cleanly when unconfigured/unconnected.
 
 ### Optional (for Last.fm features)
 - `LASTFM_API_KEY` — From https://www.last.fm/api/account/create

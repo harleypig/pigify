@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { apiService } from '../services/api'
+import HeartButton from './HeartButton'
 import './NowPlayingBar.css'
 
 interface NowPlayingBarProps {
@@ -208,6 +209,19 @@ function NowPlayingBar({ trackUri, onShowDetails }: NowPlayingBarProps) {
         </div>
 
         <div className="now-playing-controls">
+          {track && (
+            <HeartButton
+              track={{
+                spotify_id: track.id,
+                spotify_uri: track.uri,
+                name: track.name,
+                artist: track.artists?.[0]?.name ?? '',
+                album: track.album?.name,
+                image_url: track.album?.images?.[0]?.url,
+              }}
+              size="md"
+            />
+          )}
           <button className="now-playing-ctrl-btn" onClick={handlePrevious} aria-label="Previous" disabled={!track}>⏮</button>
           <button className="now-playing-btn" onClick={handlePlayPause} aria-label={isPlaying ? 'Pause' : 'Play'} disabled={!track}>
             {isPlaying ? '⏸' : '▶'}

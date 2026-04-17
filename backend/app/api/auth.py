@@ -34,6 +34,8 @@ async def spotify_login(request: Request):
         "user-modify-playback-state",
         "playlist-read-private",
         "user-read-private",
+        "user-library-read",
+        "user-library-modify",
     ]
     
     # Build authorization URL
