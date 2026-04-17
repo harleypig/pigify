@@ -102,12 +102,14 @@ def _musicbrainz_status() -> ConnectionStatus:
     )
 
 
-def _songfacts_status() -> ConnectionStatus:
-    # No public Songfacts API available at the time of writing. Hidden.
+def _wikipedia_status() -> ConnectionStatus:
+    # Wikipedia's REST + action APIs are fully public — always available.
+    # Used as the trivia/context provider in place of the deferred Songfacts
+    # integration (Songfacts has no public API).
     return ConnectionStatus(
-        service="songfacts",
-        tier="none",
-        display_name="Songfacts",
+        service="wikipedia",
+        tier="public",
+        display_name="Wikipedia",
     )
 
 
@@ -115,7 +117,7 @@ async def get_all_connections(request: Request) -> Dict[str, ConnectionStatus]:
     return {
         "lastfm": await _lastfm_status(request),
         "musicbrainz": _musicbrainz_status(),
-        "songfacts": _songfacts_status(),
+        "wikipedia": _wikipedia_status(),
     }
 
 

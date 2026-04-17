@@ -184,8 +184,29 @@ function TrackDetailModal({ trackId, onClose }: Props) {
               </section>
             )}
 
-            {/* If neither lastfm nor musicbrainz are available, show a quiet note. */}
-            {!data.lastfm && !data.musicbrainz && (
+            {data.wikipedia && (
+              <section className="td-section">
+                <h3>
+                  Wikipedia
+                  <span className="td-tier td-tier-public">public</span>
+                </h3>
+                {data.wikipedia.description && (
+                  <p className="td-meta">{data.wikipedia.description}</p>
+                )}
+                <p className="td-summary">{data.wikipedia.extract}</p>
+                <a
+                  className="td-extlink"
+                  href={data.wikipedia.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Read on Wikipedia
+                </a>
+              </section>
+            )}
+
+            {/* If no providers returned anything, show a quiet note. */}
+            {!data.lastfm && !data.musicbrainz && !data.wikipedia && (
               <p className="td-meta">
                 No external metadata providers available for this track.
               </p>

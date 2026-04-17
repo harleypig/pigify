@@ -46,18 +46,35 @@ The tier per service is exposed at `GET /api/integrations/connections`.
 - **Out of scope**: writing back to MusicBrainz; AcoustID acoustic
   fingerprinting (would require uploading audio).
 
-## Songfacts (deferred)
+## Wikipedia (trivia / context)
 
-Songfacts does **not** publish a public API. We considered scraping but the
-task scope explicitly excludes building a custom scraper. The endpoint
-`/api/integrations/songfacts/track/{id}` exists as a documented extension
-point and currently returns HTTP 503 with `{ "service": "songfacts", "tier":
-"none" }`. The frontend respects the connection registry and hides any
-Songfacts UI when the tier is `none`, so no empty section is rendered today.
+Songfacts has no public API, so the originally-planned Songfacts integration
+was replaced with **Wikipedia**, which is fully public and key-free.
 
-If/when an alternative provider (e.g. Genius song-facts, Wikipedia
-references) is chosen, slot the call into that endpoint and flip the tier in
-`backend/app/services/connections.py`.
+- **Tier**: always `public`. No API key, no auth, no per-user quotas.
+- **APIs used**:
+  - MediaWiki action API
+    (`https://en.wikipedia.org/w/api.php?action=query&list=search`) for
+    full-text search, queried with `"<title>" "<artist>" song`.
+  - REST v1 page summary
+    (`https://en.wikipedia.org/api/rest_v1/page/summary/{title}`) for the
+    short extract, page description, canonical URL, and thumbnail.
+- **Resolution strategy**: search by `"title" "artist" song`, walk the top
+  hits, fetch the REST summary for each, skip disambiguation pages and
+  pages without an extract, and return the first useful summary.
+- **Endpoint**: `GET /api/integrations/wikipedia/track/{spotify_track_id}`
+  (404 when no article is found). Also folded into the combined
+  `/api/integrations/track-detail/{id}` aggregator under a `wikipedia` key.
+- **User-Agent**: `Pigify/0.1 (https://github.com/pigify; contact:
+  dev@pigify.local) python-httpx` per Wikimedia's User-Agent policy
+  (<https://meta.wikimedia.org/wiki/User-Agent_policy>) — please replace
+  with a real contact before going to production.
+- **Out of scope**: anonymous edits, talk pages, full article HTML, and
+  Wikidata claims (the REST summary is sufficient for a trivia panel).
+
+If a richer per-song trivia source ever becomes available (e.g. a future
+Songfacts API or Genius song-facts), add it as a separate provider rather
+than replacing Wikipedia — the two are complementary.
 
 ## Adding a new provider
 
