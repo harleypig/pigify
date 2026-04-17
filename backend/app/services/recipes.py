@@ -59,7 +59,11 @@ class SortClause(BaseModel):
 
 class Bucket(BaseModel):
     name: Optional[str] = None
-    # Source spec strings: "liked" or "playlist:{spotify_playlist_id}"
+    # Source spec strings:
+    #   "liked"
+    #   "playlist:{spotify_playlist_id}"
+    #   "playlists:{id1},{id2},..."  (multiple playlists, de-duped)
+    #   "all_playlists"              (every playlist owned/followed by the user)
     source: str = Field(..., min_length=1)
     filters: List[FilterClause] = Field(default_factory=list)
     sort: Optional[SortClause] = None
@@ -81,34 +85,96 @@ class StoredRecipe(Recipe):
 # ============================ Source loading ================================
 
 
+async def _load_liked_tracks(spotify: SpotifyService, max_tracks: int) -> List[Track]:
+    raw = await spotify.get_saved_tracks(max_tracks=max_tracks)
+    out: List[Track] = []
+    for t in raw:
+        if not t.get("id"):
+            continue
+        out.append(
+            Track(
+                id=t["id"],
+                name=t.get("name", ""),
+                artists=t.get("artists") or ([t["artist"]] if t.get("artist") else []),
+                album=t.get("album", ""),
+                duration_ms=int(t.get("duration_ms") or 0),
+                uri=t.get("uri", ""),
+                image_url=t.get("image_url", ""),
+                added_at=t.get("added_at"),
+            )
+        )
+    return out
+
+
+async def _list_all_user_playlist_ids(spotify: SpotifyService) -> List[str]:
+    """Page through every playlist the user owns or follows, returning IDs."""
+    ids: List[str] = []
+    offset = 0
+    page_size = 50
+    while True:
+        page = await spotify.get_user_playlists(limit=page_size, offset=offset)
+        if not page:
+            break
+        for p in page:
+            pid = getattr(p, "id", None)
+            if pid:
+                ids.append(pid)
+        if len(page) < page_size:
+            break
+        offset += page_size
+    return ids
+
+
 async def _load_source_tracks(
     spotify: SpotifyService, source: str, max_tracks: int = 1000
 ) -> List[Track]:
-    """Resolve a source spec into a flat list of Track objects."""
+    """Resolve a source spec into a flat list of Track objects.
+
+    Multi-playlist specs (`playlists:a,b,c` and `all_playlists`) load each
+    playlist concurrently and de-duplicate by track id, preserving the
+    first-seen order so combine/sort behaviour stays deterministic.
+    """
     if source == "liked":
-        raw = await spotify.get_saved_tracks(max_tracks=max_tracks)
-        out: List[Track] = []
-        for t in raw:
-            if not t.get("id"):
-                continue
-            out.append(
-                Track(
-                    id=t["id"],
-                    name=t.get("name", ""),
-                    artists=t.get("artists") or ([t["artist"]] if t.get("artist") else []),
-                    album=t.get("album", ""),
-                    duration_ms=int(t.get("duration_ms") or 0),
-                    uri=t.get("uri", ""),
-                    image_url=t.get("image_url", ""),
-                    added_at=t.get("added_at"),
-                )
-            )
-        return out
+        return await _load_liked_tracks(spotify, max_tracks)
+
     if source.startswith("playlist:"):
-        pid = source.split(":", 1)[1]
+        pid = source.split(":", 1)[1].strip()
         if not pid:
             return []
         return await spotify.get_all_playlist_tracks(pid)
+
+    if source.startswith("playlists:") or source == "all_playlists":
+        if source == "all_playlists":
+            pids = await _list_all_user_playlist_ids(spotify)
+        else:
+            pids = [
+                p.strip()
+                for p in source.split(":", 1)[1].split(",")
+                if p.strip()
+            ]
+        if not pids:
+            return []
+        # Fetch concurrently, but cap parallelism to avoid hammering Spotify.
+        sem = asyncio.Semaphore(5)
+
+        async def fetch(pid: str) -> List[Track]:
+            async with sem:
+                try:
+                    return await spotify.get_all_playlist_tracks(pid)
+                except Exception:
+                    return []
+
+        results = await asyncio.gather(*(fetch(p) for p in pids))
+        seen: set[str] = set()
+        merged: List[Track] = []
+        for tracks in results:
+            for t in tracks:
+                if not t.id or t.id in seen:
+                    continue
+                seen.add(t.id)
+                merged.append(t)
+        return merged
+
     raise ValueError(f"Unknown source: {source}")
 
 
