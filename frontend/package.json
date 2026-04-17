@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "generate:changelog": "node scripts/generate-changelog.mjs",
+    "predev": "node scripts/generate-changelog.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/generate-changelog.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
