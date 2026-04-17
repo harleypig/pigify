@@ -10,12 +10,13 @@ import {
 } from '../services/api'
 import './SettingsPanel.css'
 
+type TabId = 'favorites' | 'connections'
+
 interface Props {
   onClose: () => void
   onProfileChange?: (profile: Profile) => void
+  initialTab?: TabId
 }
-
-type TabId = 'favorites' | 'connections'
 
 interface TabDef {
   id: TabId
@@ -39,8 +40,12 @@ function tierClass(tier: string): string {
   return 'tier-none'
 }
 
-function SettingsPanel({ onClose, onProfileChange }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>('favorites')
+function SettingsPanel({ onClose, onProfileChange, initialTab = 'favorites' }: Props) {
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab)
+
+  useEffect(() => {
+    setActiveTab(initialTab)
+  }, [initialTab])
 
   return (
     <aside className="settings-panel" aria-label="Settings">

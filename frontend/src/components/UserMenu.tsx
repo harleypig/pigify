@@ -6,6 +6,8 @@ interface Props {
   imageUrl?: string | null
   onOpenSettings: () => void
   onLogout: () => void
+  badgeCount?: number
+  badgeTitle?: string
 }
 
 function getInitials(label: string): string {
@@ -18,7 +20,14 @@ function getInitials(label: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-function UserMenu({ label, imageUrl, onOpenSettings, onLogout }: Props) {
+function UserMenu({
+  label,
+  imageUrl,
+  onOpenSettings,
+  onLogout,
+  badgeCount = 0,
+  badgeTitle,
+}: Props) {
   const [open, setOpen] = useState(false)
   const [imageFailed, setImageFailed] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -67,6 +76,15 @@ function UserMenu({ label, imageUrl, onOpenSettings, onLogout }: Props) {
           )}
         </span>
         <span className="user-menu-label">{label}</span>
+        {badgeCount > 0 && (
+          <span
+            className="user-menu-badge"
+            title={badgeTitle ?? `${badgeCount} pending`}
+            aria-label={badgeTitle ?? `${badgeCount} pending`}
+          >
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </span>
+        )}
         <span className="user-menu-caret" aria-hidden="true">▾</span>
       </button>
       {open && (
@@ -80,6 +98,14 @@ function UserMenu({ label, imageUrl, onOpenSettings, onLogout }: Props) {
             }}
           >
             Settings
+            {badgeCount > 0 && (
+              <span
+                className="user-menu-item-badge"
+                title={badgeTitle ?? `${badgeCount} pending`}
+              >
+                {badgeCount > 99 ? '99+' : badgeCount}
+              </span>
+            )}
           </button>
           <button
             role="menuitem"
