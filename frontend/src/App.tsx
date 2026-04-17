@@ -4,9 +4,9 @@ import PlaylistSelector from './components/PlaylistSelector'
 import RecipesSidebar from './components/RecipesSidebar'
 import TrackList from './components/TrackList'
 import NowPlayingBar from './components/NowPlayingBar'
-import SettingsModal from './components/SettingsModal'
+import SettingsPanel from './components/SettingsPanel'
 import TrackInfoPanel from './components/TrackInfoPanel'
-import Settings from './components/Settings'
+import UserMenu from './components/UserMenu'
 import { apiService, Profile } from './services/api'
 import './App.css'
 
@@ -18,8 +18,7 @@ function App() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [showFavoritesSettings, setShowFavoritesSettings] = useState(false)
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false)
 
   // Track Info Panel state
   const [nowPlayingTrackId, setNowPlayingTrackId] = useState<string | null>(null)
@@ -74,6 +73,7 @@ function App() {
       setCurrentTrack(null)
       setPanelOverrideTrackId(null)
       setNowPlayingTrackId(null)
+      setSettingsPanelOpen(false)
     } catch (error) {
       console.error('Logout error:', error)
     }
@@ -110,23 +110,14 @@ function App() {
         </div>
         {user && (
           <div className="user-info">
-            <button
-              className="user-name-btn"
-              onClick={() => setSettingsOpen(true)}
-              title="Open settings"
-            >
-              {profile?.display_name ?? user.display_name}
-            </button>
-            <button onClick={() => setShowFavoritesSettings(true)}>Favorites</button>
-            <button onClick={handleLogout}>Logout</button>
+            <UserMenu
+              label={profile?.display_name ?? user.display_name}
+              onOpenSettings={() => setSettingsPanelOpen(true)}
+              onLogout={handleLogout}
+            />
           </div>
         )}
       </header>
-      <SettingsModal
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onProfileChange={setProfile}
-      />
       <main className="app-main">
         <div className="sidebar">
           <PlaylistSelector
@@ -145,12 +136,19 @@ function App() {
           )}
         </div>
       </main>
-      <TrackInfoPanel
-        trackId={panelTrackId}
-        collapsed={panelCollapsed}
-        onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
-      />
-      {showFavoritesSettings && <Settings onClose={() => setShowFavoritesSettings(false)} />}
+      {!settingsPanelOpen && (
+        <TrackInfoPanel
+          trackId={panelTrackId}
+          collapsed={panelCollapsed}
+          onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
+        />
+      )}
+      {settingsPanelOpen && (
+        <SettingsPanel
+          onClose={() => setSettingsPanelOpen(false)}
+          onProfileChange={setProfile}
+        />
+      )}
     </div>
   )
 }
