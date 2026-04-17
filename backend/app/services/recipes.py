@@ -127,21 +127,28 @@ async def _list_all_user_playlist_ids(spotify: SpotifyService) -> List[str]:
 
 async def _load_source_tracks(
     spotify: SpotifyService, source: str, max_tracks: int = 1000
-) -> List[Track]:
-    """Resolve a source spec into a flat list of Track objects.
+) -> Tuple[List[Track], Dict[str, List[str]]]:
+    """Resolve a source spec into a flat list of Track objects plus an
+    origin map (track_id -> list of source identifiers, in first-seen order).
+
+    Origin identifiers are either a Spotify playlist id or the sentinel
+    string ``"liked"`` for the user's Liked Songs.
 
     Multi-playlist specs (`playlists:a,b,c` and `all_playlists`) load each
     playlist concurrently and de-duplicate by track id, preserving the
-    first-seen order so combine/sort behaviour stays deterministic.
+    first-seen order so combine/sort behaviour stays deterministic. Origin
+    lists collect every playlist a track appeared in, even after dedup.
     """
     if source == "liked":
-        return await _load_liked_tracks(spotify, max_tracks)
+        tracks = await _load_liked_tracks(spotify, max_tracks)
+        return tracks, {t.id: ["liked"] for t in tracks if t.id}
 
     if source.startswith("playlist:"):
         pid = source.split(":", 1)[1].strip()
         if not pid:
-            return []
-        return await spotify.get_all_playlist_tracks(pid)
+            return [], {}
+        tracks = await spotify.get_all_playlist_tracks(pid)
+        return tracks, {t.id: [pid] for t in tracks if t.id}
 
     if source.startswith("playlists:") or source == "all_playlists":
         if source == "all_playlists":
@@ -153,27 +160,32 @@ async def _load_source_tracks(
                 if p.strip()
             ]
         if not pids:
-            return []
+            return [], {}
         # Fetch concurrently, but cap parallelism to avoid hammering Spotify.
         sem = asyncio.Semaphore(5)
 
-        async def fetch(pid: str) -> List[Track]:
+        async def fetch(pid: str) -> Tuple[str, List[Track]]:
             async with sem:
                 try:
-                    return await spotify.get_all_playlist_tracks(pid)
+                    return pid, await spotify.get_all_playlist_tracks(pid)
                 except Exception:
-                    return []
+                    return pid, []
 
         results = await asyncio.gather(*(fetch(p) for p in pids))
         seen: set[str] = set()
         merged: List[Track] = []
-        for tracks in results:
+        origins: Dict[str, List[str]] = {}
+        for pid, tracks in results:
             for t in tracks:
-                if not t.id or t.id in seen:
+                if not t.id:
                     continue
-                seen.add(t.id)
-                merged.append(t)
-        return merged
+                if t.id not in seen:
+                    seen.add(t.id)
+                    merged.append(t)
+                lst = origins.setdefault(t.id, [])
+                if pid not in lst:
+                    lst.append(pid)
+        return merged, origins
 
     raise ValueError(f"Unknown source: {source}")
 
@@ -458,6 +470,28 @@ class ResolveResult:
     tracks: List[Track]
     warnings: List[str] = field(default_factory=list)
     bucket_counts: List[int] = field(default_factory=list)
+    # track_id -> list of {"id": <playlist id or "liked">, "name": <display name>}
+    track_sources: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
+
+
+async def _resolve_playlist_names(
+    spotify: SpotifyService, playlist_ids: Iterable[str]
+) -> Dict[str, str]:
+    pids = [p for p in playlist_ids if p and p != "liked"]
+    if not pids:
+        return {}
+    sem = asyncio.Semaphore(5)
+
+    async def fetch(pid: str) -> Tuple[str, str]:
+        async with sem:
+            try:
+                pl = await spotify.get_playlist(pid)
+                return pid, pl.name or pid
+            except Exception:
+                return pid, pid
+
+    results = await asyncio.gather(*(fetch(p) for p in pids))
+    return dict(results)
 
 
 async def resolve_recipe(
@@ -468,6 +502,9 @@ async def resolve_recipe(
     warnings: List[str] = []
     bucket_results: List[List[Track]] = []
     bucket_counts: List[int] = []
+    # Aggregated origin map across all buckets, restricted to tracks that
+    # survived filtering/limits in at least one bucket.
+    aggregated_origins: Dict[str, List[str]] = {}
 
     for idx, bucket in enumerate(recipe.buckets):
         # Validate field references early.
@@ -478,7 +515,7 @@ async def resolve_recipe(
             warnings.append(f"Bucket {idx + 1}: unknown sort field '{bucket.sort.field}'")
 
         try:
-            tracks = await _load_source_tracks(spotify, bucket.source)
+            tracks, bucket_origins = await _load_source_tracks(spotify, bucket.source)
         except Exception as e:
             warnings.append(f"Bucket {idx + 1}: failed to load source ({e})")
             bucket_results.append([])
@@ -504,5 +541,32 @@ async def resolve_recipe(
         bucket_results.append(taken)
         bucket_counts.append(len(taken))
 
+        for t in taken:
+            srcs = bucket_origins.get(t.id) or []
+            existing = aggregated_origins.setdefault(t.id, [])
+            for s in srcs:
+                if s not in existing:
+                    existing.append(s)
+
     combined = _combine(bucket_results, recipe.combine)
-    return ResolveResult(tracks=combined, warnings=warnings, bucket_counts=bucket_counts)
+
+    # Look up display names for every referenced playlist (in parallel).
+    referenced = {pid for srcs in aggregated_origins.values() for pid in srcs}
+    names = await _resolve_playlist_names(spotify, referenced)
+
+    track_sources: Dict[str, List[Dict[str, str]]] = {}
+    for tid, srcs in aggregated_origins.items():
+        entries: List[Dict[str, str]] = []
+        for s in srcs:
+            if s == "liked":
+                entries.append({"id": "liked", "name": "Liked Songs"})
+            else:
+                entries.append({"id": s, "name": names.get(s, s)})
+        track_sources[tid] = entries
+
+    return ResolveResult(
+        tracks=combined,
+        warnings=warnings,
+        bucket_counts=bucket_counts,
+        track_sources=track_sources,
+    )

@@ -369,10 +369,16 @@ export interface StoredRecipe extends Recipe {
   updated_at: string
 }
 
+export interface RecipeTrackSource {
+  id: string
+  name: string
+}
+
 export interface RecipeResolveResponse {
   tracks: Track[]
   warnings: string[]
   bucket_counts: number[]
+  track_sources: Record<string, RecipeTrackSource[]>
   resolved_at: string
 }
 
