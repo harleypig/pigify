@@ -112,3 +112,30 @@
 }
 
 .settings-btn-danger:hover { background: #4a2828; }
+
+.settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.settings-input {
+  flex: 1;
+  min-width: 0;
+  background: #111;
+  color: #eee;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: #1db954;
+}
+
+.settings-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

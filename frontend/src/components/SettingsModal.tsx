@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { apiService, ConnectionStatus, LastfmStatus } from '../services/api'
+import { apiService, ConnectionStatus, LastfmStatus, Profile } from '../services/api'
 import './SettingsModal.css'
 
 interface Props {
   open: boolean
   onClose: () => void
+  onProfileChange?: (profile: Profile) => void
 }
 
 function tierLabel(tier: string): string {
@@ -19,16 +20,25 @@ function tierClass(tier: string): string {
   return 'tier-none'
 }
 
-function SettingsModal({ open, onClose }: Props) {
+function SettingsModal({ open, onClose, onProfileChange }: Props) {
   const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({})
   const [lastfmStatus, setLastfmStatus] = useState<LastfmStatus>({})
   const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [nameInput, setNameInput] = useState('')
+  const [savingName, setSavingName] = useState(false)
+  const [nameStatus, setNameStatus] = useState<string | null>(null)
 
   const refresh = async () => {
     setLoading(true)
     try {
-      const conns = await apiService.getConnections()
+      const [conns, prof] = await Promise.all([
+        apiService.getConnections(),
+        apiService.getProfile(),
+      ])
       setConnections(conns)
+      setProfile(prof)
+      setNameInput(prof.custom_display_name ?? '')
       if (conns.lastfm && conns.lastfm.tier !== 'none') {
         try {
           const s = await apiService.getLastfmStatus()
@@ -39,6 +49,23 @@ function SettingsModal({ open, onClose }: Props) {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const saveName = async () => {
+    setSavingName(true)
+    setNameStatus(null)
+    try {
+      const trimmed = nameInput.trim()
+      const updated = await apiService.updateProfile(trimmed === '' ? null : trimmed)
+      setProfile(updated)
+      setNameInput(updated.custom_display_name ?? '')
+      setNameStatus('Saved')
+      onProfileChange?.(updated)
+    } catch (e: any) {
+      setNameStatus('Failed to save')
+    } finally {
+      setSavingName(false)
     }
   }
 
@@ -62,6 +89,44 @@ function SettingsModal({ open, onClose }: Props) {
         </div>
 
         {loading && <p className="settings-loading">Loading…</p>}
+
+        {/* Profile */}
+        {profile && (
+          <section className="settings-card">
+            <header>
+              <h3>Profile</h3>
+            </header>
+            <p className="settings-meta">
+              Pick how Pigify labels you in the header. Leave empty to use your
+              Spotify user id.
+            </p>
+            <div className="settings-row">
+              <input
+                type="text"
+                className="settings-input"
+                value={nameInput}
+                onChange={(e) => {
+                  setNameInput(e.target.value)
+                  setNameStatus(null)
+                }}
+                placeholder={profile.spotify_id}
+                maxLength={255}
+                aria-label="Display name"
+              />
+              <button
+                className="settings-btn-primary"
+                onClick={saveName}
+                disabled={
+                  savingName ||
+                  nameInput.trim() === (profile.custom_display_name ?? '')
+                }
+              >
+                {savingName ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {nameStatus && <p className="settings-meta">{nameStatus}</p>}
+          </section>
+        )}
 
         {/* Last.fm */}
         {lastfm && lastfm.tier !== 'none' && (

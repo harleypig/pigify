@@ -52,6 +52,35 @@ async def count(session: AsyncSession) -> int:
     )
 
 
+async def get_custom_display_name(
+    session: AsyncSession, spotify_id: str
+) -> Optional[str]:
+    user = await get_by_spotify_id(session, spotify_id)
+    return user.custom_display_name if user else None
+
+
+async def set_custom_display_name(
+    session: AsyncSession, spotify_id: str, value: Optional[str]
+) -> Optional[str]:
+    """Persist a custom display name. Empty/whitespace clears it."""
+    user = await get_by_spotify_id(session, spotify_id)
+    if user is None:
+        raise LookupError(f"unknown spotify_id: {spotify_id}")
+    normalised: Optional[str] = None
+    if value is not None:
+        trimmed = value.strip()
+        normalised = trimmed if trimmed else None
+    user.custom_display_name = normalised
+    await session.flush()
+    return normalised
+
+
+def effective_display_name(user: User) -> str:
+    """Custom name when set, otherwise the stable Spotify user id."""
+    custom = (user.custom_display_name or "").strip()
+    return custom if custom else user.spotify_id
+
+
 async def all_spotify_ids(session: AsyncSession) -> list[str]:
     return list(
         (await session.execute(select(User.spotify_id))).scalars().all()

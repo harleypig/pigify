@@ -3,10 +3,12 @@ Spotify OAuth authentication endpoints.
 """
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from urllib.parse import urlencode
 import logging
 import secrets
 import httpx
+from typing import Optional
 
 from backend.app.config import settings
 from backend.app.db.bootstrap import apply_user_migrations
@@ -16,7 +18,57 @@ from backend.app.db.session import system_session_scope
 from backend.app.services.spotify import SpotifyService
 
 router = APIRouter()
+me_router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+class ProfileResponse(BaseModel):
+    spotify_id: str
+    spotify_display_name: Optional[str] = None
+    custom_display_name: Optional[str] = None
+    display_name: str  # effective: custom if set, otherwise spotify_id
+
+
+class ProfileUpdate(BaseModel):
+    custom_display_name: Optional[str] = None
+
+
+async def _load_profile(spotify_id: str) -> ProfileResponse:
+    from backend.app.db.repositories import users as users_repo
+
+    async with system_session_scope() as session:
+        user = await users_repo.get_by_spotify_id(session, spotify_id)
+        if user is None:
+            raise HTTPException(404, "User not found")
+        return ProfileResponse(
+            spotify_id=user.spotify_id,
+            spotify_display_name=user.display_name,
+            custom_display_name=user.custom_display_name,
+            display_name=users_repo.effective_display_name(user),
+        )
+
+
+@me_router.get("/profile", response_model=ProfileResponse)
+async def get_profile(request: Request) -> ProfileResponse:
+    spotify_id = request.session.get("spotify_user_id")
+    if not spotify_id:
+        raise HTTPException(401, "Not authenticated")
+    return await _load_profile(spotify_id)
+
+
+@me_router.put("/profile", response_model=ProfileResponse)
+async def update_profile(
+    request: Request, body: ProfileUpdate
+) -> ProfileResponse:
+    spotify_id = request.session.get("spotify_user_id")
+    if not spotify_id:
+        raise HTTPException(401, "Not authenticated")
+    async with system_session_scope() as session:
+        await users_repo.set_custom_display_name(
+            session, spotify_id, body.custom_display_name
+        )
+        await session.commit()
+    return await _load_profile(spotify_id)
 
 
 @router.get("/spotify/login")
