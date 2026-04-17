@@ -92,6 +92,7 @@ function blankRecipe(): Recipe {
 export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props) {
   const [fields, setFields] = useState<SortField[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [meDisplayName, setMeDisplayName] = useState<string>('')
   const [recipe, setRecipe] = useState<Recipe>(blankRecipe())
   const [preview, setPreview] = useState<RecipeResolveResponse | null>(null)
   const [previewing, setPreviewing] = useState(false)
@@ -102,6 +103,7 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
   useEffect(() => {
     if (!open) return
     apiService.getSortFields().then((r) => setFields(r.fields)).catch(() => {})
+    apiService.getCurrentUser().then((u) => setMeDisplayName(u.display_name || '')).catch(() => {})
     // Load all the user's playlists so the multi-select picker covers their
     // full library, not just the first page.
     ;(async () => {
@@ -256,6 +258,7 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
               fields={fields}
               fieldByKey={fieldByKey}
               playlists={playlists}
+              meDisplayName={meDisplayName}
               onChange={(patch) => updateBucket(bIdx, patch)}
               onRemove={() => removeBucket(bIdx)}
               onUpdateFilter={(fIdx, patch) => updateFilter(bIdx, fIdx, patch)}
@@ -335,6 +338,7 @@ function BucketEditor(props: {
   fields: SortField[]
   fieldByKey: Map<string, SortField>
   playlists: Playlist[]
+  meDisplayName: string
   onChange: (patch: Partial<RecipeBucket>) => void
   onRemove: () => void
   onUpdateFilter: (fIdx: number, patch: Partial<RecipeFilter>) => void
@@ -343,7 +347,7 @@ function BucketEditor(props: {
   canRemove: boolean
 }) {
   const {
-    bucket, index, fields, fieldByKey, playlists,
+    bucket, index, fields, fieldByKey, playlists, meDisplayName,
     onChange, onRemove, onUpdateFilter, onAddFilter, onRemoveFilter, canRemove,
   } = props
 
@@ -364,6 +368,7 @@ function BucketEditor(props: {
       <BucketSourcePicker
         source={bucket.source}
         playlists={playlists}
+        meDisplayName={meDisplayName}
         onChange={(s) => onChange({ source: s })}
       />
 
@@ -480,20 +485,29 @@ function BucketEditor(props: {
   )
 }
 
+type GroupBy = 'none' | 'owner' | 'alpha'
+
 function BucketSourcePicker(props: {
   source: string
   playlists: Playlist[]
+  meDisplayName: string
   onChange: (source: string) => void
 }) {
-  const { source, playlists, onChange } = props
+  const { source, playlists, meDisplayName, onChange } = props
   const parsed = parseSource(source)
   const selected = new Set(parsed.ids)
+  const [query, setQuery] = useState('')
+  const [groupBy, setGroupBy] = useState<GroupBy>('none')
+
+  const setSelected = (next: Set<string>) => {
+    onChange(buildSource('playlists', Array.from(next)))
+  }
 
   const togglePlaylist = (id: string) => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
     else next.add(id)
-    onChange(buildSource('playlists', Array.from(next)))
+    setSelected(next)
   }
 
   const onKindChange = (kind: SourceKind) => {
@@ -507,6 +521,74 @@ function BucketSourcePicker(props: {
   const showList = parsed.kind === 'playlist' || parsed.kind === 'playlists'
   const uiKind: SourceKind = parsed.kind === 'playlist' ? 'playlists' : parsed.kind
 
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return playlists
+    return playlists.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.owner || '').toLowerCase().includes(q)
+    )
+  }, [playlists, query])
+
+  const groups = useMemo(() => {
+    if (groupBy === 'none') {
+      return [{ label: '', items: filtered }]
+    }
+    if (groupBy === 'owner') {
+      const mine: Playlist[] = []
+      const byOwner = new Map<string, Playlist[]>()
+      const me = (meDisplayName || '').toLowerCase()
+      for (const p of filtered) {
+        if (me && (p.owner || '').toLowerCase() === me) {
+          mine.push(p)
+        } else {
+          const key = p.owner || 'Unknown'
+          if (!byOwner.has(key)) byOwner.set(key, [])
+          byOwner.get(key)!.push(p)
+        }
+      }
+      const result: Array<{ label: string; items: Playlist[] }> = []
+      if (mine.length) result.push({ label: 'Yours', items: mine })
+      const others = Array.from(byOwner.entries()).sort((a, b) =>
+        a[0].localeCompare(b[0])
+      )
+      for (const [owner, items] of others) {
+        result.push({ label: owner, items })
+      }
+      return result
+    }
+    // alphabetical: bucket by first character of name
+    const buckets = new Map<string, Playlist[]>()
+    for (const p of filtered) {
+      const first = (p.name || '').trim().charAt(0).toUpperCase()
+      const key = first && /[A-Z]/.test(first) ? first : '#'
+      if (!buckets.has(key)) buckets.set(key, [])
+      buckets.get(key)!.push(p)
+    }
+    return Array.from(buckets.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, items]) => ({
+        label,
+        items: items.slice().sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+  }, [filtered, groupBy, meDisplayName])
+
+  const visibleIds = useMemo(() => filtered.map((p) => p.id), [filtered])
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+
+  const selectAllVisible = () => {
+    const next = new Set(selected)
+    for (const id of visibleIds) next.add(id)
+    setSelected(next)
+  }
+  const clearVisible = () => {
+    const next = new Set(selected)
+    for (const id of visibleIds) next.delete(id)
+    setSelected(next)
+  }
+
   return (
     <div className="bucket-source">
       <div className="bucket-row">
@@ -518,29 +600,76 @@ function BucketSourcePicker(props: {
         </select>
       </div>
       {showList && (
-        <div className="bucket-source-list">
-          {playlists.length === 0 && (
-            <div className="hint">No playlists loaded yet.</div>
-          )}
-          {playlists.map((p) => (
-            <label key={p.id} className="source-check">
-              <input
-                type="checkbox"
-                checked={selected.has(p.id)}
-                onChange={() => togglePlaylist(p.id)}
-              />
-              <span>{p.name}</span>
-            </label>
-          ))}
+        <>
+          <div className="source-controls">
+            <input
+              className="source-search"
+              type="search"
+              placeholder="Search playlists…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select
+              className="source-group"
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as GroupBy)}
+              title="Group playlists"
+            >
+              <option value="none">No grouping</option>
+              <option value="owner">By owner</option>
+              <option value="alpha">Alphabetical</option>
+            </select>
+            <button
+              type="button"
+              className="source-bulk"
+              onClick={allVisibleSelected ? clearVisible : selectAllVisible}
+              disabled={visibleIds.length === 0}
+              title={
+                allVisibleSelected
+                  ? 'Clear all currently visible playlists'
+                  : 'Select all currently visible playlists'
+              }
+            >
+              {allVisibleSelected ? 'Clear visible' : 'Select visible'}
+            </button>
+          </div>
+          <div className="bucket-source-list">
+            {playlists.length === 0 && (
+              <div className="hint">No playlists loaded yet.</div>
+            )}
+            {playlists.length > 0 && filtered.length === 0 && (
+              <div className="hint">No playlists match “{query}”.</div>
+            )}
+            {groups.map((g, gi) => (
+              <div key={gi} className="source-group-block">
+                {g.label && groupBy !== 'none' && (
+                  <div className="source-group-label">{g.label}</div>
+                )}
+                {g.items.map((p) => (
+                  <label key={p.id} className="source-check">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={() => togglePlaylist(p.id)}
+                    />
+                    <span className="source-name">{p.name}</span>
+                    {groupBy !== 'owner' && p.owner && (
+                      <span className="source-owner">{p.owner}</span>
+                    )}
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
           {selected.size === 0 && playlists.length > 0 && (
             <div className="hint">Pick at least one playlist.</div>
           )}
           {selected.size > 1 && (
             <div className="hint">
-              {selected.size} playlists — duplicate tracks are merged.
+              {selected.size} playlists selected — duplicate tracks are merged.
             </div>
           )}
-        </div>
+        </>
       )}
       {parsed.kind === 'all_playlists' && (
         <div className="hint">
