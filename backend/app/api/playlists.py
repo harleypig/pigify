@@ -12,7 +12,9 @@ Sorting design (see `backend/app/services/sort_fields.py` for the registry):
   - `POST /{id}/undo` restores the previous order from a session-stored
     snapshot (only the most recent apply is undoable, per the spec).
 
-Saved sort presets live in the user session (no DB yet — see follow-ups).
+Saved sort presets live in the per-user DB (`saved_sorts` table) so they
+persist across logout, cookie expiry, and devices. Legacy session-stored
+presets are migrated into the DB on first authenticated access.
 """
 import asyncio
 import time
@@ -26,6 +28,8 @@ from backend.app.services.sort_fields import SORT_FIELDS, SORT_FIELD_KEYS
 from backend.app.services import lastfm
 from backend.app.services.connections import get_connection
 from backend.app.models.playlist import Playlist, Track
+from backend.app.db.repositories import saved_sorts as saved_sorts_repo
+from backend.app.db.session import user_session_scope
 
 router = APIRouter()
 
@@ -71,31 +75,136 @@ def _validate_sort_keys(*keys: Optional[SortKeySpec]) -> None:
             raise HTTPException(400, f"Unknown sort field: {k.field}")
 
 
+# Persistence note: presets live in the per-user DB (`saved_sorts`) so they
+# survive logout, cookie expiry, and device changes. The DB row stores the
+# ordered list of sort keys in `keys`; the API surface keeps the historical
+# `primary` / `secondary` shape so the frontend doesn't have to change.
+
+def _require_spotify_user(request: Request) -> str:
+    sid = request.session.get("spotify_user_id")
+    if not sid:
+        raise HTTPException(401, "Not authenticated")
+    return sid
+
+
+def _row_to_preset(row) -> dict:
+    """Translate a SavedSort row into the SortPreset wire shape."""
+    keys = list(row.keys or [])
+    primary = keys[0] if keys else {"field": "added_at", "direction": "asc"}
+    secondary = keys[1] if len(keys) > 1 else None
+    # Defensive: only forward known fields so unknown extras don't leak.
+    def _clean(k: dict) -> dict:
+        return {
+            "field": k.get("field"),
+            "direction": k.get("direction") or "asc",
+        }
+    out = {"name": row.name, "primary": _clean(primary)}
+    if secondary is not None:
+        out["secondary"] = _clean(secondary)
+    return out
+
+
+def _preset_to_keys(preset: SortPreset) -> list[dict]:
+    keys = [{"field": preset.primary.field, "direction": preset.primary.direction}]
+    if preset.secondary is not None:
+        keys.append(
+            {"field": preset.secondary.field, "direction": preset.secondary.direction}
+        )
+    return keys
+
+
+async def _migrate_session_presets(request: Request, session) -> None:
+    """One-shot migration of cookie-stored presets into the DB.
+
+    Walks the legacy `sort_presets` cookie list and inserts each entry whose
+    name doesn't already exist in the DB (case-insensitive). Skips invalid
+    entries individually but bails out without clearing the cookie if any
+    insert raises — that way a transient DB error doesn't drop the user's
+    presets; we'll just retry on the next call.
+    """
+    legacy = request.session.get("sort_presets")
+    if not legacy:
+        return
+    existing = await saved_sorts_repo.list_all(session)
+    existing_names = {r.name.lower() for r in existing}
+    try:
+        for entry in legacy:
+            name = (entry.get("name") or "").strip()
+            if not name or name.lower() in existing_names:
+                continue
+            primary = entry.get("primary") or {}
+            if not primary.get("field"):
+                # Malformed entry — skip silently, don't abort the migration.
+                continue
+            keys = [{
+                "field": primary["field"],
+                "direction": primary.get("direction") or "asc",
+            }]
+            secondary = entry.get("secondary")
+            if secondary and secondary.get("field"):
+                keys.append({
+                    "field": secondary["field"],
+                    "direction": secondary.get("direction") or "asc",
+                })
+            await saved_sorts_repo.create(session, name=name, keys=keys)
+            existing_names.add(name.lower())
+    except Exception:
+        # Leave the legacy cookie in place so the next request can retry.
+        return
+    request.session.pop("sort_presets", None)
+
+
 @router.get("/sort/presets", response_model=List[SortPreset])
 async def list_sort_presets(request: Request):
-    presets = request.session.get("sort_presets") or []
-    return presets
+    spotify_id = _require_spotify_user(request)
+    async with user_session_scope(spotify_id) as session:
+        await _migrate_session_presets(request, session)
+        await session.commit()
+        rows = await saved_sorts_repo.list_all(session)
+    return [_row_to_preset(r) for r in rows]
+
+
+async def _find_row_ci(session, name: str):
+    """Case-insensitive lookup matching the previous session-cookie behaviour
+    (so saving "Rock" replaces an existing "rock" instead of duplicating)."""
+    target = (name or "").lower()
+    for row in await saved_sorts_repo.list_all(session):
+        if row.name.lower() == target:
+            return row
+    return None
 
 
 @router.post("/sort/presets", response_model=List[SortPreset])
 async def save_sort_preset(request: Request, preset: SortPreset):
     _validate_sort_keys(preset.primary, preset.secondary)
-    presets = list(request.session.get("sort_presets") or [])
-    # Replace existing preset with same name (case-insensitive) or append.
-    presets = [p for p in presets if p.get("name", "").lower() != preset.name.lower()]
-    presets.append(preset.model_dump())
-    # Cap at 25 to keep the session cookie small.
-    presets = presets[-25:]
-    request.session["sort_presets"] = presets
-    return presets
+    spotify_id = _require_spotify_user(request)
+    keys = _preset_to_keys(preset)
+    async with user_session_scope(spotify_id) as session:
+        await _migrate_session_presets(request, session)
+        existing = await _find_row_ci(session, preset.name)
+        if existing is not None:
+            # Update keys and adopt the new casing for the name.
+            await saved_sorts_repo.update(
+                session, existing.id, name=preset.name, keys=keys
+            )
+        else:
+            await saved_sorts_repo.create(session, name=preset.name, keys=keys)
+        await session.commit()
+        rows = await saved_sorts_repo.list_all(session)
+    return [_row_to_preset(r) for r in rows]
 
 
 @router.delete("/sort/presets/{name}", response_model=List[SortPreset])
 async def delete_sort_preset(request: Request, name: str):
-    presets = list(request.session.get("sort_presets") or [])
-    presets = [p for p in presets if p.get("name", "").lower() != name.lower()]
-    request.session["sort_presets"] = presets
-    return presets
+    spotify_id = _require_spotify_user(request)
+    async with user_session_scope(spotify_id) as session:
+        await _migrate_session_presets(request, session)
+        existing = await _find_row_ci(session, name)
+        if existing is not None:
+            await saved_sorts_repo.delete(session, existing.id)
+        await session.commit()
+        rows = await saved_sorts_repo.list_all(session)
+    return [_row_to_preset(r) for r in rows]
 
 
 # =========================== Playlist list / detail =========================
