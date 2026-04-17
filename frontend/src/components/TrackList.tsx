@@ -21,8 +21,7 @@ interface TrackListProps {
 }
 
 const DEFAULT_SORT: SortSpec = {
-  primary: { field: 'added_at', direction: 'desc' },
-  secondary: null,
+  keys: [{ field: 'added_at', direction: 'desc' }],
 }
 
 function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) {
@@ -111,7 +110,7 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
   const ensureHydration = useCallback(
     async (spec: SortSpec) => {
       if (fields.length === 0 || tracks.length === 0) return
-      const sources = requiredSources(fields, spec.primary, spec.secondary)
+      const sources = requiredSources(fields, spec.keys)
       if (sources.length === 0) return
 
       const missing: typeof sources = []
@@ -153,7 +152,7 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
 
   const sortedTracks = useMemo(() => {
     if (fields.length === 0) return tracks
-    return sortTracks(tracks, fields, sortSpec.primary, sortSpec.secondary, hydration)
+    return sortTracks(tracks, fields, sortSpec.keys, hydration)
   }, [tracks, fields, sortSpec, hydration])
 
   const handleSavePreset = async (preset: SortPreset) => {

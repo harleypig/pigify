@@ -55,7 +55,10 @@ export interface SortKeySpec {
 
 export interface SortPreset {
   name: string
-  primary: SortKeySpec
+  keys: SortKeySpec[]
+  // Legacy fields kept only so the type accepts old payloads while we
+  // normalize them on read. New code should always read/write `keys`.
+  primary?: SortKeySpec
   secondary?: SortKeySpec | null
 }
 

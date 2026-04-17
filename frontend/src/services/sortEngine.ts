@@ -96,38 +96,32 @@ export function getSortValue(
 }
 
 /**
- * Sort tracks using a primary key and an optional secondary tiebreaker.
- * The sort is stable (Array.prototype.sort is stable in modern JS engines)
- * and locale-aware for string fields.
+ * Sort tracks using an ordered list of keys (each with its own direction).
+ * Earlier keys take priority; later keys break ties. The sort is stable
+ * (Array.prototype.sort is stable in modern JS engines) and locale-aware
+ * for string fields.
  */
 export function sortTracks(
   tracks: Track[],
   fields: SortField[],
-  primary: SortKeySpec,
-  secondary: SortKeySpec | null | undefined,
+  keys: SortKeySpec[],
   hydration: SortableHydration
 ): Track[] {
   const fieldByKey = new Map(fields.map((f) => [f.key, f]))
-  const pf = fieldByKey.get(primary.field)
-  const sf = secondary ? fieldByKey.get(secondary.field) : undefined
-  if (!pf) return tracks
+  const resolved = keys
+    .map((k) => ({ spec: k, field: fieldByKey.get(k.field) }))
+    .filter((r): r is { spec: SortKeySpec; field: SortField } => !!r.field)
+  if (resolved.length === 0) return tracks
 
   return [...tracks].sort((a, b) => {
-    const c1 = compareValues(
-      getSortValue(pf, a, hydration),
-      getSortValue(pf, b, hydration),
-      pf.type,
-      primary.direction
-    )
-    if (c1 !== 0) return c1
-    if (sf && secondary) {
-      const c2 = compareValues(
-        getSortValue(sf, a, hydration),
-        getSortValue(sf, b, hydration),
-        sf.type,
-        secondary.direction
+    for (const { spec, field } of resolved) {
+      const c = compareValues(
+        getSortValue(field, a, hydration),
+        getSortValue(field, b, hydration),
+        field.type,
+        spec.direction
       )
-      if (c2 !== 0) return c2
+      if (c !== 0) return c
     }
     return 0
   })
@@ -136,17 +130,28 @@ export function sortTracks(
 /** Which hydration sources does this sort spec depend on? */
 export function requiredSources(
   fields: SortField[],
-  primary: SortKeySpec,
-  secondary?: SortKeySpec | null
+  keys: SortKeySpec[]
 ): Array<'audio_features' | 'lastfm'> {
   const out = new Set<'audio_features' | 'lastfm'>()
   const byKey = new Map(fields.map((f) => [f.key, f]))
-  for (const k of [primary, secondary]) {
-    if (!k) continue
+  for (const k of keys) {
     const f = byKey.get(k.field)
     if (!f || !f.requires_hydration) continue
     if (f.source === 'audio_features') out.add('audio_features')
     if (f.source === 'lastfm') out.add('lastfm')
   }
   return [...out]
+}
+
+/** Normalize a saved preset into its `keys` list, accepting legacy shape. */
+export function presetToKeys(p: {
+  keys?: SortKeySpec[] | null
+  primary?: SortKeySpec | null
+  secondary?: SortKeySpec | null
+}): SortKeySpec[] {
+  if (p.keys && p.keys.length > 0) return p.keys
+  const out: SortKeySpec[] = []
+  if (p.primary) out.push(p.primary)
+  if (p.secondary) out.push(p.secondary)
+  return out
 }
