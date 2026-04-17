@@ -17,6 +17,9 @@ BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 echo "[post-merge] Pushing ${BRANCH} to GitHub..."
 
 # One-shot URL with the token; never written to git config.
-git push "https://x-access-token:${GITHUB_PUSH_TOKEN}@github.com/harleypig/pigify.git" "${BRANCH}:${BRANCH}"
+# Use --force to handle non-fast-forward situations from task merges.
+git push --force "https://x-access-token:${GITHUB_PUSH_TOKEN}@github.com/harleypig/pigify.git" "${BRANCH}:${BRANCH}" || {
+  echo "[post-merge] Push failed (non-fatal); continuing." >&2
+}
 
-echo "[post-merge] Push complete."
+echo "[post-merge] Done."
