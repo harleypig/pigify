@@ -270,6 +270,109 @@ async def record_lastfm_error_safely(
     row.last_error = error[:1024]
 
 
+def _entry_to_dict(entry: Any) -> Dict[str, Any]:
+    return {
+        "id": entry.id,
+        "artist": entry.artist,
+        "track": entry.track,
+        "album": entry.album,
+        "duration_sec": entry.duration_sec,
+        "timestamp": entry.timestamp,
+        "attempts": entry.attempts or 0,
+        "last_error": entry.last_error,
+        "next_attempt_at": entry.next_attempt_at.isoformat()
+        if entry.next_attempt_at
+        else None,
+        "queued_at": entry.created_at.isoformat() if entry.created_at else None,
+    }
+
+
+async def list_pending(spotify_id: str) -> list[Dict[str, Any]]:
+    """Return every queued scrobble for the user (oldest first)."""
+    async with user_session_scope(spotify_id) as session:
+        rows = await queue_repo.list_all(session)
+        return [_entry_to_dict(r) for r in rows]
+
+
+async def delete_entry(spotify_id: str, entry_id: int) -> bool:
+    """Remove one queued scrobble. Returns True if it existed."""
+    from backend.app.db.models.user import ScrobbleQueueEntry
+
+    async with user_session_scope(spotify_id) as session:
+        row = await session.get(ScrobbleQueueEntry, entry_id)
+        if row is None:
+            return False
+        await session.delete(row)
+        await session.commit()
+        return True
+
+
+async def flush_now(spotify_id: str) -> Dict[str, Any]:
+    """Force a retry of every queued scrobble, ignoring backoff windows.
+
+    Returns a small summary the UI can display: how many succeeded,
+    how many remain, and the last error (if any).
+    """
+    creds = await get_lastfm_credentials(spotify_id)
+    session_key = creds.get("session_key")
+    if not session_key:
+        return {
+            "attempted": 0,
+            "succeeded": 0,
+            "remaining": 0,
+            "error": "Last.fm is not connected",
+        }
+
+    succeeded = 0
+    attempted = 0
+    last_error: Optional[str] = None
+
+    async with user_session_scope(spotify_id) as session:
+        rows = await queue_repo.list_all(session)
+        for entry in rows:
+            attempted += 1
+            try:
+                await lastfm.scrobble(
+                    session_key,
+                    entry.artist,
+                    entry.track,
+                    timestamp=entry.timestamp,
+                    album=entry.album,
+                    duration_sec=entry.duration_sec,
+                )
+            except Exception as exc:  # noqa: BLE001
+                last_error = str(exc)
+                await queue_repo.mark_failed(
+                    session,
+                    entry.id,
+                    error=last_error,
+                    next_attempt_at=datetime.now(timezone.utc)
+                    + timedelta(seconds=_RETRY_BACKOFF_SEC),
+                )
+                continue
+            await queue_repo.delete(session, entry.id)
+            succeeded += 1
+
+        # Update bookkeeping summary so the existing status reflects flush.
+        if succeeded:
+            s = await _load_state(session)
+            status = dict(s.get("status") or {})
+            status["last_scrobble_at"] = int(time.time())
+            status["queued"] = await queue_repo.count(session)
+            s["status"] = status
+            await _save_state(session, summary=s, status="ok")
+
+        remaining = await queue_repo.count(session)
+        await session.commit()
+
+    return {
+        "attempted": attempted,
+        "succeeded": succeeded,
+        "remaining": remaining,
+        "error": last_error,
+    }
+
+
 async def get_status(spotify_id: str) -> Dict[str, Any]:
     """Return the persisted scrobbler status for the UI."""
     async with user_session_scope(spotify_id) as session:
@@ -297,4 +400,11 @@ async def reset_for_user(spotify_id: str) -> None:
         await session.commit()
 
 
-__all__ = ["process_state", "get_status", "reset_for_user"]
+__all__ = [
+    "process_state",
+    "get_status",
+    "reset_for_user",
+    "list_pending",
+    "delete_entry",
+    "flush_now",
+]

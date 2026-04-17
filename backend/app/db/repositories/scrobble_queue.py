@@ -37,6 +37,19 @@ async def enqueue(
     return row
 
 
+async def list_all(session: AsyncSession) -> list[ScrobbleQueueEntry]:
+    """Return every queued scrobble, oldest first.
+
+    Used by the UI panel that surfaces pending scrobbles to the user
+    (regardless of whether the backoff window has elapsed).
+    """
+    stmt = (
+        select(ScrobbleQueueEntry)
+        .order_by(ScrobbleQueueEntry.timestamp.asc(), ScrobbleQueueEntry.id.asc())
+    )
+    return list((await session.execute(stmt)).scalars().all())
+
+
 async def list_due(
     session: AsyncSession, *, now: Optional[datetime] = None
 ) -> list[ScrobbleQueueEntry]:
