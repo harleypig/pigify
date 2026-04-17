@@ -451,12 +451,22 @@ function LastfmQueuePanel() {
   const [busy, setBusy] = useState(false)
   const [flushResult, setFlushResult] = useState<LastfmQueueFlushResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
 
   const load = async () => {
     setLoading(true)
     try {
       const data = await apiService.getLastfmQueue()
       setEntries(data.entries)
+      // Drop any selections for entries that no longer exist.
+      setSelected((prev) => {
+        const ids = new Set(data.entries.map((e) => e.id))
+        const next = new Set<number>()
+        prev.forEach((id) => {
+          if (ids.has(id)) next.add(id)
+        })
+        return next
+      })
       setError(null)
     } catch {
       setError('Failed to load queue')
@@ -488,8 +498,70 @@ function LastfmQueuePanel() {
     try {
       await apiService.deleteLastfmQueueEntry(id)
       setEntries((prev) => prev.filter((e) => e.id !== id))
+      setSelected((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     } catch {
       setError('Failed to delete entry')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggleOne = (id: number) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const allSelected = entries.length > 0 && selected.size === entries.length
+  const toggleAll = () => {
+    setSelected(allSelected ? new Set() : new Set(entries.map((e) => e.id)))
+  }
+
+  const clearAll = async () => {
+    if (entries.length === 0) return
+    const ok = window.confirm(
+      `Delete all ${entries.length} pending scrobbles? This cannot be undone.`
+    )
+    if (!ok) return
+    setBusy(true)
+    setFlushResult(null)
+    try {
+      await apiService.clearLastfmQueue()
+      setEntries([])
+      setSelected(new Set())
+      setError(null)
+    } catch {
+      setError('Failed to clear queue')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const deleteSelected = async () => {
+    if (selected.size === 0) return
+    const ids = Array.from(selected)
+    const ok = window.confirm(
+      `Delete ${ids.length} selected scrobble${ids.length === 1 ? '' : 's'}?`
+    )
+    if (!ok) return
+    setBusy(true)
+    setFlushResult(null)
+    try {
+      await apiService.clearLastfmQueue(ids)
+      const removed = new Set(ids)
+      setEntries((prev) => prev.filter((e) => !removed.has(e.id)))
+      setSelected(new Set())
+      setError(null)
+    } catch {
+      setError('Failed to delete selected entries')
     } finally {
       setBusy(false)
     }
@@ -513,7 +585,23 @@ function LastfmQueuePanel() {
             onClick={flush}
             disabled={busy || entries.length === 0}
           >
-            {busy ? 'Retrying…' : 'Retry now'}
+            {busy ? 'Working…' : 'Retry now'}
+          </button>
+          <button
+            className="sp-btn-danger"
+            onClick={deleteSelected}
+            disabled={busy || selected.size === 0}
+            title="Delete the selected scrobbles"
+          >
+            Delete selected ({selected.size})
+          </button>
+          <button
+            className="sp-btn-danger"
+            onClick={clearAll}
+            disabled={busy || entries.length === 0}
+            title="Delete every pending scrobble"
+          >
+            Clear all
           </button>
         </div>
       </header>
@@ -534,38 +622,58 @@ function LastfmQueuePanel() {
           Nothing queued — all your plays have been delivered to Last.fm.
         </p>
       ) : (
-        <ul className="sp-queue-list">
-          {entries.map((e) => (
-            <li key={e.id} className="sp-queue-item">
-              <div className="sp-queue-info">
-                <strong>{e.track}</strong>
-                <span className="sp-queue-artist"> — {e.artist}</span>
-                <div className="sp-queue-meta">
-                  Queued {formatRelative(e.queued_at)} ·{' '}
-                  Played {new Date(e.timestamp * 1000).toLocaleString()} ·{' '}
-                  {e.attempts} {e.attempts === 1 ? 'attempt' : 'attempts'}
-                  {e.next_attempt_at
-                    ? ` · next retry ${formatRelative(e.next_attempt_at)}`
-                    : ''}
-                </div>
-                {e.last_error && (
-                  <div className="sp-queue-error" title={e.last_error}>
-                    Last error: {e.last_error}
+        <>
+          <label className="sp-queue-selectall">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              disabled={busy || entries.length === 0}
+              aria-label="Select all pending scrobbles"
+            />
+            Select all
+          </label>
+          <ul className="sp-queue-list">
+            {entries.map((e) => (
+              <li key={e.id} className="sp-queue-item">
+                <input
+                  type="checkbox"
+                  className="sp-queue-check"
+                  checked={selected.has(e.id)}
+                  onChange={() => toggleOne(e.id)}
+                  disabled={busy}
+                  aria-label={`Select ${e.track}`}
+                />
+                <div className="sp-queue-info">
+                  <strong>{e.track}</strong>
+                  <span className="sp-queue-artist"> — {e.artist}</span>
+                  <div className="sp-queue-meta">
+                    Queued {formatRelative(e.queued_at)} ·{' '}
+                    Played {new Date(e.timestamp * 1000).toLocaleString()} ·{' '}
+                    {e.attempts} {e.attempts === 1 ? 'attempt' : 'attempts'}
+                    {e.next_attempt_at
+                      ? ` · next retry ${formatRelative(e.next_attempt_at)}`
+                      : ''}
                   </div>
-                )}
-              </div>
-              <button
-                className="sp-btn-danger sp-queue-del"
-                onClick={() => remove(e.id)}
-                disabled={busy}
-                aria-label={`Delete ${e.track}`}
-                title="Delete this queued scrobble"
-              >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
+                  {e.last_error && (
+                    <div className="sp-queue-error" title={e.last_error}>
+                      Last error: {e.last_error}
+                    </div>
+                  )}
+                </div>
+                <button
+                  className="sp-btn-danger sp-queue-del"
+                  onClick={() => remove(e.id)}
+                  disabled={busy}
+                  aria-label={`Delete ${e.track}`}
+                  title="Delete this queued scrobble"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </div>
   )

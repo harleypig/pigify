@@ -11,7 +11,7 @@ Per the graceful degradation policy:
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
 
 from backend.app.config import settings
@@ -120,6 +120,31 @@ async def lastfm_queue_flush(request: Request) -> Dict[str, Any]:
     """Force a retry of every queued scrobble, ignoring backoff windows."""
     spotify_id = _require_spotify_id(request)
     return await scrobbler.flush_now(spotify_id)
+
+
+@router.delete("/lastfm/queue")
+async def lastfm_queue_clear(
+    request: Request,
+    payload: Optional[Dict[str, Any]] = Body(default=None),
+) -> Dict[str, Any]:
+    """Bulk-delete queued scrobbles.
+
+    With no body (or `{}`), clears the entire queue. Pass
+    `{"ids": [1, 2, ...]}` to delete a specific subset (used by the
+    multi-select UI). Always returns `{deleted, remaining}` so the UI
+    can refresh its counts in one call instead of issuing N requests.
+    """
+    spotify_id = _require_spotify_id(request)
+    entry_ids: Optional[list[int]] = None
+    if payload and "ids" in payload:
+        raw = payload.get("ids") or []
+        if not isinstance(raw, list):
+            raise HTTPException(400, "`ids` must be an array of integers")
+        try:
+            entry_ids = [int(x) for x in raw]
+        except (TypeError, ValueError):
+            raise HTTPException(400, "`ids` must be an array of integers")
+    return await scrobbler.clear_queue(spotify_id, entry_ids)
 
 
 @router.delete("/lastfm/queue/{entry_id}")

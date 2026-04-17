@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db.models.user import ScrobbleQueueEntry
@@ -75,6 +75,31 @@ async def delete(session: AsyncSession, entry_id: int) -> None:
     if row is not None:
         await session.delete(row)
         await session.flush()
+
+
+async def delete_many(
+    session: AsyncSession, entry_ids: list[int]
+) -> int:
+    """Delete the given queue entries. Returns the number actually removed.
+
+    Unknown IDs are silently skipped so a partial selection still succeeds.
+    """
+    if not entry_ids:
+        return 0
+    result = await session.execute(
+        sql_delete(ScrobbleQueueEntry).where(
+            ScrobbleQueueEntry.id.in_(entry_ids)
+        )
+    )
+    await session.flush()
+    return int(result.rowcount or 0)
+
+
+async def delete_all(session: AsyncSession) -> int:
+    """Wipe every queued scrobble. Returns the number removed."""
+    result = await session.execute(sql_delete(ScrobbleQueueEntry))
+    await session.flush()
+    return int(result.rowcount or 0)
 
 
 async def mark_failed(
