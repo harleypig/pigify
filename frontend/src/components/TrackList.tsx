@@ -17,6 +17,7 @@ import './TrackList.css'
 interface TrackListProps {
   playlistId: string
   onTrackSelect: (trackUri: string) => void
+  onTrackFocus?: (trackId: string) => void
 }
 
 const DEFAULT_SORT: SortSpec = {
@@ -24,7 +25,7 @@ const DEFAULT_SORT: SortSpec = {
   secondary: null,
 }
 
-function TrackList({ playlistId, onTrackSelect }: TrackListProps) {
+function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -258,7 +259,10 @@ function TrackList({ playlistId, onTrackSelect }: TrackListProps) {
           <div
             key={`${track.id}-${index}`}
             className="track-item"
-            onClick={() => onTrackSelect(track.uri)}
+            onClick={() => {
+              onTrackSelect(track.uri)
+              onTrackFocus?.(track.id)
+            }}
           >
             <div className="track-number">{index + 1}</div>
             <div className="track-image">
