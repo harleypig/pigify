@@ -109,6 +109,71 @@
   margin-bottom: 0.4rem;
 }
 
+.sort-row-multi {
+  grid-template-columns: 70px 1fr 1fr auto;
+}
+
+.sort-row-actions {
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.sort-row-btn {
+  background: #252525;
+  color: #ccc;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  width: 24px;
+  height: 28px;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.sort-row-btn:hover:not(:disabled) {
+  background: #2f2f2f;
+  color: #fff;
+}
+
+.sort-row-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.sort-row-remove:hover:not(:disabled) {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+}
+
+.sort-add-key {
+  background: transparent;
+  color: #1db954;
+  border: 1px dashed #3a3a3a;
+  border-radius: 4px;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.sort-add-key:hover:not(:disabled) {
+  border-color: #1db954;
+  background: #1db95411;
+}
+
+.sort-add-key:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #888;
+}
+
+.sort-preset-count {
+  color: #888;
+  font-size: 0.72rem;
+}
+
 .sort-row-label {
   font-size: 0.75rem;
   color: #b3b3b3;

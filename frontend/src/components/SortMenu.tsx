@@ -5,11 +5,11 @@ import {
   SortKeySpec,
   SortPreset,
 } from '../services/api'
+import { presetToKeys } from '../services/sortEngine'
 import './SortMenu.css'
 
 export interface SortSpec {
-  primary: SortKeySpec
-  secondary: SortKeySpec | null
+  keys: SortKeySpec[]
 }
 
 interface SortMenuProps {
@@ -27,66 +27,57 @@ interface SortMenuProps {
   warnings?: string[]
 }
 
-const DEFAULT_KEYS = new Set([
-  'added_at', 'name', 'artist', 'album', 'duration_ms',
-  'release_date', 'popularity', 'tempo', 'energy', 'lastfm_playcount',
-])
+const MAX_KEYS = 8
 
 function fieldLabel(fields: SortField[], key: string): string {
   return fields.find((f) => f.key === key)?.label ?? key
 }
 
-function FieldPicker({
+function KeyRow({
   fields,
   value,
+  index,
+  total,
   onChange,
-  label,
-  allowNone,
+  onMove,
+  onRemove,
 }: {
   fields: SortField[]
-  value: SortKeySpec | null
-  onChange: (v: SortKeySpec | null) => void
-  label: string
-  allowNone?: boolean
+  value: SortKeySpec
+  index: number
+  total: number
+  onChange: (v: SortKeySpec) => void
+  onMove: (from: number, to: number) => void
+  onRemove: () => void
 }) {
-  // Group fields by group for an organised dropdown.
   const groups: Record<string, SortField[]> = {}
   for (const f of fields) {
     ;(groups[f.group] ||= []).push(f)
   }
 
   const handleField = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const v = e.target.value
-    if (v === '__none__') {
-      onChange(null)
-      return
-    }
-    onChange({ field: v, direction: value?.direction ?? 'asc' })
+    onChange({ field: e.target.value, direction: value.direction })
   }
-
   const handleDir = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    if (!value) return
     onChange({ field: value.field, direction: e.target.value as SortDirection })
   }
-
-  const isDate =
-    value && fields.find((f) => f.key === value.field)?.type === 'date'
+  const isDate = fields.find((f) => f.key === value.field)?.type === 'date'
+  const label =
+    index === 0 ? 'Sort by' : index === 1 ? 'Then by' : `Then by (${index + 1})`
 
   return (
-    <div className="sort-row">
+    <div className="sort-row sort-row-multi">
       <label className="sort-row-label">{label}</label>
       <select
         className="sort-field-select"
-        value={value?.field ?? '__none__'}
+        value={value.field}
         onChange={handleField}
       >
-        {allowNone && <option value="__none__">— none —</option>}
         {Object.entries(groups).map(([group, list]) => (
           <optgroup label={group} key={group}>
             {list.map((f) => (
               <option key={f.key} value={f.key}>
                 {f.label}
-                {DEFAULT_KEYS.has(f.key) ? '' : ''}
               </option>
             ))}
           </optgroup>
@@ -94,13 +85,41 @@ function FieldPicker({
       </select>
       <select
         className="sort-dir-select"
-        value={value?.direction ?? 'asc'}
+        value={value.direction}
         onChange={handleDir}
-        disabled={!value}
       >
         <option value="asc">{isDate ? 'Oldest first' : 'Asc (A→Z / low→high)'}</option>
         <option value="desc">{isDate ? 'Newest first' : 'Desc (Z→A / high→low)'}</option>
       </select>
+      <div className="sort-row-actions">
+        <button
+          type="button"
+          className="sort-row-btn"
+          title="Move up"
+          onClick={() => onMove(index, index - 1)}
+          disabled={index === 0}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className="sort-row-btn"
+          title="Move down"
+          onClick={() => onMove(index, index + 1)}
+          disabled={index === total - 1}
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          className="sort-row-btn sort-row-remove"
+          title="Remove this sort key"
+          onClick={onRemove}
+          disabled={total <= 1}
+        >
+          ×
+        </button>
+      </div>
     </div>
   )
 }
@@ -127,12 +146,48 @@ function SortMenu(props: SortMenuProps) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const summary = `${fieldLabel(fields, current.primary.field)} ${
-    current.primary.direction === 'desc' ? '↓' : '↑'
-  }`
+  const keys = current.keys
+  const primaryKey = keys[0]
+  const summary = primaryKey
+    ? `${fieldLabel(fields, primaryKey.field)} ${
+        primaryKey.direction === 'desc' ? '↓' : '↑'
+      }${keys.length > 1 ? ` +${keys.length - 1}` : ''}`
+    : '—'
+
+  const updateKey = (i: number, v: SortKeySpec) => {
+    const next = keys.slice()
+    next[i] = v
+    onChange({ keys: next })
+  }
+
+  const removeKey = (i: number) => {
+    if (keys.length <= 1) return
+    const next = keys.slice()
+    next.splice(i, 1)
+    onChange({ keys: next })
+  }
+
+  const moveKey = (from: number, to: number) => {
+    if (to < 0 || to >= keys.length) return
+    const next = keys.slice()
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    onChange({ keys: next })
+  }
+
+  const addKey = () => {
+    if (keys.length >= MAX_KEYS) return
+    // Pick the first field not already in use, falling back to the first field.
+    const used = new Set(keys.map((k) => k.field))
+    const candidate = fields.find((f) => !used.has(f.key)) ?? fields[0]
+    if (!candidate) return
+    onChange({
+      keys: [...keys, { field: candidate.key, direction: 'asc' }],
+    })
+  }
 
   const handleQuickPreset = (key: string) => {
-    onChange({ primary: { field: key, direction: 'asc' }, secondary: null })
+    onChange({ keys: [{ field: key, direction: 'asc' }] })
   }
 
   const defaultFields = fields.filter((f) => f.default)
@@ -161,7 +216,7 @@ function SortMenu(props: SortMenuProps) {
                 <button
                   key={f.key}
                   className={`sort-quick ${
-                    current.primary.field === f.key ? 'active' : ''
+                    primaryKey?.field === f.key ? 'active' : ''
                   }`}
                   onClick={() => handleQuickPreset(f.key)}
                 >
@@ -173,23 +228,31 @@ function SortMenu(props: SortMenuProps) {
 
           <div className="sort-popover-section">
             <div className="sort-section-title">Custom</div>
-            <FieldPicker
-              fields={fields}
-              value={current.primary}
-              onChange={(v) =>
-                v && onChange({ primary: v, secondary: current.secondary })
+            {keys.map((k, i) => (
+              <KeyRow
+                key={i}
+                fields={fields}
+                value={k}
+                index={i}
+                total={keys.length}
+                onChange={(v) => updateKey(i, v)}
+                onMove={moveKey}
+                onRemove={() => removeKey(i)}
+              />
+            ))}
+            <button
+              type="button"
+              className="sort-add-key"
+              onClick={addKey}
+              disabled={keys.length >= MAX_KEYS || fields.length === 0}
+              title={
+                keys.length >= MAX_KEYS
+                  ? `Up to ${MAX_KEYS} sort keys`
+                  : 'Add another sort key'
               }
-              label="Primary"
-            />
-            <FieldPicker
-              fields={fields}
-              value={current.secondary}
-              onChange={(v) =>
-                onChange({ primary: current.primary, secondary: v })
-              }
-              label="Then by"
-              allowNone
-            />
+            >
+              + Add another sort key
+            </button>
           </div>
 
           <div className="sort-popover-section">
@@ -198,26 +261,41 @@ function SortMenu(props: SortMenuProps) {
               {presets.length === 0 && (
                 <div className="sort-empty">No saved sorts yet.</div>
               )}
-              {presets.map((p) => (
-                <div key={p.name} className="sort-preset-row">
-                  <button
-                    className="sort-preset-load"
-                    onClick={() =>
-                      onChange({ primary: p.primary, secondary: p.secondary ?? null })
-                    }
-                    title={`${fieldLabel(fields, p.primary.field)} ${p.primary.direction}`}
-                  >
-                    {p.name}
-                  </button>
-                  <button
-                    className="sort-preset-del"
-                    onClick={() => onDeletePreset(p.name)}
-                    title="Delete preset"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+              {presets.map((p) => {
+                const pk = presetToKeys(p)
+                const title = pk
+                  .map(
+                    (k) =>
+                      `${fieldLabel(fields, k.field)} ${k.direction}`
+                  )
+                  .join(', ')
+                return (
+                  <div key={p.name} className="sort-preset-row">
+                    <button
+                      className="sort-preset-load"
+                      onClick={() =>
+                        pk.length > 0 && onChange({ keys: pk })
+                      }
+                      title={title}
+                    >
+                      <span className="sort-preset-name">{p.name}</span>
+                      {pk.length > 1 && (
+                        <span className="sort-preset-count">
+                          {' '}
+                          · {pk.length} keys
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      className="sort-preset-del"
+                      onClick={() => onDeletePreset(p.name)}
+                      title="Delete preset"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )
+              })}
             </div>
             <div className="sort-save-row">
               <input
@@ -229,12 +307,11 @@ function SortMenu(props: SortMenuProps) {
               />
               <button
                 className="sort-preset-save-btn"
-                disabled={!presetName.trim()}
+                disabled={!presetName.trim() || keys.length === 0}
                 onClick={() => {
                   onSavePreset({
                     name: presetName.trim(),
-                    primary: current.primary,
-                    secondary: current.secondary,
+                    keys,
                   })
                   setPresetName('')
                 }}
