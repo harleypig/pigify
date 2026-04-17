@@ -88,6 +88,10 @@ class SpotifyService:
             response = await client.post(url, headers=self.headers, json=body, params=params)
             response.raise_for_status()
     
+    async def get_audio_analysis(self, track_id: str) -> Optional[Dict]:
+        """Get audio analysis for a track (waveform/segment data)."""
+        return await self._get(f"/audio-analysis/{track_id}")
+
     async def get_playback_state(self) -> Optional[Dict]:
         """Get the current playback state across all devices."""
         return await self._get("/me/player")

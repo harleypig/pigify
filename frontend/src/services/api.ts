@@ -94,5 +94,10 @@ export const apiService = {
   async previousTrack(): Promise<void> {
     await apiClient.post('/api/player/previous')
   },
+
+  async getAudioAnalysis(trackId: string, bars = 80): Promise<{ bars: number[]; duration: number }> {
+    const response = await apiClient.get(`/api/player/analysis/${trackId}`, { params: { bars } })
+    return response.data
+  },
 }
 
