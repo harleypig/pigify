@@ -287,8 +287,50 @@ async def wikipedia_track(spotify_track_id: str, request: Request):
 
 # ------------------------------- Combined detail -------------------------------
 
+@router.delete("/enrichment-cache")
+async def clear_enrichment_cache(
+    request: Request,
+    provider: Optional[str] = Query(None),
+    kind: Optional[str] = Query(None),
+    key: Optional[str] = Query(None),
+) -> Dict[str, Any]:
+    """
+    Clear cached enrichment rows for the signed-in user.
+
+    With no query params: wipes the entire enrichment cache.
+    With `provider`, `kind`, and `key` all set: removes that single row.
+    Mixing partial filters is rejected to avoid surprise mass deletes.
+    """
+    spotify_id = _require_spotify_id(request)
+    partial = (provider, kind, key)
+    given = sum(1 for p in partial if p)
+    if 0 < given < 3:
+        raise HTTPException(
+            400,
+            "Specify all of provider, kind, key to delete a single row, "
+            "or none to clear everything.",
+        )
+    async with user_session_scope(spotify_id) as db:
+        if given == 3:
+            removed = await enrichment_cache.delete_one(
+                db, provider, kind, key  # type: ignore[arg-type]
+            )
+            await db.commit()
+            return {"deleted": int(removed), "scope": "row"}
+        removed = await enrichment_cache.clear_all(db)
+        await db.commit()
+        return {"deleted": removed, "scope": "all"}
+
+
 @router.get("/track-detail/{spotify_track_id}")
-async def combined_track_detail(spotify_track_id: str, request: Request):
+async def combined_track_detail(
+    spotify_track_id: str,
+    request: Request,
+    refresh: bool = Query(
+        False,
+        description="Bypass the per-user enrichment cache and refetch every provider.",
+    ),
+):
     """
     One-shot endpoint that gathers everything we can about a Spotify track
     from every available provider, respecting tiers. Sections that aren't
@@ -346,8 +388,12 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
             # tier in the key so we never serve an unauthenticated payload
             # back when the user later connects Last.fm (or vice versa).
             info_key = f"{pa_key}|{username or '_'}"
-            cached_info = await enrichment_cache.get(
-                db, "lastfm", "track-info", info_key
+            cached_info = (
+                None
+                if refresh
+                else await enrichment_cache.get(
+                    db, "lastfm", "track-info", info_key
+                )
             )
             if cached_info is not None:
                 info, err = cached_info.get("info"), cached_info.get("err")
@@ -395,8 +441,12 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
             elif err:
                 out["lastfm"] = {"tier": lfm_conn.tier, "error": err}
 
-            cached_sim = await enrichment_cache.get(
-                db, "lastfm", "similar", pa_key
+            cached_sim = (
+                None
+                if refresh
+                else await enrichment_cache.get(
+                    db, "lastfm", "similar", pa_key
+                )
             )
             if cached_sim is not None:
                 sim = cached_sim.get("similar")
@@ -428,8 +478,12 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
         # available since it's a stable identifier; fall back to artist|title.
         if primary_artist or isrc:
             mb_key = f"isrc:{isrc}" if isrc else f"at:{pa_key}"
-            cached_mb = await enrichment_cache.get(
-                db, "musicbrainz", "recording", mb_key
+            cached_mb = (
+                None
+                if refresh
+                else await enrichment_cache.get(
+                    db, "musicbrainz", "recording", mb_key
+                )
             )
             if cached_mb is not None:
                 mb = cached_mb.get("data")
@@ -451,8 +505,12 @@ async def combined_track_detail(spotify_track_id: str, request: Request):
 
         # Wikipedia trivia/context — also fully public.
         if primary_artist and title:
-            cached_wiki = await enrichment_cache.get(
-                db, "wikipedia", "article", pa_key
+            cached_wiki = (
+                None
+                if refresh
+                else await enrichment_cache.get(
+                    db, "wikipedia", "article", pa_key
+                )
             )
             if cached_wiki is not None:
                 article = cached_wiki.get("article")

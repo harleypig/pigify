@@ -67,6 +67,8 @@
   border-radius: 4px;
 }
 .tip-toggle:hover { color: #fff; background: #2a2a2a; }
+.tip-toggle:disabled { opacity: 0.4; cursor: default; background: transparent; }
+.tip-refresh { font-size: 16px; }
 
 .tip-body {
   overflow-y: auto;

@@ -46,7 +46,32 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [showRaw, setShowRaw] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const reqRef = useRef(0)
+
+  const fetchDetail = (id: string, refresh: boolean) => {
+    const reqId = ++reqRef.current
+    if (refresh) setRefreshing(true)
+    else setLoading(true)
+    setError(null)
+    apiService
+      .getTrackDetail(id, { refresh })
+      .then((d) => {
+        if (reqRef.current === reqId) setData(d)
+      })
+      .catch((e) => {
+        if (reqRef.current === reqId) {
+          setError(e?.response?.data?.detail || e.message || 'Failed to load')
+          if (!refresh) setData(null)
+        }
+      })
+      .finally(() => {
+        if (reqRef.current === reqId) {
+          setLoading(false)
+          setRefreshing(false)
+        }
+      })
+  }
 
   useEffect(() => {
     if (!trackId) {
@@ -54,24 +79,12 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
       setError(null)
       return
     }
-    const reqId = ++reqRef.current
-    setLoading(true)
-    setError(null)
-    apiService
-      .getTrackDetail(trackId)
-      .then((d) => {
-        if (reqRef.current === reqId) setData(d)
-      })
-      .catch((e) => {
-        if (reqRef.current === reqId) {
-          setError(e?.response?.data?.detail || e.message || 'Failed to load')
-          setData(null)
-        }
-      })
-      .finally(() => {
-        if (reqRef.current === reqId) setLoading(false)
-      })
+    fetchDetail(trackId, false)
   }, [trackId])
+
+  const handleRefresh = () => {
+    if (trackId && !refreshing && !loading) fetchDetail(trackId, true)
+  }
 
   const handleCopy = async () => {
     if (!data) return
@@ -104,6 +117,15 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
       <header className="tip-header">
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">
+          <button
+            className="tip-toggle tip-refresh"
+            onClick={handleRefresh}
+            disabled={!trackId || loading || refreshing}
+            aria-label="Refresh cached track info"
+            title="Force a fresh lookup, bypassing the cache"
+          >
+            {refreshing ? '…' : '↻'}
+          </button>
           <label className="tip-raw-toggle" title="Toggle raw JSON view">
             <input
               type="checkbox"

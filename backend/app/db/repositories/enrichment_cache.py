@@ -55,6 +55,28 @@ async def put(
     await session.flush()
 
 
+async def delete_one(
+    session: AsyncSession, provider: str, kind: str, key: str
+) -> bool:
+    """Delete a single cached row. Returns True if a row was removed."""
+    result = await session.execute(
+        delete(EnrichmentCache).where(
+            EnrichmentCache.provider == provider,
+            EnrichmentCache.kind == kind,
+            EnrichmentCache.key == key,
+        )
+    )
+    await session.flush()
+    return bool(result.rowcount or 0)
+
+
+async def clear_all(session: AsyncSession) -> int:
+    """Delete every cached row for this user database."""
+    result = await session.execute(delete(EnrichmentCache))
+    await session.flush()
+    return int(result.rowcount or 0)
+
+
 async def purge_expired(session: AsyncSession) -> int:
     now = datetime.now(timezone.utc)
     result = await session.execute(

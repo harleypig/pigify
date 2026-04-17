@@ -429,7 +429,49 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
           </p>
         </section>
       )}
+
+      <EnrichmentCacheCard />
     </div>
+  )
+}
+
+function EnrichmentCacheCard() {
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
+
+  const clear = async () => {
+    if (!window.confirm('Clear all cached track trivia for your account?')) return
+    setBusy(true)
+    setStatus(null)
+    try {
+      const res = await apiService.clearEnrichmentCache()
+      setStatus(
+        res.deleted > 0
+          ? `Cleared ${res.deleted} cached entr${res.deleted === 1 ? 'y' : 'ies'}.`
+          : 'Cache was already empty.'
+      )
+    } catch {
+      setStatus('Failed to clear cache.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="sp-card">
+      <header>
+        <h3>Cached track trivia</h3>
+      </header>
+      <p className="sp-meta">
+        Last.fm, MusicBrainz and Wikipedia results are cached for up to a week so
+        track details open instantly. If a Wikipedia article was fixed or a Last.fm
+        tag changed, clear the cache to force fresh lookups on the next open.
+      </p>
+      <button className="sp-btn-danger" onClick={clear} disabled={busy}>
+        {busy ? 'Clearing…' : 'Clear cached track trivia'}
+      </button>
+      {status && <p className="sp-meta">{status}</p>}
+    </section>
   )
 }
 
