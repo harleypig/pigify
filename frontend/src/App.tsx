@@ -59,8 +59,13 @@ function App() {
         </div>
         {user && (
           <div className="user-info">
-            <span>{user.display_name}</span>
-            <button onClick={() => setSettingsOpen(true)}>Settings</button>
+            <button
+              className="user-name-btn"
+              onClick={() => setSettingsOpen(true)}
+              title="Open settings"
+            >
+              {user.display_name}
+            </button>
             <button onClick={handleLogout}>Logout</button>
           </div>
         )}
