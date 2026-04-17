@@ -282,8 +282,19 @@ export const apiService = {
     return r.data
   },
 
-  async getTrackDetail(spotifyTrackId: string): Promise<TrackDetail> {
-    const response = await apiClient.get(`/api/integrations/track-detail/${spotifyTrackId}`)
+  async getTrackDetail(
+    spotifyTrackId: string,
+    opts: { refresh?: boolean } = {}
+  ): Promise<TrackDetail> {
+    const response = await apiClient.get(
+      `/api/integrations/track-detail/${spotifyTrackId}`,
+      { params: opts.refresh ? { refresh: true } : undefined }
+    )
+    return response.data
+  },
+
+  async clearEnrichmentCache(): Promise<{ deleted: number; scope: string }> {
+    const response = await apiClient.delete('/api/integrations/enrichment-cache')
     return response.data
   },
 
