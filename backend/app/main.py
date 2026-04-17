@@ -19,10 +19,14 @@ app = FastAPI(
 )
 
 # Session middleware for OAuth state and tokens
+# https_only=True + same_site="none" ensures the cookie survives the
+# cross-origin OAuth redirect through Spotify and back
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.SECRET_KEY,
-    max_age=3600 * 24 * 7  # 7 days
+    max_age=3600 * 24 * 7,  # 7 days
+    https_only=True,
+    same_site="none",
 )
 
 # CORS configuration
