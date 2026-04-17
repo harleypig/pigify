@@ -8,6 +8,7 @@ from pydantic import BaseModel
 import math
 
 from backend.app.services.spotify import SpotifyService
+from backend.app.services import scrobbler
 
 router = APIRouter()
 
@@ -30,6 +31,11 @@ async def get_playback_state(request: Request):
     spotify = SpotifyService(_get_token(request))
     try:
         state = await spotify.get_playback_state()
+        # Hook into the scrobbling pipeline. Never raises.
+        try:
+            await scrobbler.process_state(request, state)
+        except Exception:
+            pass
         if state is None:
             return {"is_playing": False, "item": None, "device": None, "progress_ms": 0}
         return state

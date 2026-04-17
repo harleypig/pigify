@@ -3,6 +3,8 @@ import Login from './components/Login'
 import PlaylistSelector from './components/PlaylistSelector'
 import TrackList from './components/TrackList'
 import NowPlayingBar from './components/NowPlayingBar'
+import SettingsModal from './components/SettingsModal'
+import TrackDetailModal from './components/TrackDetailModal'
 import { apiService } from './services/api'
 import './App.css'
 
@@ -11,6 +13,8 @@ function App() {
   const [user, setUser] = useState<any>(null)
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [detailTrackId, setDetailTrackId] = useState<string | null>(null)
 
   useEffect(() => {
     checkAuth()
@@ -51,15 +55,18 @@ function App() {
       <header className="app-header">
         <h1 className="app-title">Pigify</h1>
         <div className="app-header-center">
-          <NowPlayingBar trackUri={currentTrack} />
+          <NowPlayingBar trackUri={currentTrack} onShowDetails={setDetailTrackId} />
         </div>
         {user && (
           <div className="user-info">
             <span>{user.display_name}</span>
+            <button onClick={() => setSettingsOpen(true)}>Settings</button>
             <button onClick={handleLogout}>Logout</button>
           </div>
         )}
       </header>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <TrackDetailModal trackId={detailTrackId} onClose={() => setDetailTrackId(null)} />
       <main className="app-main">
         <div className="sidebar">
           <PlaylistSelector

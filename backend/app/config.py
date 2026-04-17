@@ -24,6 +24,20 @@ class Settings(BaseSettings):
     SPOTIFY_CLIENT_ID: str = ""
     SPOTIFY_CLIENT_SECRET: str = ""
     SPOTIFY_REDIRECT_URI: str = "http://localhost:8000/api/auth/spotify/callback"
+
+    # Last.fm API Configuration (optional)
+    # When unset, Last.fm features are hidden entirely (per the graceful
+    # degradation policy). When set without a per-user session, only public
+    # methods (tags / similar / global playcounts) are available.
+    LASTFM_API_KEY: str = ""
+    LASTFM_SHARED_SECRET: str = ""
+    LASTFM_CALLBACK_URI: str = "http://localhost:8000/api/integrations/lastfm/callback"
+
+    # Scrobbling thresholds (Last.fm spec):
+    # scrobble after the track has played for >= 50% of its length OR >= 4 minutes,
+    # whichever comes first, and only for tracks longer than 30 seconds.
+    SCROBBLE_MIN_TRACK_SEC: int = 30
+    SCROBBLE_MIN_PLAYED_SEC: int = 240
     
     # Application Configuration
     SECRET_KEY: str = "dev-secret-key-change-in-production"

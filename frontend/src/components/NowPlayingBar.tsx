@@ -4,6 +4,7 @@ import './NowPlayingBar.css'
 
 interface NowPlayingBarProps {
   trackUri: string | null
+  onShowDetails?: (trackId: string) => void
 }
 
 function formatMs(ms: number): string {
@@ -63,7 +64,7 @@ function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
   )
 }
 
-function NowPlayingBar({ trackUri }: NowPlayingBarProps) {
+function NowPlayingBar({ trackUri, onShowDetails }: NowPlayingBarProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [track, setTrack] = useState<any>(null)
   const [durationMs, setDurationMs] = useState(0)
@@ -212,6 +213,17 @@ function NowPlayingBar({ trackUri }: NowPlayingBarProps) {
             {isPlaying ? '⏸' : '▶'}
           </button>
           <button className="now-playing-ctrl-btn" onClick={handleNext} aria-label="Next" disabled={!track}>⏭</button>
+          {onShowDetails && (
+            <button
+              className="now-playing-ctrl-btn"
+              onClick={() => track?.id && onShowDetails(track.id)}
+              aria-label="Track details"
+              title="Track details"
+              disabled={!track?.id}
+            >
+              ⓘ
+            </button>
+          )}
         </div>
       </div>
 

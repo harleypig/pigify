@@ -13,15 +13,16 @@ A custom Spotify web application for enhanced playlist management and music play
 ```
 backend/
   app/
-    api/          # FastAPI route handlers (auth, playlists)
+    api/          # auth, playlists, player, integrations
     models/       # Pydantic schemas
-    services/     # Spotify API wrapper
+    services/     # spotify, lastfm, musicbrainz, scrobbler, connections
     config.py     # Settings via pydantic-settings
     main.py       # App entry point
   requirements.txt
 frontend/
   src/
-    components/   # Login, Player, PlaylistSelector, TrackList
+    components/   # Login, Player, PlaylistSelector, TrackList,
+                  # NowPlayingBar, SettingsModal, TrackDetailModal
     services/     # API client, Spotify SDK wrapper
   vite.config.ts  # Port 5000, proxy /api to backend
 ```
@@ -35,6 +36,15 @@ frontend/
 
 - `SPOTIFY_CLIENT_ID` — From Spotify Developer Dashboard
 - `SPOTIFY_CLIENT_SECRET` — From Spotify Developer Dashboard
+
+### Optional (for Last.fm features)
+- `LASTFM_API_KEY` — From https://www.last.fm/api/account/create
+- `LASTFM_SHARED_SECRET` — Provided alongside the API key
+- `LASTFM_CALLBACK_URI` — Public URL of `/api/integrations/lastfm/callback`
+
+When unset, all Last.fm UI is hidden. When set without per-user auth, only
+public reads (tags, similar tracks, global play counts) are exposed.
+MusicBrainz needs no key. See `docs/INTEGRATIONS.md`.
 
 ## Environment Variables
 

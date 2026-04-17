@@ -103,5 +103,83 @@ export const apiService = {
     const response = await apiClient.get(`/api/player/analysis/${trackId}`, { params: { bars } })
     return response.data
   },
+
+  async getConnections(): Promise<Record<string, ConnectionStatus>> {
+    const response = await apiClient.get('/api/integrations/connections')
+    return response.data
+  },
+
+  async getLastfmStatus(): Promise<{ connection: ConnectionStatus; status: LastfmStatus }> {
+    const response = await apiClient.get('/api/integrations/lastfm/status')
+    return response.data
+  },
+
+  async disconnectLastfm(): Promise<void> {
+    await apiClient.post('/api/integrations/lastfm/disconnect')
+  },
+
+  async getTrackDetail(spotifyTrackId: string): Promise<TrackDetail> {
+    const response = await apiClient.get(`/api/integrations/track-detail/${spotifyTrackId}`)
+    return response.data
+  },
+}
+
+export type Tier = 'none' | 'public' | 'authenticated'
+
+export interface ConnectionStatus {
+  service: string
+  tier: Tier
+  display_name: string
+  connected_account?: string | null
+  last_error?: string | null
+}
+
+export interface LastfmStatus {
+  now_playing?: { artist: string; track: string; album?: string; duration_sec?: number } | null
+  queued?: number
+  last_scrobble_at?: number | null
+}
+
+export interface TrackDetail {
+  spotify: {
+    id: string
+    name: string
+    artists: string[]
+    album?: string
+    release_date?: string
+    duration_ms?: number
+    explicit?: boolean
+    isrc?: string
+    external_url?: string
+  }
+  connections: Record<string, ConnectionStatus>
+  lastfm?: {
+    tier: Tier
+    url?: string
+    playcount?: number | null
+    listeners?: number | null
+    user_playcount?: number | null
+    user_loved?: boolean | null
+    tags?: string[]
+    summary?: string | null
+    similar?: Array<{ name: string; artist: string; url?: string; match: number }>
+    error?: string
+  }
+  musicbrainz?: {
+    mbid: string
+    title: string
+    length_ms?: number
+    artists: Array<{ name: string; mbid: string }>
+    releases: Array<{
+      title: string
+      mbid: string
+      date?: string
+      country?: string
+      release_group_mbid?: string
+      release_group_type?: string
+    }>
+    isrcs: string[]
+    tags: string[]
+  }
 }
 
