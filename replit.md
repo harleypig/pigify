@@ -13,11 +13,13 @@ A custom Spotify web application for enhanced playlist management and music play
 ```
 backend/
   app/
-    api/          # auth, playlists, player, integrations, favorites
+    api/          # auth, playlists, player, integrations, favorites, health
     models/       # Pydantic schemas (playlist, favorites)
     services/     # spotify, lastfm, musicbrainz, scrobbler, connections, favorites orchestration
+    db/           # SQLAlchemy engines/sessions, ORM models, repositories, migration bootstrap
     config.py     # Settings via pydantic-settings
     main.py       # App entry point
+  migrations/     # Alembic envs: system/ + user/
   requirements.txt
 frontend/
   src/
@@ -59,6 +61,20 @@ MusicBrainz needs no key. See `docs/INTEGRATIONS.md`.
 - `BACKEND_URL=http://localhost:8000`
 - `FRONTEND_URL=http://localhost:5000`
 - `PORT=8000`
+- `DATA_DIR=./data` — persistent storage for the system DB and per-user
+  SQLite files (mount as a volume in Docker; `docker-compose.yml` mounts
+  `./data:/data`)
+- `SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE` — optional Postgres
+  overrides; see `docs/DATABASE.md`
+
+## Persistence
+
+SQLAlchemy 2.0 async with one SQLite file per Spotify user plus a small
+shared system DB (`pigify.db`). Alembic has two migration environments
+(`backend/migrations/system/` and `backend/migrations/user/`) that run
+automatically on startup; manual application via `python -m
+backend.app.db.cli upgrade`. Health: `GET /api/health/db`. See
+`docs/DATABASE.md`.
 
 ## Deployment
 

@@ -19,12 +19,15 @@ services:
       - BACKEND_URL=${BACKEND_URL}
       - FRONTEND_URL=${FRONTEND_URL:-https://localhost:3000}
       - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DATA_DIR=${DATA_DIR:-/data}
     secrets:
       - spotify_client_secret
       - secret_key
     volumes:
       - ./config:/app/config
       - ./certs:/app/certs:ro
+      # Persistent storage for the system DB and per-user SQLite files.
+      - ./data:/data
     env_file:
       - .env
     # Require SSL certificates - fail if not found (Spotify requires HTTPS)

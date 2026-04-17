@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "aiosqlite>=0.19",
+    "alembic>=1.13",
     "fastapi>=0.136.0",
+    "greenlet>=3.0",
     "httpx>=0.28.1",
     "itsdangerous>=2.2.0",
     "pydantic>=2.13.2",
@@ -13,5 +16,6 @@ dependencies = [
     "python-jose[cryptography]>=3.5.0",
     "python-multipart>=0.0.26",
     "spotipy>=2.26.0",
+    "sqlalchemy>=2.0",
     "uvicorn[standard]>=0.44.0",
 ]

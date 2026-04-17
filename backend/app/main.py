@@ -9,14 +9,26 @@ from starlette.middleware.sessions import SessionMiddleware
 import os
 from pathlib import Path
 
-from backend.app.api import auth, playlists, player, integrations, favorites
+from backend.app.api import auth, playlists, player, integrations, favorites, health
 from backend.app.config import settings
+from backend.app.db.bootstrap import bootstrap as db_bootstrap
+from backend.app.db.engines import dispose_all as db_dispose_all
 
 app = FastAPI(
     title="Pigify",
     description="Custom Spotify frontend with playlist management",
     version="0.1.0"
 )
+
+
+@app.on_event("startup")
+async def _db_startup() -> None:
+    await db_bootstrap()
+
+
+@app.on_event("shutdown")
+async def _db_shutdown() -> None:
+    await db_dispose_all()
 
 # Session middleware for OAuth state and tokens
 # https_only=True + same_site="none" ensures the cookie survives the
@@ -45,6 +57,7 @@ app.include_router(playlists.router, prefix="/api/playlists", tags=["playlists"]
 app.include_router(player.router, prefix="/api/player", tags=["player"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["integrations"])
 app.include_router(favorites.router, prefix="/api/favorites", tags=["favorites"])
+app.include_router(health.router, prefix="/api/health", tags=["health"])
 
 
 @app.get("/health")

@@ -44,6 +44,21 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:5000"
     ENVIRONMENT: str = "development"
+
+    # Persistent storage configuration.
+    # In Docker this should be a mounted volume (e.g. /data). Locally we
+    # default to ./data under the project root so dev runs don't pollute
+    # the system.
+    DATA_DIR: str = "./data"
+    # Override the system-DB URL (e.g. to point at Postgres). When unset
+    # the system DB is a SQLite file `pigify.db` inside DATA_DIR.
+    SYSTEM_DATABASE_URL: str = ""
+    # Optional per-user override. When set (e.g. a Postgres URL with a
+    # `{spotify_id}` placeholder) replaces the per-user SQLite file.
+    USER_DATABASE_URL_TEMPLATE: str = ""
+    DB_ECHO: bool = False
+    # Log a warning when a query takes longer than this many milliseconds.
+    DB_SLOW_QUERY_MS: int = 250
     
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
