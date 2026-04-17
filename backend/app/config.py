@@ -2,9 +2,12 @@
 Application configuration using Pydantic settings.
 """
 import os
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 from pathlib import Path
+
+_INSECURE_SECRET_KEY = "dev-secret-key-change-in-production"
 
 
 def read_secret_file(secret_path: str) -> Optional[str]:
@@ -48,10 +51,19 @@ class Settings(BaseSettings):
     SCROBBLE_RETRY_MAX_SEC: int = 3600  # cap at 1 hour
     
     # Application Configuration
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    SECRET_KEY: str = _INSECURE_SECRET_KEY
     BACKEND_URL: str = "http://localhost:8000"
     FRONTEND_URL: str = "http://localhost:5000"
     ENVIRONMENT: str = "development"
+
+    # Concurrency caps for outbound API hydration during recipe resolution.
+    # Tunable via env so we can dial up if Spotify/Last.fm tolerate more.
+    LASTFM_HYDRATE_CONCURRENCY: int = 10
+    PLAYLIST_FETCH_CONCURRENCY: int = 8
+    # Per-user DB engines are cached forever today; cap so a long-running
+    # process with many users doesn't accumulate engines (and FDs) without
+    # bound. Least-recently-used engines are disposed when the cap is hit.
+    USER_ENGINE_CACHE_MAX: int = 256
 
     # Persistent storage configuration.
     # In Docker this should be a mounted volume (e.g. /data). Locally we
@@ -75,14 +87,27 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5000",
         "http://127.0.0.1:8000",
     ]
-    
+    # Optional regex for additional allowed origins (matched with re.fullmatch
+    # by Starlette). Default restricts to https Replit dev subdomains; set to
+    # an empty string to disable, or override for other deployment topologies.
+    CORS_ORIGIN_REGEX: str = r"https://[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.replit\.dev"
+
     class Config:
         env_file = ".env"
         case_sensitive = True
         extra = "allow"
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+
+    @model_validator(mode="after")
+    def _require_secret_key_in_prod(self) -> "Settings":
+        if (
+            self.ENVIRONMENT.lower() == "production"
+            and self.SECRET_KEY == _INSECURE_SECRET_KEY
+        ):
+            raise ValueError(
+                "SECRET_KEY must be set to a strong, unique value in production "
+                "(refusing to boot with the built-in default)."
+            )
+        return self
 
 
 settings = Settings()

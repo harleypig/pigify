@@ -156,15 +156,26 @@ async def _flush_queue(
                 next_attempt_at=datetime.now(timezone.utc)
                 + _next_backoff(attempts_after),
             )
+            # Persist the failure bookkeeping immediately so a crash
+            # before the outer commit doesn't reset the backoff and
+            # cause an instant-retry loop.
+            await session.commit()
             if _is_auth_fatal(err):
                 auth_fatal_seen = True
                 # No point hammering Last.fm with a dead session key —
                 # bail out, the periodic retry will pick up where we
                 # left off once the user reconnects.
                 await record_lastfm_error_safely(session, err)
+                await session.commit()
                 break
             continue
         await queue_repo.delete(session, entry.id)
+        # Commit eagerly: the network side effect already happened, so we
+        # must not let a crash leave the row in the queue (which would
+        # cause Last.fm to receive a duplicate on the next retry — and
+        # while Last.fm dedupes by (timestamp, artist, track), we'd still
+        # rack up wasted requests and confusing stats).
+        await session.commit()
         succeeded += 1
         last_success_ts = int(time.time())
     if auth_fatal_seen:
@@ -438,12 +449,17 @@ async def flush_now(spotify_id: str) -> Dict[str, Any]:
                     next_attempt_at=datetime.now(timezone.utc)
                     + _next_backoff(attempts_after),
                 )
+                await session.commit()
                 if _is_auth_fatal(last_error):
                     auth_fatal_seen = True
                     await record_lastfm_error_safely(session, last_error)
+                    await session.commit()
                     break
                 continue
             await queue_repo.delete(session, entry.id)
+            # Eager commit: see _flush_queue for the rationale (network
+            # side effect already happened, must not be replayed).
+            await session.commit()
             succeeded += 1
 
         if auth_fatal_seen:

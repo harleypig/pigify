@@ -22,16 +22,25 @@ from __future__ import annotations
 
 import asyncio
 import random
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
+from backend.app.config import settings
 from backend.app.models.playlist import Track
 from backend.app.services import lastfm
 from backend.app.services.sort_fields import SORT_FIELD_KEYS, get_sort_field
 from backend.app.services.spotify import SpotifyService
+
+
+# Process-wide TTL cache for `playlist_id -> display_name`. Playlist names
+# change rarely; caching them between resolves removes a per-recipe burst of
+# Spotify GETs (and overlaps nicely with the proposed recents preview cache).
+_PLAYLIST_NAME_TTL_SEC = 300  # 5 minutes
+_playlist_name_cache: Dict[str, Tuple[float, str]] = {}
 
 
 # ============================ Recipe schema =================================
@@ -162,7 +171,7 @@ async def _load_source_tracks(
         if not pids:
             return [], {}
         # Fetch concurrently, but cap parallelism to avoid hammering Spotify.
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(max(1, settings.PLAYLIST_FETCH_CONCURRENCY))
 
         async def fetch(pid: str) -> Tuple[str, List[Track]]:
             async with sem:
@@ -245,7 +254,7 @@ async def _hydrate(
             }
 
     if "lastfm" in sources:
-        sem = asyncio.Semaphore(5)
+        sem = asyncio.Semaphore(max(1, settings.LASTFM_HYDRATE_CONCURRENCY))
 
         async def fetch(t: Track) -> Tuple[str, Optional[Dict]]:
             artist = (t.artists[0] if t.artists else "").strip()
@@ -477,10 +486,30 @@ class ResolveResult:
 async def _resolve_playlist_names(
     spotify: SpotifyService, playlist_ids: Iterable[str]
 ) -> Dict[str, str]:
-    pids = [p for p in playlist_ids if p and p != "liked"]
+    """Resolve `{playlist_id: display_name}` with a small process-wide cache.
+
+    Dedup is implicit (the input is iterated once into a set) and we serve
+    fresh entries from `_playlist_name_cache`; only IDs that aren't cached
+    or whose entry has expired actually hit Spotify.
+    """
+    pids = {p for p in playlist_ids if p and p != "liked"}
     if not pids:
         return {}
-    sem = asyncio.Semaphore(5)
+
+    now = time.time()
+    out: Dict[str, str] = {}
+    misses: List[str] = []
+    for pid in pids:
+        hit = _playlist_name_cache.get(pid)
+        if hit is not None and now - hit[0] < _PLAYLIST_NAME_TTL_SEC:
+            out[pid] = hit[1]
+        else:
+            misses.append(pid)
+
+    if not misses:
+        return out
+
+    sem = asyncio.Semaphore(max(1, settings.PLAYLIST_FETCH_CONCURRENCY))
 
     async def fetch(pid: str) -> Tuple[str, str]:
         async with sem:
@@ -490,8 +519,12 @@ async def _resolve_playlist_names(
             except Exception:
                 return pid, pid
 
-    results = await asyncio.gather(*(fetch(p) for p in pids))
-    return dict(results)
+    results = await asyncio.gather(*(fetch(p) for p in misses))
+    fetched_at = time.time()
+    for pid, name in results:
+        _playlist_name_cache[pid] = (fetched_at, name)
+        out[pid] = name
+    return out
 
 
 async def resolve_recipe(

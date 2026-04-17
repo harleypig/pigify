@@ -1,12 +1,45 @@
 """
 Spotify API service wrapper using spotipy.
 """
-import httpx
-from typing import List, Dict, Optional
+import asyncio
 import base64
+from typing import List, Dict, Optional
+
+import httpx
 
 from backend.app.config import settings
 from backend.app.models.playlist import Playlist, Track, User
+
+
+# A single shared httpx.AsyncClient so we get connection pooling and
+# avoid TLS handshakes on every Spotify call. Lazily constructed on first
+# use; disposed by ``close_shared_client`` at app shutdown.
+_shared_client: Optional[httpx.AsyncClient] = None
+_shared_client_lock = asyncio.Lock()
+
+
+async def get_shared_client() -> httpx.AsyncClient:
+    """Return the process-wide httpx.AsyncClient, creating it on first use."""
+    global _shared_client
+    if _shared_client is not None and not _shared_client.is_closed:
+        return _shared_client
+    async with _shared_client_lock:
+        if _shared_client is None or _shared_client.is_closed:
+            _shared_client = httpx.AsyncClient(
+                timeout=httpx.Timeout(15.0, connect=5.0),
+                limits=httpx.Limits(
+                    max_connections=100, max_keepalive_connections=20
+                ),
+            )
+        return _shared_client
+
+
+async def close_shared_client() -> None:
+    """Dispose the shared client. Call on application shutdown."""
+    global _shared_client
+    if _shared_client is not None and not _shared_client.is_closed:
+        await _shared_client.aclose()
+    _shared_client = None
 
 
 class SpotifyService:
@@ -55,65 +88,65 @@ class SpotifyService:
             "Content-Type": "application/x-www-form-urlencoded"
         }
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                SpotifyService.TOKEN_URL,
-                data=data,
-                headers=headers
-            )
-            response.raise_for_status()
-            return response.json()
-    
+        client = await get_shared_client()
+        response = await client.post(
+            SpotifyService.TOKEN_URL,
+            data=data,
+            headers=headers,
+        )
+        response.raise_for_status()
+        return response.json()
+
     async def _get(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
         """Make GET request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, headers=self.headers, params=params)
-            if response.status_code == 204:
-                return None
-            response.raise_for_status()
-            return response.json()
+        client = await get_shared_client()
+        response = await client.get(url, headers=self.headers, params=params)
+        if response.status_code == 204:
+            return None
+        response.raise_for_status()
+        return response.json()
 
     async def _put(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> None:
         """Make PUT request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
-        async with httpx.AsyncClient() as client:
-            response = await client.put(url, headers=self.headers, json=body, params=params)
-            response.raise_for_status()
+        client = await get_shared_client()
+        response = await client.put(url, headers=self.headers, json=body, params=params)
+        response.raise_for_status()
 
     async def _post(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> Optional[Dict]:
         """Make POST request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
-        async with httpx.AsyncClient() as client:
-            response = await client.post(url, headers=self.headers, json=body, params=params)
-            response.raise_for_status()
-            if response.status_code == 204 or not response.content:
-                return None
-            try:
-                return response.json()
-            except ValueError:
-                return None
+        client = await get_shared_client()
+        response = await client.post(url, headers=self.headers, json=body, params=params)
+        response.raise_for_status()
+        if response.status_code == 204 or not response.content:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
 
     async def _put_json(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> Optional[Dict]:
         """Make PUT request to Spotify API and return the JSON body (for endpoints
         like playlist reorder that return a snapshot_id)."""
         url = f"{self.BASE_URL}{endpoint}"
-        async with httpx.AsyncClient() as client:
-            response = await client.put(url, headers=self.headers, json=body, params=params)
-            response.raise_for_status()
-            if response.status_code == 204 or not response.content:
-                return None
-            try:
-                return response.json()
-            except ValueError:
-                return None
+        client = await get_shared_client()
+        response = await client.put(url, headers=self.headers, json=body, params=params)
+        response.raise_for_status()
+        if response.status_code == 204 or not response.content:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
 
     async def _delete(self, endpoint: str, params: Optional[Dict] = None) -> None:
         """Make DELETE request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
-        async with httpx.AsyncClient() as client:
-            response = await client.delete(url, headers=self.headers, params=params)
-            response.raise_for_status()
+        client = await get_shared_client()
+        response = await client.delete(url, headers=self.headers, params=params)
+        response.raise_for_status()
 
     # --- Saved tracks (favorites) ---
 
