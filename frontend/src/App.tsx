@@ -12,6 +12,20 @@ import './App.css'
 
 const PANEL_COLLAPSED_KEY = 'pigify.trackInfoPanel.collapsed'
 
+function pickAvatarUrl(
+  images?: Array<{ url: string; height?: number; width?: number }> | null,
+): string | null {
+  if (!images || images.length === 0) return null
+  const sized = images.filter((img) => typeof img.height === 'number')
+  if (sized.length > 0) {
+    const smallest = sized.reduce((a, b) =>
+      (a.height ?? Infinity) <= (b.height ?? Infinity) ? a : b,
+    )
+    return smallest.url
+  }
+  return images[images.length - 1].url
+}
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -112,6 +126,7 @@ function App() {
           <div className="user-info">
             <UserMenu
               label={profile?.display_name ?? user.display_name}
+              imageUrl={pickAvatarUrl(user.images)}
               onOpenSettings={() => setSettingsPanelOpen(true)}
               onLogout={handleLogout}
             />
