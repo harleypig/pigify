@@ -1,4 +1,7 @@
 .now-playing-bar {
+  /* No max-width: the bar fills its grid cell (75% of the header) so it
+     stays a constant size as songs change. Long titles/artists are
+     truncated with ellipsis by .now-playing-title / .now-playing-artist. */
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
@@ -6,9 +9,8 @@
   border: 1px solid #333;
   border-radius: 8px;
   padding: 0.45rem 0.75rem 0.4rem;
-  min-width: 260px;
-  max-width: 520px;
   width: 100%;
+  min-width: 0;
 }
 
 /* ── Row 1 ── */
