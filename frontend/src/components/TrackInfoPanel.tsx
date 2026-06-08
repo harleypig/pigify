@@ -246,8 +246,8 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                       <>
                         <h5 className="tip-h5">Similar tracks</h5>
                         <ul className="tip-similar">
-                          {data.lastfm.similar.map((s, i) => (
-                            <li key={i}>
+                          {data.lastfm.similar.map((s) => (
+                            <li key={`${s.name}-${s.artist}`}>
                               <a href={s.url} target="_blank" rel="noreferrer">
                                 {s.name}
                               </a>{" "}

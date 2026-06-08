@@ -173,6 +173,19 @@ function TrackList({
     return sortTracks(tracks, fields, sortSpec.keys, hydration);
   }, [tracks, fields, sortSpec, hydration]);
 
+  // A playlist can legitimately contain the same track more than once, so
+  // track.id is not unique on its own. Pair each row with a stable key built
+  // from its id plus a per-id occurrence count (not the array index), so
+  // duplicates get distinct keys without relying on render position.
+  const rowKeys = useMemo(() => {
+    const seen = new Map<string, number>();
+    return sortedTracks.map((t) => {
+      const n = seen.get(t.id) ?? 0;
+      seen.set(t.id, n + 1);
+      return `${t.id}-${n}`;
+    });
+  }, [sortedTracks]);
+
   const handleSavePreset = async (preset: SortPreset) => {
     try {
       const updated = await apiService.saveSortPreset(preset);
@@ -283,7 +296,7 @@ function TrackList({
              a few hundred rows, well within what the DOM handles smoothly. */
           // biome-ignore lint/a11y/useSemanticElements: row cannot be a real <button> because it nests an interactive HeartButton (invalid HTML); keyboard equivalents and aria-label are provided
           <div
-            key={`${track.id}-${index}`}
+            key={rowKeys[index]}
             className="track-item"
             role="button"
             tabIndex={0}

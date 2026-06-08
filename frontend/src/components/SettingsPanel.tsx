@@ -268,7 +268,10 @@ function FavoritesTab() {
             ) : (
               <ul className="sp-conflict-list">
                 {status.pending_conflicts.map((c, i) => (
-                  <li key={`${c.track.name}-${i}`} className="sp-conflict-item">
+                  <li
+                    key={`${c.track.name}-${c.track.artist}`}
+                    className="sp-conflict-item"
+                  >
                     <div className="sp-conflict-info">
                       <strong>{c.track.name}</strong> — {c.track.artist}
                       <div className="sp-conflict-meta">
@@ -828,8 +831,8 @@ function ChangelogEntryView({ entry }: { entry: ChangelogEntry }) {
         {entry.date && <span className="sp-meta"> · {entry.date}</span>}
       </div>
       <ul className="sp-changelog-list">
-        {entry.highlights.map((h, i) => (
-          <li key={i}>{h}</li>
+        {entry.highlights.map((h) => (
+          <li key={h}>{h}</li>
         ))}
       </ul>
     </li>

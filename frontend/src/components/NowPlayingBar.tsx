@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { apiService } from "../services/api";
+import { apiService, type PlaybackItem } from "../services/api";
 import HeartButton from "./HeartButton";
 import "./NowPlayingBar.css";
 
@@ -70,6 +70,15 @@ function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
     onSeek(Math.max(0, Math.min(1, fraction)));
   };
 
+  // Amplitude values can repeat, so derive a stable per-bar key from the
+  // value plus a per-value occurrence count instead of the array index.
+  const seenAmplitudes = new Map<number, number>();
+  const barKeys = bars.map((v) => {
+    const occ = seenAmplitudes.get(v) ?? 0;
+    seenAmplitudes.set(v, occ + 1);
+    return `${v}-${occ}`;
+  });
+
   return (
     <svg
       className="progress-waveform"
@@ -86,7 +95,7 @@ function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
         const played = i / n <= progress;
         return (
           <rect
-            key={i}
+            key={barKeys[i]}
             x={x}
             y={y}
             width={barW}
@@ -105,7 +114,7 @@ function NowPlayingBar({
   onTrackChange,
 }: NowPlayingBarProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [track, setTrack] = useState<any>(null);
+  const [track, setTrack] = useState<PlaybackItem | null>(null);
   const [durationMs, setDurationMs] = useState(0);
   const [waveform, setWaveform] = useState<number[]>([]);
 
@@ -238,7 +247,7 @@ function NowPlayingBar({
 
   const albumArt = track?.album?.images?.[0]?.url;
   const trackName = track?.name;
-  const artistNames = track?.artists?.map((a: any) => a.name).join(", ");
+  const artistNames = track?.artists?.map((a) => a.name).join(", ");
   const progressMs = durationMs > 0 ? displayProgress * durationMs : 0;
   const remainMs = Math.max(0, durationMs - progressMs);
 

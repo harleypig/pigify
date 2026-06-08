@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { recipesApi, type StoredRecipe } from "../services/api";
+import {
+  apiErrorMessage,
+  recipesApi,
+  type StoredRecipe,
+} from "../services/api";
 import RecipeBuilder from "./RecipeBuilder";
 import "./RecipesSidebar.css";
 
@@ -53,8 +57,8 @@ export default function RecipesSidebar() {
       const res = await recipesApi.play(r.id);
       setStatusMsg(`Playing ${res.track_count} tracks from “${r.name}”`);
       setTimeout(() => setStatusMsg(null), 4000);
-    } catch (e: any) {
-      setStatusMsg(e?.response?.data?.detail || "Could not start playback");
+    } catch (e) {
+      setStatusMsg(apiErrorMessage(e, "Could not start playback"));
     } finally {
       setBusyId(null);
     }
@@ -71,8 +75,8 @@ export default function RecipesSidebar() {
       const res = await recipesApi.materialize(r.id, { name });
       setStatusMsg(`Created playlist with ${res.track_count} tracks`);
       setTimeout(() => setStatusMsg(null), 5000);
-    } catch (e: any) {
-      setStatusMsg(e?.response?.data?.detail || "Could not materialize");
+    } catch (e) {
+      setStatusMsg(apiErrorMessage(e, "Could not materialize"));
     } finally {
       setBusyId(null);
     }

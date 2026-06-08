@@ -1,16 +1,78 @@
 /**
  * Spotify Web Playback SDK wrapper.
+ *
+ * The interfaces below cover only the slice of the Web Playback SDK this app
+ * actually uses; they are not a complete typing of the SDK.
  */
+
+/** A track within the SDK playback state (`track_window.current_track`). */
+export interface WebPlaybackTrack {
+  name: string;
+  uri: string;
+  artists: Array<{ name: string; uri?: string }>;
+  album: {
+    name?: string;
+    uri?: string;
+    images: Array<{ url: string }>;
+  };
+}
+
+/** The object returned by `player.getCurrentState()`. */
+export interface WebPlaybackState {
+  paused: boolean;
+  position: number;
+  duration: number;
+  track_window: {
+    current_track: WebPlaybackTrack;
+  };
+}
+
+interface SpotifyErrorEvent {
+  message: string;
+}
+
+interface SpotifyReadyEvent {
+  device_id: string;
+}
+
+/** The minimal `Spotify.Player` surface this app calls. */
+interface SpotifyPlayer {
+  addListener(
+    event: "ready" | "not_ready",
+    cb: (e: SpotifyReadyEvent) => void,
+  ): void;
+  addListener(
+    event: "initialization_error" | "authentication_error" | "account_error",
+    cb: (e: SpotifyErrorEvent) => void,
+  ): void;
+  connect(): Promise<boolean>;
+  play(options: { uris: string[] }): Promise<void>;
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+  getCurrentState(): Promise<WebPlaybackState | null>;
+}
+
+interface SpotifyPlayerConstructor {
+  new (options: {
+    name: string;
+    getOAuthToken: (cb: (token: string) => void) => void;
+    volume?: number;
+  }): SpotifyPlayer;
+}
+
+interface SpotifyNamespace {
+  Player: SpotifyPlayerConstructor;
+}
 
 declare global {
   interface Window {
-    Spotify: any;
+    Spotify: SpotifyNamespace;
     onSpotifyWebPlaybackSDKReady: () => void;
   }
 }
 
 class SpotifyService {
-  private player: any = null;
+  private player: SpotifyPlayer | null = null;
   private deviceId: string | null = null;
   private isInitialized = false;
 
@@ -127,7 +189,7 @@ class SpotifyService {
     await this.player.resume();
   }
 
-  async getCurrentState(): Promise<any> {
+  async getCurrentState(): Promise<WebPlaybackState | null> {
     if (!this.player) {
       return null;
     }
