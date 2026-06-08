@@ -106,7 +106,7 @@ dimension:
 |---|-----------|--------|
 | 1 | Format | **Active** — `ruff format` (backend), `biome` (frontend). |
 | 2 | Lint | **Active** — `ruff check`, `biome check`. 3 biome rules deferred (TODO.md). |
-| 3 | Type-check | **Active** — `pyright app`, `tsc --noEmit`. One scoped pyright pragma deferred (TODO.md). |
+| 3 | Type-check | **Active** — `pyright app` (0 errors, no suppressions), `tsc --noEmit`. |
 | 4 | Code smell / complexity | **Active** — covered by ruff (B/C4/SIM/RUF) + biome recommended. |
 | 5 | Security (SAST/SCA/DAST/secrets) | **Active** — semgrep + osv-scanner + trivy + ZAP baseline in CI; dependabot; gitleaks + detect-private-key in pre-commit. See `.github/`. |
 | 6 | Tests | **Active** — backend pytest (362), frontend Vitest (104, incl. jsdom+RTL component tests). Large components + `TrackList` still to cover (TODO.md). |
