@@ -218,25 +218,36 @@ jobs:
             --lockfile=/src/frontend/package-lock.json
 
   dast:
-    # DAST baseline (OWASP ZAP) over the running app — visible, NOT yet a
-    # required check until promoted. Stands up the full stack over HTTPS (a
-    # throwaway self-signed cert + dummy secrets, since pigify requires TLS),
-    # then runs the passive ZAP baseline against the frontend (which also
-    # fronts /api). Hard-gates on findings; accepted ones are allowlisted in
-    # .zap/baseline-rules.tsv. Active/deep scans are for a planned nightly job.
+    # DAST baseline (OWASP ZAP) over the running app. Stands up the full
+    # stack over HTTPS (a throwaway self-signed cert + dummy secrets, since
+    # pigify requires TLS), then runs the passive ZAP baseline against the
+    # frontend (which also fronts /api). Hard-gates on findings; accepted
+    # ones are allowlisted in .zap/baseline-rules.tsv. Active/deep scans are
+    # for a planned nightly job. The job always runs (so it reports a status
+    # for the required check) but only stands up the stack when source
+    # changed — a docs-only PR is a fast green no-op.
     name: DAST (ZAP baseline)
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    # Visible but non-blocking during rollout. The baseline WARNs (HSTS,
-    # CSP style-src unsafe-inline, COEP, cache-control) need allowlisting in
-    # .zap/baseline-rules.tsv (or a header fix for HSTS). Tracked in TODO.md.
-    continue-on-error: true
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v6.0.3
 
+      - uses: dorny/paths-filter@v4.0.1
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'backend/**'
+              - 'frontend/**'
+              - 'docker-compose.yml'
+              - '.zap/**'
+              - '.github/workflows/ci.yml'
+
       - name: Generate throwaway TLS cert + dummy secrets
+        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes \
             -keyout certs/localhost+2-key.pem -out certs/localhost+2.pem \
@@ -247,9 +258,11 @@ jobs:
           printf 'ci-not-a-real-secret-key' > secrets/secret_key.txt
 
       - name: Bring up the stack
+        if: ${{ steps.changes.outputs.src == 'true' }}
         run: docker compose up -d --build
 
       - name: Wait for the stack to be ready
+        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           for i in $(seq 1 40); do
             fe=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost:8080/ || true)
@@ -260,12 +273,13 @@ jobs:
           echo "stack did not become ready"; docker compose logs; exit 1
 
       - name: ZAP baseline (frontend over HTTPS; allowlisted)
+        if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           docker run --rm --network host --volume "$PWD/.zap:/zap/wrk:rw" \
             "$ZAP_IMAGE" zap-baseline.py -t https://localhost:8080 -c baseline-rules.tsv
 
       - name: Tear down
-        if: always()
+        if: ${{ always() && steps.changes.outputs.src == 'true' }}
         run: docker compose down -v
 
   release:
