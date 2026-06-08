@@ -74,21 +74,24 @@ cookie), so it passes the auth layer without any path whitelist.
 ## Demo invites (time-boxed guest access)
 
 To show pigify to someone without giving them standing access, mint a
-**demo invite**: a single-use code that, when redeemed, grants a session
-which expires an hour later (configurable). An invite is either **real**
-(backed by a Spotify refresh token you supply — the guest sees that
-account's real library) or **placeholder** (a UI-only identity; Spotify
-panels are empty). For real invites use a **throwaway demo Spotify
-account**, never your own — its refresh token is stored with the invite.
+**demo invite**: a single-use code with two independent windows — the
+invitee has a **redeem window** to open the link (`--lifetime`, default a
+week), and once redeemed their session lasts a fixed **duration**
+(`--duration`, default an hour). An invite is either **real** (backed by a
+Spotify refresh token you supply — the guest sees that account's real
+library) or **placeholder** (a UI-only identity; Spotify panels are empty).
+For real invites use a **throwaway demo Spotify account**, never your own —
+its refresh token is stored with the invite.
 
 ### Minting (owner, via CLI)
 
 ```bash
 cd backend
-# placeholder demo, valid 1h after the guest opens the link:
+# placeholder demo (default: a week to redeem, 1h of access once redeemed):
 poetry run python -m app.auth.invites_cli create --kind placeholder --label "Guest"
-# real demo backed by a demo account's refresh token:
-poetry run python -m app.auth.invites_cli create --kind real --refresh-token "<token>"
+# real demo backed by a demo account's refresh token, custom windows:
+poetry run python -m app.auth.invites_cli create --kind real \
+  --refresh-token "<token>" --lifetime 86400 --duration 1800
 poetry run python -m app.auth.invites_cli list
 poetry run python -m app.auth.invites_cli revoke <code>
 ```

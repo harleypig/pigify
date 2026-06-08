@@ -18,6 +18,7 @@ async def create(
     refresh_token: str | None = None,
     label: str | None = None,
     ttl_seconds: int = 3600,
+    redeem_by: datetime | None = None,
 ) -> Invite:
     invite = Invite(
         code=code,
@@ -25,6 +26,7 @@ async def create(
         refresh_token=refresh_token,
         label=label,
         ttl_seconds=ttl_seconds,
+        redeem_by=redeem_by,
     )
     session.add(invite)
     await session.flush()

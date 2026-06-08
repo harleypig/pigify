@@ -27,6 +27,7 @@ def upgrade() -> None:
         sa.Column("refresh_token", sa.Text(), nullable=True),
         sa.Column("label", sa.String(length=255), nullable=True),
         sa.Column("ttl_seconds", sa.Integer(), nullable=False),
+        sa.Column("redeem_by", sa.DateTime(timezone=True), nullable=True),
         sa.Column("activated_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

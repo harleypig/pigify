@@ -44,14 +44,19 @@ class Setting(SystemBase, TimestampMixin):
 
 
 class Invite(SystemBase, TimestampMixin):
-    """A demo invite: a single-use, time-boxed code granting a session.
+    """A demo invite: a single-use code granting a time-boxed session.
 
-    Owner-minted (via the invites CLI). On first redeem the invite
-    *activates* — a session valid for `ttl_seconds` is established and the
-    code is burned (`activated_at` set), so it can't start another session.
-    `kind` selects a real Spotify-backed session (using `refresh_token`, the
-    demo account's) or a UI-only placeholder. `revoked_at` lets the owner
-    kill an unused invite.
+    Owner-minted (via the invites CLI). Two independent windows:
+
+    * **redeem_by** — the invitee must redeem before this deadline (default
+      a week out); afterwards the code is dead even if never used.
+    * **ttl_seconds** — once redeemed, the session lasts this long (default
+      an hour), enforced by the session seam's expiry.
+
+    On first redeem the invite *activates* (`activated_at` set) and is burned
+    so it can't start another session. `kind` selects a real Spotify-backed
+    session (using `refresh_token`, the demo account's) or a UI-only
+    placeholder. `revoked_at` lets the owner kill an unused invite.
     """
 
     __tablename__ = "invites"
@@ -64,7 +69,10 @@ class Invite(SystemBase, TimestampMixin):
     refresh_token: Mapped[str | None] = mapped_column(Text)
     # Optional display label for the demo identity.
     label: Mapped[str | None] = mapped_column(String(255))
+    # Session lifetime once redeemed (seconds).
     ttl_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=3600)
+    # Deadline to redeem; null means no deadline.
+    redeem_by: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -1,12 +1,15 @@
 """CLI for minting and managing demo invites (owner action).
 
 Usage:
-  python -m app.auth.invites_cli create --kind placeholder [--label NAME] [--ttl 3600]
+  python -m app.auth.invites_cli create --kind placeholder [--label NAME]
   python -m app.auth.invites_cli create --kind real --refresh-token TOKEN [--label NAME]
   python -m app.auth.invites_cli list
   python -m app.auth.invites_cli revoke <code>
 
-The printed code goes in a demo link: <FRONTEND_URL>/api/demo/redeem?code=<code>
+`--lifetime` sets how long the invitee has to redeem the link (default a
+week); `--duration` sets how long their session lasts once redeemed
+(default an hour). The printed code goes in a demo link:
+<FRONTEND_URL>/api/demo/redeem?code=<code>
 """
 
 from __future__ import annotations
@@ -16,6 +19,8 @@ import asyncio
 import sys
 
 from app.auth.invites import (
+    DEFAULT_DURATION_SECONDS,
+    DEFAULT_LIFETIME_SECONDS,
     KIND_PLACEHOLDER,
     KIND_REAL,
     InviteError,
@@ -40,7 +45,8 @@ async def _cmd_create(args: argparse.Namespace) -> int:
             kind=args.kind,
             refresh_token=args.refresh_token,
             label=args.label,
-            ttl_seconds=args.ttl,
+            duration_seconds=args.duration,
+            lifetime_seconds=args.lifetime,
         )
     except InviteError as e:
         print(f"error: {e}", file=sys.stderr)
@@ -57,7 +63,11 @@ async def _cmd_list(_: argparse.Namespace) -> int:
         return 0
     for inv in invites:
         status = _invite_status(inv.activated_at, inv.revoked_at)
-        print(f"{inv.code}\t{inv.kind}\t{status}\tttl={inv.ttl_seconds}s")
+        redeem_by = inv.redeem_by.isoformat() if inv.redeem_by else "never"
+        print(
+            f"{inv.code}\t{inv.kind}\t{status}"
+            f"\tduration={inv.ttl_seconds}s\tredeem_by={redeem_by}"
+        )
     return 0
 
 
@@ -82,10 +92,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_create.add_argument("--label", help="Display name for the demo identity")
     p_create.add_argument(
-        "--ttl",
+        "--duration",
         type=int,
-        default=3600,
-        help="Session lifetime in seconds (default 3600)",
+        default=DEFAULT_DURATION_SECONDS,
+        help="Session length once redeemed, in seconds (default 1 hour)",
+    )
+    p_create.add_argument(
+        "--lifetime",
+        type=int,
+        default=DEFAULT_LIFETIME_SECONDS,
+        help="Window to redeem the link, in seconds (default 1 week)",
     )
 
     sub.add_parser("list", help="List all invites")

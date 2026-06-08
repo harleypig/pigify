@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.auth import invites as invites_svc
@@ -82,6 +83,18 @@ class RedeemTests(IsolatedDBTestCase):
         with self.assertRaises(invites_svc.InviteError):
             await invites_svc.redeem_invite(_Req(), "rev1")  # type: ignore[arg-type]
 
+    async def test_redeem_past_deadline_raises(self) -> None:
+        await _seed(
+            "old",
+            kind="placeholder",
+            redeem_by=datetime.now(UTC) - timedelta(minutes=1),
+        )
+        with (
+            patch.object(invites_svc, "provision_user", AsyncMock(return_value=1)),
+            self.assertRaises(invites_svc.InviteError),
+        ):
+            await invites_svc.redeem_invite(_Req(), "old")  # type: ignore[arg-type]
+
 
 class CreateRevokeTests(IsolatedDBTestCase):
     async def test_create_invite_returns_code(self) -> None:
@@ -92,6 +105,27 @@ class CreateRevokeTests(IsolatedDBTestCase):
             got = await invites_repo.get_by_code(session, code)
             assert got is not None
             self.assertEqual(got.label, "L")
+
+    async def test_create_sets_duration_and_redeem_deadline(self) -> None:
+        before = datetime.now(UTC)
+        with patch.object(invites_svc, "apply_system_migrations", AsyncMock()):
+            code = await invites_svc.create_invite(
+                kind="placeholder", duration_seconds=50, lifetime_seconds=100
+            )
+        async with system_session_scope() as session:
+            got = await invites_repo.get_by_code(session, code)
+            assert got is not None and got.redeem_by is not None
+            self.assertEqual(got.ttl_seconds, 50)
+            # redeem_by is ~100s out (defaults would be a week). SQLite
+            # returns it naive, so normalise before subtracting.
+            redeem_by = invites_svc._as_utc(got.redeem_by)
+            delta = (redeem_by - before).total_seconds()
+            self.assertGreater(delta, 90)
+            self.assertLess(delta, 200)
+
+    async def test_create_defaults_to_week_and_hour(self) -> None:
+        self.assertEqual(invites_svc.DEFAULT_LIFETIME_SECONDS, 7 * 24 * 3600)
+        self.assertEqual(invites_svc.DEFAULT_DURATION_SECONDS, 3600)
 
     async def test_create_real_without_token_raises(self) -> None:
         with (
