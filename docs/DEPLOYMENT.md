@@ -42,9 +42,15 @@ In both cases the backend stays internal; the frontend reaches it as
 **pigify is not meant to be public.** How you gate access is up to you —
 two complementary models:
 
-- **Built-in authentication** *(planned — not yet implemented).* A future
-  mode where pigify gates app access itself, so it can run standalone
-  without an external auth layer. Tracked in `TODO.md`.
+- **Built-in access gate.** pigify can gate access itself, so it runs
+  standalone without an external auth layer. Set `BUILTIN_AUTH_ENABLED=true`
+  and list the permitted Spotify account IDs in `ALLOWED_SPOTIFY_IDS`
+  (comma-separated); after Spotify login, only those accounts get a session
+  and everyone else is redirected away. **Fail-closed:** enabling the gate
+  with an empty list denies everyone (so a misconfigured instance is locked,
+  not wide open). Leave it disabled to keep access open for the proxy model
+  below. (A Spotify app in Development Mode is *also* capped at the 25 users
+  you add in the Spotify dashboard — a coarser allowlist on top of this one.)
 
 - **An external forward-auth / SSO proxy.** Put pigify behind whatever you
   already use — **Authelia, Authentik, oauth2-proxy, Cloudflare Access,
