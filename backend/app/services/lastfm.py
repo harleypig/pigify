@@ -14,25 +14,24 @@ Web auth flow used here:
   3. Exchange the token via auth.getMobileSession-style call: auth.getSession
      signed with our shared secret. The returned session key is permanent.
 """
-import asyncio
+
 import hashlib
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import httpx
 
-from backend.app.config import settings
-
+from app.config import settings
 
 # Short-lived in-memory cache for public read endpoints. Keyed by
 # (method, frozenset of params). TTL is intentionally short — these values
 # (tags, similar tracks, global play counts) move slowly but should not be
 # stale for hours.
 _CACHE_TTL_SEC = 600  # 10 minutes
-_cache: Dict[Tuple[str, Tuple[Tuple[str, str], ...]], Tuple[float, Any]] = {}
+_cache: dict[tuple[str, tuple[tuple[str, str], ...]], tuple[float, Any]] = {}
 
 
-def _cache_get(key: Tuple) -> Optional[Any]:
+def _cache_get(key: tuple) -> Any | None:
     entry = _cache.get(key)
     if not entry:
         return None
@@ -43,7 +42,7 @@ def _cache_get(key: Tuple) -> Optional[Any]:
     return value
 
 
-def _cache_set(key: Tuple, value: Any) -> None:
+def _cache_set(key: tuple, value: Any) -> None:
     # Cap size to avoid unbounded growth.
     if len(_cache) > 512:
         # Drop oldest 64 entries (cheap pseudo-LRU).
@@ -60,7 +59,7 @@ class LastFMError(Exception):
     """Raised when Last.fm returns an error or the request fails."""
 
 
-def _sign(params: Dict[str, str]) -> str:
+def _sign(params: dict[str, str]) -> str:
     """Build the api_sig per the Last.fm spec (sorted k+v concat + secret, md5)."""
     items = "".join(f"{k}{v}" for k, v in sorted(params.items()))
     items += settings.LASTFM_SHARED_SECRET or ""
@@ -83,15 +82,15 @@ def auth_url(callback_url: str) -> str:
 
 async def _request(
     method: str,
-    params: Dict[str, Any],
+    params: dict[str, Any],
     *,
     signed: bool = False,
     http_method: str = "GET",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if not settings.LASTFM_API_KEY:
         raise LastFMError("Last.fm API key not configured")
 
-    full_params: Dict[str, str] = {
+    full_params: dict[str, str] = {
         "method": method,
         "api_key": settings.LASTFM_API_KEY,
         **{k: str(v) for k, v in params.items() if v is not None},
@@ -116,7 +115,8 @@ async def _request(
 
 # ---------- Auth ----------
 
-async def get_session(token: str) -> Dict[str, str]:
+
+async def get_session(token: str) -> dict[str, str]:
     """Exchange a web-auth token for a permanent session key."""
     data = await _request("auth.getSession", {"token": token}, signed=True)
     sess = data.get("session", {})
@@ -129,14 +129,18 @@ async def get_session(token: str) -> Dict[str, str]:
 
 # ---------- Public reads ----------
 
+
 async def get_track_info(
     artist: str,
     track: str,
     *,
-    username: Optional[str] = None,
-) -> Dict[str, Any]:
+    username: str | None = None,
+) -> dict[str, Any]:
     """track.getInfo. If `username` is given, includes user playcount + loved."""
-    key = ("track.getInfo", (("artist", artist), ("track", track), ("user", username or "")))
+    key = (
+        "track.getInfo",
+        (("artist", artist), ("track", track), ("user", username or "")),
+    )
     cached = _cache_get(key)
     if cached is not None:
         return cached
@@ -148,8 +152,13 @@ async def get_track_info(
     return data
 
 
-async def get_similar_tracks(artist: str, track: str, limit: int = 10) -> List[Dict[str, Any]]:
-    key = ("track.getSimilar", (("artist", artist), ("track", track), ("limit", str(limit))))
+async def get_similar_tracks(
+    artist: str, track: str, limit: int = 10
+) -> list[dict[str, Any]]:
+    key = (
+        "track.getSimilar",
+        (("artist", artist), ("track", track), ("limit", str(limit))),
+    )
     cached = _cache_get(key)
     if cached is not None:
         return cached
@@ -164,7 +173,7 @@ async def get_similar_tracks(artist: str, track: str, limit: int = 10) -> List[D
     return similar
 
 
-async def get_artist_top_tags(artist: str) -> List[Dict[str, Any]]:
+async def get_artist_top_tags(artist: str) -> list[dict[str, Any]]:
     key = ("artist.getTopTags", (("artist", artist),))
     cached = _cache_get(key)
     if cached is not None:
@@ -179,13 +188,14 @@ async def get_artist_top_tags(artist: str) -> List[Dict[str, Any]]:
 
 # ---------- Authenticated writes ----------
 
+
 async def update_now_playing(
     session_key: str,
     artist: str,
     track: str,
     *,
-    album: Optional[str] = None,
-    duration_sec: Optional[int] = None,
+    album: str | None = None,
+    duration_sec: int | None = None,
 ) -> None:
     await _request(
         "track.updateNowPlaying",
@@ -206,10 +216,10 @@ async def scrobble(
     artist: str,
     track: str,
     *,
-    timestamp: Optional[int] = None,
-    album: Optional[str] = None,
-    duration_sec: Optional[int] = None,
-) -> Dict[str, Any]:
+    timestamp: int | None = None,
+    album: str | None = None,
+    duration_sec: int | None = None,
+) -> dict[str, Any]:
     if timestamp is None:
         timestamp = int(time.time())
     return await _request(
@@ -247,9 +257,7 @@ async def unlove_track(session_key: str, artist: str, track: str) -> None:
     )
 
 
-async def is_loved(
-    artist: str, track: str, *, username: Optional[str]
-) -> Optional[bool]:
+async def is_loved(artist: str, track: str, *, username: str | None) -> bool | None:
     """
     Return True/False/None for the user's love state on a track.
     None means undeterminable (no API key, no username, or call failed).
@@ -258,7 +266,7 @@ async def is_loved(
         return None
     try:
         data = await get_track_info(artist, track, username=username)
-    except (LastFMError, httpx.HTTPError, asyncio.TimeoutError):
+    except (TimeoutError, LastFMError, httpx.HTTPError):
         return None
     t = (data or {}).get("track") or {}
     v = t.get("userloved")
@@ -269,11 +277,11 @@ async def is_loved(
 
 async def get_loved_tracks(
     username: str, *, limit: int = 200, max_pages: int = 4
-) -> List[Tuple[str, str]]:
+) -> list[tuple[str, str]]:
     """Return (artist, name) pairs for the given user's loved tracks (best-effort)."""
     if not settings.LASTFM_API_KEY or not username:
         return []
-    out: List[Tuple[str, str]] = []
+    out: list[tuple[str, str]] = []
     page = 1
     page_size = min(200, max(1, limit))
     while page <= max_pages and len(out) < limit:
@@ -282,7 +290,7 @@ async def get_loved_tracks(
                 "user.getLovedTracks",
                 {"user": username, "limit": page_size, "page": page},
             )
-        except (LastFMError, httpx.HTTPError, asyncio.TimeoutError):
+        except (TimeoutError, LastFMError, httpx.HTTPError):
             break
         section = (data or {}).get("lovedtracks") or {}
         tracks = section.get("track") or []
@@ -308,10 +316,11 @@ async def get_loved_tracks(
 
 # ---------- Helpers ----------
 
+
 async def safe_call(coro):
     """Run a Last.fm coroutine, returning (data, None) or (None, error_string)."""
     try:
         result = await coro
         return result, None
-    except (LastFMError, httpx.HTTPError, asyncio.TimeoutError) as e:
+    except (TimeoutError, LastFMError, httpx.HTTPError) as e:
         return None, str(e)

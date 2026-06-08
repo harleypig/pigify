@@ -1,88 +1,92 @@
-import { useEffect, useState } from 'react'
-import { recipesApi, StoredRecipe } from '../services/api'
-import RecipeBuilder from './RecipeBuilder'
-import './RecipesSidebar.css'
+import { useEffect, useState } from "react";
+import { recipesApi, type StoredRecipe } from "../services/api";
+import RecipeBuilder from "./RecipeBuilder";
+import "./RecipesSidebar.css";
 
 export default function RecipesSidebar() {
-  const [recipes, setRecipes] = useState<StoredRecipe[]>([])
-  const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState<StoredRecipe | null>(null)
-  const [creating, setCreating] = useState(false)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [statusMsg, setStatusMsg] = useState<string | null>(null)
+  const [recipes, setRecipes] = useState<StoredRecipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<StoredRecipe | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   const load = async () => {
     try {
-      setLoading(true)
-      setRecipes(await recipesApi.list())
+      setLoading(true);
+      setRecipes(await recipesApi.list());
     } catch {
       /* non-fatal */
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, [load]);
 
   const handleSaved = (r: StoredRecipe) => {
     setRecipes((rs) => {
-      const next = rs.filter((x) => x.id !== r.id)
-      next.push(r)
-      return next
-    })
-    setStatusMsg(`Saved “${r.name}”`)
-    setTimeout(() => setStatusMsg(null), 3000)
-  }
+      const next = rs.filter((x) => x.id !== r.id);
+      next.push(r);
+      return next;
+    });
+    setStatusMsg(`Saved “${r.name}”`);
+    setTimeout(() => setStatusMsg(null), 3000);
+  };
 
   const handleDelete = async (r: StoredRecipe) => {
-    if (!confirm(`Delete recipe “${r.name}”?`)) return
+    if (!confirm(`Delete recipe “${r.name}”?`)) return;
     try {
-      const updated = await recipesApi.remove(r.id)
-      setRecipes(updated)
+      const updated = await recipesApi.remove(r.id);
+      setRecipes(updated);
     } catch (e) {
-      console.error(e)
+      console.error(e);
     }
-  }
+  };
 
   const handlePlay = async (r: StoredRecipe) => {
     try {
-      setBusyId(r.id)
-      setStatusMsg(null)
-      const res = await recipesApi.play(r.id)
-      setStatusMsg(`Playing ${res.track_count} tracks from “${r.name}”`)
-      setTimeout(() => setStatusMsg(null), 4000)
+      setBusyId(r.id);
+      setStatusMsg(null);
+      const res = await recipesApi.play(r.id);
+      setStatusMsg(`Playing ${res.track_count} tracks from “${r.name}”`);
+      setTimeout(() => setStatusMsg(null), 4000);
     } catch (e: any) {
-      setStatusMsg(e?.response?.data?.detail || 'Could not start playback')
+      setStatusMsg(e?.response?.data?.detail || "Could not start playback");
     } finally {
-      setBusyId(null)
+      setBusyId(null);
     }
-  }
+  };
 
   const handleMaterialize = async (r: StoredRecipe) => {
     const name = prompt(
-      'Name for the new Spotify playlist:',
-      `${r.name} (${new Date().toLocaleDateString()})`
-    )
-    if (!name) return
+      "Name for the new Spotify playlist:",
+      `${r.name} (${new Date().toLocaleDateString()})`,
+    );
+    if (!name) return;
     try {
-      setBusyId(r.id)
-      const res = await recipesApi.materialize(r.id, { name })
-      setStatusMsg(`Created playlist with ${res.track_count} tracks`)
-      setTimeout(() => setStatusMsg(null), 5000)
+      setBusyId(r.id);
+      const res = await recipesApi.materialize(r.id, { name });
+      setStatusMsg(`Created playlist with ${res.track_count} tracks`);
+      setTimeout(() => setStatusMsg(null), 5000);
     } catch (e: any) {
-      setStatusMsg(e?.response?.data?.detail || 'Could not materialize')
+      setStatusMsg(e?.response?.data?.detail || "Could not materialize");
     } finally {
-      setBusyId(null)
+      setBusyId(null);
     }
-  }
+  };
 
   return (
     <div className="recipes-sidebar">
       <div className="recipes-header">
         <h3>Smart Filters</h3>
-        <button className="new-recipe" onClick={() => setCreating(true)}>
+        <button
+          type="button"
+          className="new-recipe"
+          onClick={() => setCreating(true)}
+        >
           + New filter
         </button>
       </div>
@@ -97,10 +101,13 @@ export default function RecipesSidebar() {
         <ul className="recipes-list">
           {recipes.map((r) => (
             <li key={r.id} className="recipe-row">
-              <div className="recipe-row-name" title={`${r.buckets.length} bucket(s) • ${r.combine}`}>
+              <div
+                className="recipe-row-name"
+                title={`${r.buckets.length} bucket(s) • ${r.combine}`}
+              >
                 {r.name}
                 <span className="recipe-row-meta">
-                  {r.buckets.length} bucket{r.buckets.length !== 1 ? 's' : ''}
+                  {r.buckets.length} bucket{r.buckets.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="recipe-row-actions">
@@ -111,28 +118,40 @@ export default function RecipesSidebar() {
                     modal infra yet, and native dialogs still satisfy the
                     "destructive actions need confirmation" guideline. */}
                 <button
+                  type="button"
                   onClick={() => handlePlay(r)}
                   disabled={busyId === r.id}
                   aria-label={`Play recipe ${r.name}`}
                   title="Resolve and play"
-                >▶</button>
+                >
+                  ▶
+                </button>
                 <button
+                  type="button"
                   onClick={() => setEditing(r)}
                   aria-label={`Edit recipe ${r.name}`}
                   title="Edit"
-                >✎</button>
+                >
+                  ✎
+                </button>
                 <button
+                  type="button"
                   onClick={() => handleMaterialize(r)}
                   disabled={busyId === r.id}
                   aria-label={`Save ${r.name} as a Spotify playlist`}
                   title="Save as Spotify playlist"
-                >＋</button>
+                >
+                  ＋
+                </button>
                 <button
+                  type="button"
                   onClick={() => handleDelete(r)}
                   aria-label={`Delete recipe ${r.name}`}
                   title="Delete"
                   className="danger"
-                >×</button>
+                >
+                  ×
+                </button>
               </div>
             </li>
           ))}
@@ -142,11 +161,11 @@ export default function RecipesSidebar() {
         open={creating || !!editing}
         initial={editing}
         onClose={() => {
-          setCreating(false)
-          setEditing(null)
+          setCreating(false);
+          setEditing(null);
         }}
         onSaved={handleSaved}
       />
     </div>
-  )
+  );
 }

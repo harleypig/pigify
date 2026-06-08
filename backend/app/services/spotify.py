@@ -1,20 +1,26 @@
 """
 Spotify API service wrapper using spotipy.
 """
+
+# TODO(types): `_get` returns `dict | None`; several methods below index the
+# result assuming success. Each call should guard against None (raise/clean
+# error on a missing payload) — tracked in TODO.md. Until that behaviour-
+# affecting cleanup lands, defer just these two optional-access rules for this
+# one file (every other type error here still surfaces).
+# pyright: reportOptionalMemberAccess=false, reportOptionalSubscript=false
+
 import asyncio
 import base64
-from typing import List, Dict, Optional
 
 import httpx
 
-from backend.app.config import settings
-from backend.app.models.playlist import Playlist, Track, User
-
+from app.config import settings
+from app.models.playlist import Playlist, Track, User
 
 # A single shared httpx.AsyncClient so we get connection pooling and
 # avoid TLS handshakes on every Spotify call. Lazily constructed on first
 # use; disposed by ``close_shared_client`` at app shutdown.
-_shared_client: Optional[httpx.AsyncClient] = None
+_shared_client: httpx.AsyncClient | None = None
 _shared_client_lock = asyncio.Lock()
 
 
@@ -27,9 +33,7 @@ async def get_shared_client() -> httpx.AsyncClient:
         if _shared_client is None or _shared_client.is_closed:
             _shared_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(15.0, connect=5.0),
-                limits=httpx.Limits(
-                    max_connections=100, max_keepalive_connections=20
-                ),
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
             )
         return _shared_client
 
@@ -44,31 +48,31 @@ async def close_shared_client() -> None:
 
 class SpotifyService:
     """Service for interacting with Spotify Web API."""
-    
+
     BASE_URL = "https://api.spotify.com/v1"
     TOKEN_URL = "https://accounts.spotify.com/api/token"
-    
+
     def __init__(self, access_token: str):
         """
         Initialize Spotify service with access token.
-        
+
         Args:
             access_token: Spotify OAuth access token
         """
         self.access_token = access_token
         self.headers = {
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
-    
+
     @staticmethod
-    async def exchange_code_for_tokens(code: str) -> Dict:
+    async def exchange_code_for_tokens(code: str) -> dict:
         """
         Exchange authorization code for access and refresh tokens.
-        
+
         Args:
             code: Authorization code from OAuth callback
-            
+
         Returns:
             Dictionary containing access_token, refresh_token, and expires_in
         """
@@ -76,18 +80,18 @@ class SpotifyService:
         auth_string = f"{settings.SPOTIFY_CLIENT_ID}:{settings.SPOTIFY_CLIENT_SECRET}"
         auth_bytes = auth_string.encode("utf-8")
         auth_b64 = base64.b64encode(auth_bytes).decode("utf-8")
-        
+
         data = {
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": settings.SPOTIFY_REDIRECT_URI,
         }
-        
+
         headers = {
             "Authorization": f"Basic {auth_b64}",
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "application/x-www-form-urlencoded",
         }
-        
+
         client = await get_shared_client()
         response = await client.post(
             SpotifyService.TOKEN_URL,
@@ -97,7 +101,7 @@ class SpotifyService:
         response.raise_for_status()
         return response.json()
 
-    async def _get(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
+    async def _get(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make GET request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
@@ -107,18 +111,24 @@ class SpotifyService:
         response.raise_for_status()
         return response.json()
 
-    async def _put(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> None:
+    async def _put(
+        self, endpoint: str, body: dict | None = None, params: dict | None = None
+    ) -> None:
         """Make PUT request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
         response = await client.put(url, headers=self.headers, json=body, params=params)
         response.raise_for_status()
 
-    async def _post(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> Optional[Dict]:
+    async def _post(
+        self, endpoint: str, body: dict | None = None, params: dict | None = None
+    ) -> dict | None:
         """Make POST request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.post(url, headers=self.headers, json=body, params=params)
+        response = await client.post(
+            url, headers=self.headers, json=body, params=params
+        )
         response.raise_for_status()
         if response.status_code == 204 or not response.content:
             return None
@@ -127,7 +137,9 @@ class SpotifyService:
         except ValueError:
             return None
 
-    async def _put_json(self, endpoint: str, body: Optional[Dict] = None, params: Optional[Dict] = None) -> Optional[Dict]:
+    async def _put_json(
+        self, endpoint: str, body: dict | None = None, params: dict | None = None
+    ) -> dict | None:
         """Make PUT request to Spotify API and return the JSON body (for endpoints
         like playlist reorder that return a snapshot_id)."""
         url = f"{self.BASE_URL}{endpoint}"
@@ -141,7 +153,7 @@ class SpotifyService:
         except ValueError:
             return None
 
-    async def _delete(self, endpoint: str, params: Optional[Dict] = None) -> None:
+    async def _delete(self, endpoint: str, params: dict | None = None) -> None:
         """Make DELETE request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
@@ -150,43 +162,46 @@ class SpotifyService:
 
     # --- Saved tracks (favorites) ---
 
-    async def check_saved_tracks(self, track_ids: List[str]) -> List[bool]:
+    async def check_saved_tracks(self, track_ids: list[str]) -> list[bool]:
         """Return whether each given track id is in the user's Saved Tracks."""
         if not track_ids:
             return []
-        results: List[bool] = []
+        results: list[bool] = []
         for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i:i + 50]
-            data = await self._get("/me/tracks/contains", params={"ids": ",".join(chunk)})
+            chunk = track_ids[i : i + 50]
+            data = await self._get(
+                "/me/tracks/contains", params={"ids": ",".join(chunk)}
+            )
             if isinstance(data, list):
                 results.extend(bool(x) for x in data)
             else:
                 results.extend([False] * len(chunk))
         return results
 
-    async def save_tracks(self, track_ids: List[str]) -> None:
+    async def save_tracks(self, track_ids: list[str]) -> None:
         """Add tracks to the user's Saved Tracks."""
         if not track_ids:
             return
         for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i:i + 50]
+            chunk = track_ids[i : i + 50]
             await self._put("/me/tracks", body={"ids": chunk})
 
-    async def remove_saved_tracks(self, track_ids: List[str]) -> None:
+    async def remove_saved_tracks(self, track_ids: list[str]) -> None:
         """Remove tracks from the user's Saved Tracks."""
         if not track_ids:
             return
         for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i:i + 50]
+            chunk = track_ids[i : i + 50]
             await self._delete("/me/tracks", params={"ids": ",".join(chunk)})
 
-    async def get_saved_tracks(self, max_tracks: int = 500) -> List[Dict]:
+    async def get_saved_tracks(self, max_tracks: int = 500) -> list[dict]:
         """
         Fetch the user's Saved Tracks (most recent first).
-        Returns simplified dicts: {id, name, artist, artists, album, image_url, uri, added_at}.
+        Returns simplified dicts:
+        {id, name, artist, artists, album, image_url, uri, added_at}.
         Capped to ``max_tracks`` to keep reconciliation responsive.
         """
-        out: List[Dict] = []
+        out: list[dict] = []
         offset = 0
         page_size = 50
         while len(out) < max_tracks:
@@ -203,49 +218,52 @@ class SpotifyService:
                     continue
                 artists = [a.get("name", "") for a in t.get("artists", [])]
                 imgs = (t.get("album") or {}).get("images") or []
-                out.append({
-                    "id": t["id"],
-                    "uri": t.get("uri", ""),
-                    "name": t.get("name", ""),
-                    "artist": artists[0] if artists else "",
-                    "artists": artists,
-                    "album": (t.get("album") or {}).get("name", ""),
-                    "image_url": imgs[0]["url"] if imgs else "",
-                    "added_at": item.get("added_at"),
-                })
+                out.append(
+                    {
+                        "id": t["id"],
+                        "uri": t.get("uri", ""),
+                        "name": t.get("name", ""),
+                        "artist": artists[0] if artists else "",
+                        "artists": artists,
+                        "album": (t.get("album") or {}).get("name", ""),
+                        "image_url": imgs[0]["url"] if imgs else "",
+                        "added_at": item.get("added_at"),
+                    }
+                )
             if len(items) < limit:
                 break
             offset += limit
         return out
-    
-    async def get_track(self, track_id: str) -> Optional[Dict]:
+
+    async def get_track(self, track_id: str) -> dict | None:
         """Get full track object (includes external_ids.isrc)."""
         return await self._get(f"/tracks/{track_id}")
 
-    async def get_audio_analysis(self, track_id: str) -> Optional[Dict]:
+    async def get_audio_analysis(self, track_id: str) -> dict | None:
         """Get audio analysis for a track (waveform/segment data)."""
         return await self._get(f"/audio-analysis/{track_id}")
 
-    async def get_playback_state(self) -> Optional[Dict]:
+    async def get_playback_state(self) -> dict | None:
         """Get the current playback state across all devices."""
         return await self._get("/me/player")
 
-    async def play_track(self, track_uri: Optional[str] = None, device_id: Optional[str] = None) -> None:
+    async def play_track(
+        self, track_uri: str | None = None, device_id: str | None = None
+    ) -> None:
         """Start or resume playback, optionally for a specific track."""
         params = {"device_id": device_id} if device_id else None
         body = {"uris": [track_uri]} if track_uri else None
         await self._put("/me/player/play", body=body, params=params)
 
-
-    async def play_uris(self, uris: List[str], device_id: Optional[str] = None) -> None:
+    async def play_uris(self, uris: list[str], device_id: str | None = None) -> None:
         """Start playback with an explicit list of URIs."""
         params = {"device_id": device_id} if device_id else None
         body = {"uris": uris[:500]}
         await self._put("/me/player/play", body=body, params=params)
 
-    async def add_to_queue(self, uri: str, device_id: Optional[str] = None) -> None:
+    async def add_to_queue(self, uri: str, device_id: str | None = None) -> None:
         """Append a single URI to the user's playback queue."""
-        params: Dict[str, str] = {"uri": uri}
+        params: dict[str, str] = {"uri": uri}
         if device_id:
             params["device_id"] = device_id
         await self._post("/me/player/queue", params=params)
@@ -256,16 +274,16 @@ class SpotifyService:
         name: str,
         description: str = "",
         public: bool = False,
-    ) -> Dict:
+    ) -> dict:
         """Create a new playlist for the given user. Returns the raw playlist object."""
         body = {"name": name, "description": description, "public": public}
         data = await self._post(f"/users/{user_id}/playlists", body=body)
         return data or {}
 
-    async def add_tracks_to_playlist(self, playlist_id: str, uris: List[str]) -> None:
+    async def add_tracks_to_playlist(self, playlist_id: str, uris: list[str]) -> None:
         """Append tracks to a playlist in 100-URI chunks."""
         for i in range(0, len(uris), 100):
-            chunk = uris[i:i + 100]
+            chunk = uris[i : i + 100]
             if not chunk:
                 continue
             await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
@@ -285,7 +303,7 @@ class SpotifyService:
     async def get_current_user(self) -> User:
         """
         Get current authenticated user information.
-        
+
         Returns:
             User object
         """
@@ -294,48 +312,54 @@ class SpotifyService:
             id=data["id"],
             display_name=data.get("display_name", ""),
             email=data.get("email", ""),
-            images=data.get("images", [])
+            images=data.get("images", []),
         )
-    
-    async def get_user_playlists(self, limit: int = 50, offset: int = 0) -> List[Playlist]:
+
+    async def get_user_playlists(
+        self, limit: int = 50, offset: int = 0
+    ) -> list[Playlist]:
         """
         Get user's playlists.
-        
+
         Args:
             limit: Maximum number of playlists to return
             offset: Offset for pagination
-            
+
         Returns:
             List of Playlist objects
         """
-        data = await self._get("/me/playlists", params={"limit": limit, "offset": offset})
-        
+        data = await self._get(
+            "/me/playlists", params={"limit": limit, "offset": offset}
+        )
+
         playlists = []
         for item in data.get("items", []):
-            playlists.append(Playlist(
-                id=item["id"],
-                name=item["name"],
-                description=item.get("description", ""),
-                images=item.get("images", []),
-                owner=item["owner"].get("display_name", ""),
-                track_count=item.get("tracks", {}).get("total", 0),
-                public=item.get("public", False)
-            ))
-        
+            playlists.append(
+                Playlist(
+                    id=item["id"],
+                    name=item["name"],
+                    description=item.get("description", ""),
+                    images=item.get("images", []),
+                    owner=item["owner"].get("display_name", ""),
+                    track_count=item.get("tracks", {}).get("total", 0),
+                    public=item.get("public", False),
+                )
+            )
+
         return playlists
-    
+
     async def get_playlist(self, playlist_id: str) -> Playlist:
         """
         Get a specific playlist by ID.
-        
+
         Args:
             playlist_id: Spotify playlist ID
-            
+
         Returns:
             Playlist object
         """
         data = await self._get(f"/playlists/{playlist_id}")
-        
+
         return Playlist(
             id=data["id"],
             name=data["name"],
@@ -343,11 +367,11 @@ class SpotifyService:
             images=data.get("images", []),
             owner=data["owner"].get("display_name", ""),
             track_count=data.get("tracks", {}).get("total", 0),
-            public=data.get("public", False)
+            public=data.get("public", False),
         )
-    
+
     @staticmethod
-    def _track_from_item(item: Dict) -> Optional[Track]:
+    def _track_from_item(item: dict) -> Track | None:
         track_data = item.get("track")
         if not track_data or not track_data.get("id"):
             return None
@@ -372,36 +396,33 @@ class SpotifyService:
         )
 
     async def get_playlist_tracks(
-        self,
-        playlist_id: str,
-        limit: int = 100,
-        offset: int = 0
-    ) -> List[Track]:
+        self, playlist_id: str, limit: int = 100, offset: int = 0
+    ) -> list[Track]:
         """Get a single page of tracks from a playlist."""
         data = await self._get(
             f"/playlists/{playlist_id}/tracks",
-            params={"limit": limit, "offset": offset}
+            params={"limit": limit, "offset": offset},
         )
-        tracks: List[Track] = []
+        tracks: list[Track] = []
         for item in (data or {}).get("items", []):
             t = self._track_from_item(item)
             if t is not None:
                 tracks.append(t)
         return tracks
 
-    async def get_all_playlist_tracks(self, playlist_id: str) -> List[Track]:
+    async def get_all_playlist_tracks(self, playlist_id: str) -> list[Track]:
         """Fetch every track in a playlist, paginating through all pages.
 
         Sorting needs the full list, not just the first 100, so the backend
         owns the pagination loop here.
         """
-        tracks: List[Track] = []
+        tracks: list[Track] = []
         offset = 0
         page_size = 100
         while True:
             data = await self._get(
                 f"/playlists/{playlist_id}/tracks",
-                params={"limit": page_size, "offset": offset}
+                params={"limit": page_size, "offset": offset},
             )
             items = (data or {}).get("items", []) or []
             for item in items:
@@ -413,7 +434,7 @@ class SpotifyService:
             offset += page_size
         return tracks
 
-    async def get_audio_features(self, track_ids: List[str]) -> Dict[str, Optional[Dict]]:
+    async def get_audio_features(self, track_ids: list[str]) -> dict[str, dict | None]:
         """Batch-fetch audio features for up to N track IDs.
 
         Spotify's /audio-features endpoint accepts up to 100 IDs per call.
@@ -421,16 +442,18 @@ class SpotifyService:
         (some app tiers no longer expose this endpoint), returns an empty map
         so the caller can degrade gracefully.
         """
-        out: Dict[str, Optional[Dict]] = {}
+        out: dict[str, dict | None] = {}
         if not track_ids:
             return out
         # De-dupe while preserving order
         seen = set()
         unique_ids = [t for t in track_ids if not (t in seen or seen.add(t))]
         for i in range(0, len(unique_ids), 100):
-            chunk = unique_ids[i:i + 100]
+            chunk = unique_ids[i : i + 100]
             try:
-                data = await self._get("/audio-features", params={"ids": ",".join(chunk)})
+                data = await self._get(
+                    "/audio-features", params={"ids": ",".join(chunk)}
+                )
             except httpx.HTTPStatusError:
                 # Endpoint unavailable for this app — return what we have so far.
                 return out
@@ -445,13 +468,13 @@ class SpotifyService:
         range_start: int,
         insert_before: int,
         range_length: int = 1,
-        snapshot_id: Optional[str] = None,
-    ) -> Optional[str]:
+        snapshot_id: str | None = None,
+    ) -> str | None:
         """Move a contiguous slice of a playlist via Spotify's reorder API.
 
         Returns the new snapshot_id if Spotify provided one.
         """
-        body: Dict = {
+        body: dict = {
             "range_start": range_start,
             "insert_before": insert_before,
             "range_length": range_length,
@@ -461,7 +484,7 @@ class SpotifyService:
         data = await self._put_json(f"/playlists/{playlist_id}/tracks", body=body)
         return (data or {}).get("snapshot_id")
 
-    async def replace_playlist_uris(self, playlist_id: str, uris: List[str]) -> None:
+    async def replace_playlist_uris(self, playlist_id: str, uris: list[str]) -> None:
         """Replace the entire contents of a playlist with the given URI list.
 
         Spotify's PUT only accepts up to 100 URIs, so the first 100 are sent
@@ -472,6 +495,5 @@ class SpotifyService:
         # PUT replaces the playlist entirely (even with empty list).
         await self._put(f"/playlists/{playlist_id}/tracks", body={"uris": first})
         for i in range(100, len(uris), 100):
-            chunk = uris[i:i + 100]
+            chunk = uris[i : i + 100]
             await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
-

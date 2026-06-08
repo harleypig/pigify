@@ -1,16 +1,16 @@
 """
 Application configuration using Pydantic settings.
 """
-import os
+
+from pathlib import Path
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings
-from typing import List, Optional
-from pathlib import Path
 
 _INSECURE_SECRET_KEY = "dev-secret-key-change-in-production"
 
 
-def read_secret_file(secret_path: str) -> Optional[str]:
+def read_secret_file(secret_path: str) -> str | None:
     """
     Read a secret from Docker secrets file or return None if not found.
     """
@@ -22,11 +22,17 @@ def read_secret_file(secret_path: str) -> Optional[str]:
 
 class Settings(BaseSettings):
     """Application settings."""
-    
+
     # Spotify API Configuration
     SPOTIFY_CLIENT_ID: str = ""
     SPOTIFY_CLIENT_SECRET: str = ""
-    SPOTIFY_REDIRECT_URI: str = "http://localhost:8000/api/auth/spotify/callback"
+    SPOTIFY_REDIRECT_URI: str = "https://localhost:8080/api/auth/spotify/callback"
+
+    # Docker-secrets support: when a *_FILE path is set and readable, its
+    # contents override the matching value above (so the secret stays out of
+    # the environment / process listing). See docker-compose.yml.
+    SPOTIFY_CLIENT_SECRET_FILE: str = ""
+    SECRET_KEY_FILE: str = ""
 
     # Last.fm API Configuration (optional)
     # When unset, Last.fm features are hidden entirely (per the graceful
@@ -34,7 +40,7 @@ class Settings(BaseSettings):
     # methods (tags / similar / global playcounts) are available.
     LASTFM_API_KEY: str = ""
     LASTFM_SHARED_SECRET: str = ""
-    LASTFM_CALLBACK_URI: str = "http://localhost:8000/api/integrations/lastfm/callback"
+    LASTFM_CALLBACK_URI: str = "https://localhost:8080/api/integrations/lastfm/callback"
 
     # Scrobbling thresholds (Last.fm spec):
     # scrobble after the track has played for >= 50% of its length OR >= 4 minutes,
@@ -49,11 +55,11 @@ class Settings(BaseSettings):
     # next_attempt_at = now + min(BASE * 2^(attempts-1), MAX).
     SCROBBLE_RETRY_BASE_SEC: int = 60
     SCROBBLE_RETRY_MAX_SEC: int = 3600  # cap at 1 hour
-    
+
     # Application Configuration
     SECRET_KEY: str = _INSECURE_SECRET_KEY
     BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "http://localhost:5000"
+    FRONTEND_URL: str = "https://localhost:8080"
     ENVIRONMENT: str = "development"
 
     # Concurrency caps for outbound API hydration during recipe resolution.
@@ -79,23 +85,39 @@ class Settings(BaseSettings):
     DB_ECHO: bool = False
     # Log a warning when a query takes longer than this many milliseconds.
     DB_SLOW_QUERY_MS: int = 250
-    
-    # CORS Configuration
-    CORS_ORIGINS: List[str] = [
+
+    # CORS Configuration. The https://localhost:8080 origin is the nginx
+    # frontend (same-origin in the container setup); the http://localhost:5000
+    # origins cover local `vite` dev where the SPA and API are on separate
+    # ports.
+    CORS_ORIGINS: list[str] = [
+        "https://localhost:8080",
         "http://localhost:5000",
-        "http://localhost:8000",
         "http://127.0.0.1:5000",
-        "http://127.0.0.1:8000",
     ]
     # Optional regex for additional allowed origins (matched with re.fullmatch
-    # by Starlette). Default restricts to https Replit dev subdomains; set to
-    # an empty string to disable, or override for other deployment topologies.
-    CORS_ORIGIN_REGEX: str = r"https://[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.replit\.dev"
+    # by Starlette). Empty by default; set it for other deployment topologies
+    # (e.g. a public domain behind a reverse proxy).
+    CORS_ORIGIN_REGEX: str = ""
 
     class Config:
         env_file = ".env"
         case_sensitive = True
         extra = "allow"
+
+    @model_validator(mode="after")
+    def _load_secret_files(self) -> "Settings":
+        # Runs before _require_secret_key_in_prod so a file-provided SECRET_KEY
+        # satisfies the production check.
+        if self.SPOTIFY_CLIENT_SECRET_FILE:
+            value = read_secret_file(self.SPOTIFY_CLIENT_SECRET_FILE)
+            if value:
+                self.SPOTIFY_CLIENT_SECRET = value
+        if self.SECRET_KEY_FILE:
+            value = read_secret_file(self.SECRET_KEY_FILE)
+            if value:
+                self.SECRET_KEY = value
+        return self
 
     @model_validator(mode="after")
     def _require_secret_key_in_prod(self) -> "Settings":

@@ -5,46 +5,51 @@ A "favorite" is a track that the user has loved/saved on at least one
 connected service. We normalise across services so the rest of the app
 can reason about a single notion of favourite per track.
 """
-from pydantic import BaseModel, Field
-from typing import Dict, List, Optional, Literal
 
+from typing import Literal
+
+from pydantic import BaseModel, Field
 
 ServiceName = Literal["spotify", "lastfm"]
 
 
 class TrackIdentity(BaseModel):
     """Minimal identity needed to talk to every service."""
-    spotify_id: Optional[str] = None
-    spotify_uri: Optional[str] = None
+
+    spotify_id: str | None = None
+    spotify_uri: str | None = None
     name: str
     artist: str
-    album: Optional[str] = None
-    image_url: Optional[str] = None
+    album: str | None = None
+    image_url: str | None = None
 
 
 class Favorite(BaseModel):
     """A normalised favorite record."""
+
     track: TrackIdentity
     # Per-service loved state. True = loved on that service, False = not loved,
     # None = unknown / service not connected.
-    sources: Dict[str, Optional[bool]] = Field(default_factory=dict)
+    sources: dict[str, bool | None] = Field(default_factory=dict)
     # ISO timestamp strings. Per-service when known.
-    loved_at: Dict[str, Optional[str]] = Field(default_factory=dict)
+    loved_at: dict[str, str | None] = Field(default_factory=dict)
 
 
 class ServiceResult(BaseModel):
     """Result of a write to one service."""
+
     service: str
     ok: bool
     skipped: bool = False  # true if the service isn't connected
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class WriteThroughResult(BaseModel):
     """Result of a love/unlove write across all connected services."""
-    track_id: Optional[str] = None
+
+    track_id: str | None = None
     action: Literal["love", "unlove"]
-    results: List[ServiceResult]
+    results: list[ServiceResult]
 
     @property
     def overall_ok(self) -> bool:
@@ -54,33 +59,37 @@ class WriteThroughResult(BaseModel):
 
 class Conflict(BaseModel):
     """A track that is loved on one service but not another."""
+
     track: TrackIdentity
-    loved_on: List[str]
-    not_loved_on: List[str]
+    loved_on: list[str]
+    not_loved_on: list[str]
 
 
 class SyncSummary(BaseModel):
     """Summary returned by a reconciliation run."""
+
     ran_at: str
-    services_checked: List[str]
+    services_checked: list[str]
     spotify_count: int = 0
     lastfm_count: int = 0
     matched: int = 0
-    conflicts: List[Conflict] = Field(default_factory=list)
-    error: Optional[str] = None
+    conflicts: list[Conflict] = Field(default_factory=list)
+    error: str | None = None
 
 
 class ConnectionStatus(BaseModel):
     """Connection state for a single service."""
+
     service: str
     connected: bool
-    username: Optional[str] = None
-    detail: Optional[str] = None
+    username: str | None = None
+    detail: str | None = None
 
 
 class FavoritesStatus(BaseModel):
     """Top-level status surfaced in settings."""
-    connections: List[ConnectionStatus]
-    last_sync: Optional[SyncSummary] = None
+
+    connections: list[ConnectionStatus]
+    last_sync: SyncSummary | None = None
     background_interval_minutes: int = 0  # 0 = disabled
-    pending_conflicts: List[Conflict] = Field(default_factory=list)
+    pending_conflicts: list[Conflict] = Field(default_factory=list)

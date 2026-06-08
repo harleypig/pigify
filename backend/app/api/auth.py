@@ -1,21 +1,21 @@
 """
 Spotify OAuth authentication endpoints.
 """
-from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
-from urllib.parse import urlencode
+
 import logging
 import secrets
-import httpx
-from typing import Optional
+from urllib.parse import urlencode
 
-from backend.app.config import settings
-from backend.app.db.bootstrap import apply_user_migrations
-from backend.app.db.paths import user_db_path, user_db_url
-from backend.app.db.repositories import users as users_repo
-from backend.app.db.session import system_session_scope
-from backend.app.services.spotify import SpotifyService
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+
+from app.config import settings
+from app.db.bootstrap import apply_user_migrations
+from app.db.paths import user_db_path, user_db_url
+from app.db.repositories import users as users_repo
+from app.db.session import system_session_scope
+from app.services.spotify import SpotifyService
 
 router = APIRouter()
 me_router = APIRouter()
@@ -24,17 +24,17 @@ logger = logging.getLogger(__name__)
 
 class ProfileResponse(BaseModel):
     spotify_id: str
-    spotify_display_name: Optional[str] = None
-    custom_display_name: Optional[str] = None
+    spotify_display_name: str | None = None
+    custom_display_name: str | None = None
     display_name: str  # effective: custom if set, otherwise spotify_id
 
 
 class ProfileUpdate(BaseModel):
-    custom_display_name: Optional[str] = None
+    custom_display_name: str | None = None
 
 
 async def _load_profile(spotify_id: str) -> ProfileResponse:
-    from backend.app.db.repositories import users as users_repo
+    from app.db.repositories import users as users_repo
 
     async with system_session_scope() as session:
         user = await users_repo.get_by_spotify_id(session, spotify_id)
@@ -57,9 +57,7 @@ async def get_profile(request: Request) -> ProfileResponse:
 
 
 @me_router.put("/profile", response_model=ProfileResponse)
-async def update_profile(
-    request: Request, body: ProfileUpdate
-) -> ProfileResponse:
+async def update_profile(request: Request, body: ProfileUpdate) -> ProfileResponse:
     spotify_id = request.session.get("spotify_user_id")
     if not spotify_id:
         raise HTTPException(401, "Not authenticated")
@@ -80,7 +78,7 @@ async def spotify_login(request: Request):
     # Generate state for CSRF protection
     state = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
-    
+
     # Spotify OAuth scopes needed (minimal set)
     # Required for:
     # - user-read-playback-state: Read current playback state
@@ -95,7 +93,7 @@ async def spotify_login(request: Request):
         "user-library-read",
         "user-library-modify",
     ]
-    
+
     # Build authorization URL
     params = {
         "client_id": settings.SPOTIFY_CLIENT_ID,
@@ -104,7 +102,7 @@ async def spotify_login(request: Request):
         "scope": " ".join(scopes),
         "state": state,
     }
-    
+
     auth_url = f"https://accounts.spotify.com/authorize?{urlencode(params)}"
     return RedirectResponse(url=auth_url)
 
@@ -112,30 +110,34 @@ async def spotify_login(request: Request):
 @router.get("/spotify/callback")
 async def spotify_callback(
     request: Request,
-    code: str = None,
-    state: str = None,
-    error: str = None
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
 ):
     """
     Handle Spotify OAuth callback.
     Exchanges authorization code for access token.
     """
     if error:
-        raise HTTPException(status_code=400, detail=f"Spotify authorization error: {error}")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Spotify authorization error: {error}"
+        )
+
     # Verify state
     session_state = request.session.get("oauth_state")
     if not session_state or session_state != state:
         raise HTTPException(status_code=400, detail="Invalid state parameter")
-    
+
     if not code:
         raise HTTPException(status_code=400, detail="Authorization code not provided")
-    
+
     # Exchange code for tokens
     try:
         token_data = await SpotifyService.exchange_code_for_tokens(code)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to exchange tokens: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to exchange tokens: {e!s}"
+        ) from e
 
     access_token = token_data["access_token"]
 
@@ -164,7 +166,7 @@ async def spotify_callback(
             internal_id = db_user.id
     except HTTPException:
         raise
-    except Exception as init_err:  # noqa: BLE001
+    except Exception as init_err:
         logger.exception("login aborted: per-user DB init failed")
         raise HTTPException(
             status_code=500,
@@ -189,13 +191,15 @@ async def get_current_user(request: Request):
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     try:
         spotify = SpotifyService(access_token)
         user = await spotify.get_current_user()
         return user
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get user info: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get user info: {e!s}"
+        ) from e
 
 
 @router.get("/token")
@@ -206,7 +210,7 @@ async def get_access_token(request: Request):
     access_token = request.session.get("access_token")
     if not access_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    
+
     return {"access_token": access_token}
 
 
@@ -217,4 +221,3 @@ async def logout(request: Request):
     """
     request.session.clear()
     return {"message": "Logged out successfully"}
-

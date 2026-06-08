@@ -1,50 +1,73 @@
-#!/bin/bash
-# Setup script for local SSL certificates using mkcert
-# This script helps set up HTTPS for local development
+#!/usr/bin/env bash
+# Generate local HTTPS certificates with mkcert. Spotify OAuth requires
+# HTTPS, and in the docker-compose stack TLS terminates at the frontend
+# nginx, which mounts these certs from ./certs.
+#
+# WSL note: run this *inside* your WSL distro (not the Windows host).
+# Install the Linux mkcert binary + libnss3-tools there; generating the
+# certs in-distro avoids the host/WSL trust-store issues that make mkcert
+# flaky from Windows.
 
-set -e
+set -euo pipefail
+
+# Resolve repo root from this script's location so it works from anywhere.
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+repo_root=$(cd "$script_dir/.." && pwd)
+
+cd "$repo_root"
 
 echo "Setting up SSL certificates for local development..."
 
-# Check if mkcert is installed
 if ! command -v mkcert &> /dev/null; then
-    cat <<EOF
+  cat <<'EOF' >&2
 mkcert is not installed.
 
-Install mkcert:
-  Ubuntu/Debian:
+Install mkcert (and libnss3-tools, which mkcert needs for -install):
+  Ubuntu/Debian/WSL:
     sudo apt update
-    sudo apt install mkcert
+    sudo apt install -y libnss3-tools mkcert
 
   macOS:
-    brew install mkcert
+    brew install mkcert nss
 
   Windows (with Chocolatey):
     choco install mkcert
 EOF
-    exit 1
+  exit 1
 fi
 
-# Install local CA if not already installed
-if [ ! -d "$(mkcert -CAROOT)" ]; then
-    echo "Installing local Certificate Authority..."
-    mkcert -install
+# Install the local CA if it isn't already trusted.
+if [[ ! -d $(mkcert -CAROOT) ]]; then
+  echo "Installing local Certificate Authority..."
+  mkcert -install
 fi
 
-# Create certs directory
 mkdir -p certs
 
-# Generate certificates for localhost
 echo "Generating SSL certificates for localhost..."
-mkcert -cert-file certs/localhost+2.pem -key-file certs/localhost+2-key.pem localhost 127.0.0.1 ::1
+mkcert \
+  -cert-file certs/localhost+2.pem \
+  -key-file certs/localhost+2-key.pem \
+  localhost 127.0.0.1 ::1
 
-echo ""
-echo "✓ SSL certificates generated successfully!"
-echo ""
-echo "Certificates are in the certs/ directory:"
-echo "  - certs/localhost+2.pem (certificate)"
-echo "  - certs/localhost+2-key.pem (private key)"
-echo ""
-echo "The docker-compose.yml will automatically use these certificates."
-echo "Access your app at https://localhost:8000"
+# The nginx-unprivileged container runs as uid 101 and must read the key
+# through the read-only bind mount. mkcert writes the key 0600 by default,
+# which that uid can't read. These are throwaway local-dev certs, so make
+# the key world-readable. Do NOT do this for production keys.
+chmod 644 certs/localhost+2-key.pem
 
+cat <<'EOF'
+
+✓ SSL certificates generated successfully!
+
+Certificates are in the certs/ directory:
+  - certs/localhost+2.pem      (certificate)
+  - certs/localhost+2-key.pem  (private key)
+
+docker-compose.yml mounts these into the frontend container automatically.
+Start the stack with:  docker compose up --build
+Then open:             https://localhost:8080
+
+Set your Spotify app's redirect URI to:
+  https://localhost:8080/api/auth/spotify/callback
+EOF

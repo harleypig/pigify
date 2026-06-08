@@ -1,106 +1,104 @@
-import { useEffect, useRef, useState } from 'react'
-import { apiService, TrackDetail } from '../services/api'
-import './TrackInfoPanel.css'
+import { useEffect, useRef, useState } from "react";
+import { apiService, type TrackDetail } from "../services/api";
+import "./TrackInfoPanel.css";
 
 interface Props {
-  trackId: string | null
-  collapsed: boolean
-  onToggleCollapsed: () => void
+  trackId: string | null;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 }
 
 function formatDuration(ms?: number): string {
-  if (!ms) return ''
-  const sec = Math.round(ms / 1000)
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+  if (!ms) return "";
+  const sec = Math.round(ms / 1000);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 }
 
 function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function highlightJson(value: unknown): string {
-  const json = JSON.stringify(value, null, 2) ?? ''
-  const escaped = escapeHtml(json)
+  const json = JSON.stringify(value, null, 2) ?? "";
+  const escaped = escapeHtml(json);
   // Match strings (with optional trailing colon for keys), numbers, booleans, null
   const re =
-    /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g
+    /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
   return escaped.replace(re, (match, str, colon, kw) => {
     if (str !== undefined) {
-      const cls = colon ? 'tip-json-key' : 'tip-json-string'
-      return `<span class="${cls}">${str}</span>${colon || ''}`
+      const cls = colon ? "tip-json-key" : "tip-json-string";
+      return `<span class="${cls}">${str}</span>${colon || ""}`;
     }
     if (kw !== undefined) {
-      const cls = kw === 'null' ? 'tip-json-null' : 'tip-json-bool'
-      return `<span class="${cls}">${kw}</span>`
+      const cls = kw === "null" ? "tip-json-null" : "tip-json-bool";
+      return `<span class="${cls}">${kw}</span>`;
     }
-    return `<span class="tip-json-number">${match}</span>`
-  })
+    return `<span class="tip-json-number">${match}</span>`;
+  });
 }
 
 function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
-  const [data, setData] = useState<TrackDetail | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [showRaw, setShowRaw] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
-  const reqRef = useRef(0)
+  const [data, setData] = useState<TrackDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showRaw, setShowRaw] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const reqRef = useRef(0);
 
   const fetchDetail = (id: string, refresh: boolean) => {
-    const reqId = ++reqRef.current
-    if (refresh) setRefreshing(true)
-    else setLoading(true)
-    setError(null)
+    const reqId = ++reqRef.current;
+    if (refresh) setRefreshing(true);
+    else setLoading(true);
+    setError(null);
     apiService
       .getTrackDetail(id, { refresh })
       .then((d) => {
-        if (reqRef.current === reqId) setData(d)
+        if (reqRef.current === reqId) setData(d);
       })
       .catch((e) => {
         if (reqRef.current === reqId) {
-          setError(e?.response?.data?.detail || e.message || 'Failed to load')
-          if (!refresh) setData(null)
+          setError(e?.response?.data?.detail || e.message || "Failed to load");
+          if (!refresh) setData(null);
         }
       })
       .finally(() => {
         if (reqRef.current === reqId) {
-          setLoading(false)
-          setRefreshing(false)
+          setLoading(false);
+          setRefreshing(false);
         }
-      })
-  }
+      });
+  };
 
   useEffect(() => {
     if (!trackId) {
-      setData(null)
-      setError(null)
-      return
+      setData(null);
+      setError(null);
+      return;
     }
-    fetchDetail(trackId, false)
-  }, [trackId])
+    fetchDetail(trackId, false);
+  }, [trackId, fetchDetail]);
 
   const handleRefresh = () => {
-    if (trackId && !refreshing && !loading) fetchDetail(trackId, true)
-  }
+    if (trackId && !refreshing && !loading) fetchDetail(trackId, true);
+  };
 
   const handleCopy = async () => {
-    if (!data) return
+    if (!data) return;
     try {
-      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch (e) {
-      console.error('Copy failed', e)
+      console.error("Copy failed", e);
     }
-  }
+  };
 
   if (collapsed) {
     return (
       <div className="track-info-panel collapsed">
         <button
+          type="button"
           className="tip-toggle"
           onClick={onToggleCollapsed}
           aria-label="Expand track info panel"
@@ -109,7 +107,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
           ⓘ
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -118,13 +116,14 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">
           <button
+            type="button"
             className="tip-toggle tip-refresh"
             onClick={handleRefresh}
             disabled={!trackId || loading || refreshing}
             aria-label="Refresh cached track info"
             title="Force a fresh lookup, bypassing the cache"
           >
-            {refreshing ? '…' : '↻'}
+            {refreshing ? "…" : "↻"}
           </button>
           <label className="tip-raw-toggle" title="Toggle raw JSON view">
             <input
@@ -135,6 +134,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
             <span>Show raw</span>
           </label>
           <button
+            type="button"
             className="tip-toggle"
             onClick={onToggleCollapsed}
             aria-label="Collapse track info panel"
@@ -152,11 +152,12 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
 
         {data && showRaw && (
           <div className="tip-raw">
-            <button className="tip-copy" onClick={handleCopy}>
-              {copied ? 'Copied!' : 'Copy JSON'}
+            <button type="button" className="tip-copy" onClick={handleCopy}>
+              {copied ? "Copied!" : "Copy JSON"}
             </button>
             <pre
               className="tip-json"
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: highlightJson HTML-escapes input before highlighting; renders app-owned track JSON
               dangerouslySetInnerHTML={{ __html: highlightJson(data) }}
             />
           </div>
@@ -167,14 +168,16 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
             <section className="tip-section tip-head-section">
               <h3 className="tip-track-name">{data.spotify.name}</h3>
               <p className="tip-sub">
-                {data.spotify.artists.join(', ')}
-                {data.spotify.album ? ` · ${data.spotify.album}` : ''}
+                {data.spotify.artists.join(", ")}
+                {data.spotify.album ? ` · ${data.spotify.album}` : ""}
               </p>
               <p className="tip-meta">
                 {formatDuration(data.spotify.duration_ms)}
-                {data.spotify.release_date ? ` · ${data.spotify.release_date}` : ''}
-                {data.spotify.isrc ? ` · ISRC ${data.spotify.isrc}` : ''}
-                {data.spotify.explicit ? ' · explicit' : ''}
+                {data.spotify.release_date
+                  ? ` · ${data.spotify.release_date}`
+                  : ""}
+                {data.spotify.isrc ? ` · ISRC ${data.spotify.isrc}` : ""}
+                {data.spotify.explicit ? " · explicit" : ""}
               </p>
               {data.spotify.external_url && (
                 <a
@@ -193,7 +196,9 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                 <h4>
                   Last.fm
                   <span className={`tip-tier tip-tier-${data.lastfm.tier}`}>
-                    {data.lastfm.tier === 'authenticated' ? 'connected' : 'public'}
+                    {data.lastfm.tier === "authenticated"
+                      ? "connected"
+                      : "public"}
                   </span>
                 </h4>
                 {data.lastfm.error ? (
@@ -203,20 +208,25 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                     <p className="tip-stats">
                       {data.lastfm.user_playcount != null && (
                         <span>
-                          Your plays: <strong>{data.lastfm.user_playcount}</strong>
-                          {data.lastfm.user_loved ? ' ♥' : ''}
+                          Your plays:{" "}
+                          <strong>{data.lastfm.user_playcount}</strong>
+                          {data.lastfm.user_loved ? " ♥" : ""}
                         </span>
                       )}
                       {data.lastfm.playcount != null && (
                         <span>
-                          Global plays:{' '}
-                          <strong>{data.lastfm.playcount.toLocaleString()}</strong>
+                          Global plays:{" "}
+                          <strong>
+                            {data.lastfm.playcount.toLocaleString()}
+                          </strong>
                         </span>
                       )}
                       {data.lastfm.listeners != null && (
                         <span>
-                          Listeners:{' '}
-                          <strong>{data.lastfm.listeners.toLocaleString()}</strong>
+                          Listeners:{" "}
+                          <strong>
+                            {data.lastfm.listeners.toLocaleString()}
+                          </strong>
                         </span>
                       )}
                     </p>
@@ -240,8 +250,10 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                             <li key={i}>
                               <a href={s.url} target="_blank" rel="noreferrer">
                                 {s.name}
-                              </a>{' '}
-                              <span className="tip-similar-artist">— {s.artist}</span>
+                              </a>{" "}
+                              <span className="tip-similar-artist">
+                                — {s.artist}
+                              </span>
                             </li>
                           ))}
                         </ul>
@@ -263,7 +275,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                     MBID: <code>{data.musicbrainz.mbid}</code>
                   </span>
                   {data.musicbrainz.isrcs.length > 0 && (
-                    <span>ISRCs: {data.musicbrainz.isrcs.join(', ')}</span>
+                    <span>ISRCs: {data.musicbrainz.isrcs.join(", ")}</span>
                   )}
                 </p>
                 {data.musicbrainz.releases.length > 0 && (
@@ -273,9 +285,11 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                       {data.musicbrainz.releases.slice(0, 8).map((r) => (
                         <li key={r.mbid}>
                           {r.title}
-                          {r.date ? ` (${r.date})` : ''}
-                          {r.country ? ` · ${r.country}` : ''}
-                          {r.release_group_type ? ` · ${r.release_group_type}` : ''}
+                          {r.date ? ` (${r.date})` : ""}
+                          {r.country ? ` · ${r.country}` : ""}
+                          {r.release_group_type
+                            ? ` · ${r.release_group_type}`
+                            : ""}
                         </li>
                       ))}
                     </ul>
@@ -323,7 +337,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
         )}
       </div>
     </aside>
-  )
+  );
 }
 
-export default TrackInfoPanel
+export default TrackInfoPanel;

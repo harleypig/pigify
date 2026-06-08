@@ -1,16 +1,16 @@
 """Per-user service connections repository."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import ServiceConnection
+from app.db.models.user import ServiceConnection
 
 
-async def get(session: AsyncSession, service: str) -> Optional[ServiceConnection]:
+async def get(session: AsyncSession, service: str) -> ServiceConnection | None:
     return await session.get(ServiceConnection, service)
 
 
@@ -22,9 +22,9 @@ async def upsert(
     session: AsyncSession,
     *,
     service: str,
-    account_name: Optional[str] = None,
-    credentials: Optional[dict] = None,
-    preferences: Optional[dict] = None,
+    account_name: str | None = None,
+    credentials: dict | None = None,
+    preferences: dict | None = None,
 ) -> ServiceConnection:
     row = await get(session, service)
     if row is None:
@@ -47,12 +47,12 @@ async def upsert(
 
 
 async def record_sync(
-    session: AsyncSession, service: str, *, error: Optional[str] = None
+    session: AsyncSession, service: str, *, error: str | None = None
 ) -> None:
     row = await get(session, service)
     if row is None:
         return
-    row.last_synced_at = datetime.now(timezone.utc)
+    row.last_synced_at = datetime.now(UTC)
     row.last_error = error
     await session.flush()
 

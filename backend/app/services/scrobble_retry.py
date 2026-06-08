@@ -16,22 +16,23 @@ background sweeps.
 Best-effort: a failure on one user DB is logged but must not stop the
 loop or block the rest of the app.
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-from typing import Optional
 
-from backend.app.config import settings
-from backend.app.db.bootstrap import known_user_ids
-from backend.app.db.repositories import scrobble_queue as queue_repo
-from backend.app.db.session import user_session_scope
-from backend.app.services import scrobbler
-from backend.app.services.connections import get_lastfm_credentials
+from app.config import settings
+from app.db.bootstrap import known_user_ids
+from app.db.repositories import scrobble_queue as queue_repo
+from app.db.session import user_session_scope
+from app.services import scrobbler
+from app.services.connections import get_lastfm_credentials
 
 log = logging.getLogger(__name__)
 
-_task: Optional[asyncio.Task] = None
+_task: asyncio.Task | None = None
 
 
 async def retry_user(spotify_id: str) -> int:
@@ -80,7 +81,9 @@ async def retry_all_users() -> int:
             log.exception("scrobble retry: failed for user %s", sid)
             continue
         if sent:
-            log.info("scrobble retry: delivered %d queued scrobble(s) for %s", sent, sid)
+            log.info(
+                "scrobble retry: delivered %d queued scrobble(s) for %s", sent, sid
+            )
             total += sent
     if ids:
         log.debug("scrobble retry: swept %d user(s), delivered %d", len(ids), total)
@@ -102,7 +105,7 @@ async def _loop(interval_seconds: int) -> None:
 
 
 def start_periodic_retry(
-    interval_seconds: Optional[int] = None,
+    interval_seconds: int | None = None,
 ) -> None:
     """Schedule the periodic retry task. Idempotent. No-op when disabled."""
     global _task
@@ -126,7 +129,5 @@ async def stop_periodic_retry() -> None:
     if task is None or task.done():
         return
     task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError, Exception):
         await task
-    except (asyncio.CancelledError, Exception):
-        pass
