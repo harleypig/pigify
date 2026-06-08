@@ -104,6 +104,41 @@ class TestProductionSecretKeyGuard(unittest.TestCase):
         self.assertEqual(s.SECRET_KEY, _INSECURE_SECRET_KEY)
 
 
+class TestDevAuthBypassGuard(unittest.TestCase):
+    def test_bypass_enabled_in_development_passes(self):
+        s = Settings(_env_file=None, ENVIRONMENT="development", DEV_AUTH_BYPASS=True)
+        self.assertTrue(s.DEV_AUTH_BYPASS)
+
+    def test_bypass_enabled_in_production_raises(self):
+        with self.assertRaises(ValueError):
+            Settings(
+                _env_file=None,
+                ENVIRONMENT="production",
+                SECRET_KEY="a-real-strong-key",
+                DEV_AUTH_BYPASS=True,
+            )
+
+    def test_bypass_enabled_in_any_nondev_env_raises(self):
+        # Anything that isn't development must fail closed (e.g. staging).
+        with self.assertRaises(ValueError):
+            Settings(
+                _env_file=None,
+                ENVIRONMENT="staging",
+                DEV_AUTH_BYPASS=True,
+            )
+
+    def test_bypass_disabled_in_production_passes(self):
+        s = Settings(
+            _env_file=None,
+            ENVIRONMENT="production",
+            SECRET_KEY="a-real-strong-key",
+        )
+        self.assertFalse(s.DEV_AUTH_BYPASS)
+
+    def test_bypass_defaults_off(self):
+        self.assertFalse(Settings(_env_file=None).DEV_AUTH_BYPASS)
+
+
 class TestCorsDefaults(unittest.TestCase):
     def test_default_cors_origins(self):
         s = Settings(_env_file=None)
