@@ -11,29 +11,28 @@ Coverage:
     transparently for a logged-out user and updates the queued count
     on the persisted status summary.
 """
+
 from __future__ import annotations
 
 import shutil
 import tempfile
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 from sqlalchemy import create_engine
 
-from backend.app.config import settings
-from backend.app.db import engines as db_engines
-from backend.app.db import paths as db_paths
-from backend.app.db.base import UserBase
-from backend.app.db.models import user as _user_models  # noqa: F401
-from backend.app.db.repositories import scrobble_queue as queue_repo
-from backend.app.db.repositories import service_connections as conn_repo
-from backend.app.db.session import user_session_scope
-from backend.app.services import scrobble_retry, scrobbler
-from backend.app.services.connections import LASTFM_SERVICE
-
+from app.config import settings
+from app.db import engines as db_engines
+from app.db import paths as db_paths
+from app.db.base import UserBase
+from app.db.models import user as _user_models  # noqa: F401
+from app.db.repositories import scrobble_queue as queue_repo
+from app.db.repositories import service_connections as conn_repo
+from app.db.session import user_session_scope
+from app.services import scrobble_retry, scrobbler
+from app.services.connections import LASTFM_SERVICE
 
 SPOTIFY_ID = "retryuser"
 
@@ -98,9 +97,7 @@ class BackoffAndAuthDetectionTests(unittest.TestCase):
             self.assertEqual(scrobbler._next_backoff(2), timedelta(seconds=120))
             self.assertEqual(scrobbler._next_backoff(3), timedelta(seconds=240))
             # Cap kicks in well before the shift would overflow.
-            self.assertEqual(
-                scrobbler._next_backoff(20), timedelta(seconds=3600)
-            )
+            self.assertEqual(scrobbler._next_backoff(20), timedelta(seconds=3600))
         finally:
             settings.SCROBBLE_RETRY_BASE_SEC = old_base
             settings.SCROBBLE_RETRY_MAX_SEC = old_cap
@@ -114,9 +111,7 @@ class BackoffAndAuthDetectionTests(unittest.TestCase):
         self.assertTrue(
             scrobbler._is_auth_fatal("Last.fm error 4: Authentication Failed")
         )
-        self.assertFalse(
-            scrobbler._is_auth_fatal("Last.fm error 11: Service Offline")
-        )
+        self.assertFalse(scrobbler._is_auth_fatal("Last.fm error 11: Service Offline"))
         # Network errors / generic strings must not flip the flag.
         self.assertFalse(scrobbler._is_auth_fatal("connection reset"))
         self.assertFalse(scrobbler._is_auth_fatal(""))
@@ -130,17 +125,20 @@ class FlushAuthFatalTests(_IsolatedUserDBTestCase):
         await _enqueue("t1")
         await _enqueue("t2")
 
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble",
-            new=mock.AsyncMock(
-                side_effect=RuntimeError(
-                    "Last.fm error 9: Invalid session key"
-                )
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
             ),
-        ) as scr:
+            mock.patch.object(
+                scrobbler.lastfm,
+                "scrobble",
+                new=mock.AsyncMock(
+                    side_effect=RuntimeError("Last.fm error 9: Invalid session key")
+                ),
+            ) as scr,
+        ):
             result = await scrobbler.flush_now(SPOTIFY_ID)
 
         # We bail out on the first auth-fatal failure rather than burning
@@ -165,11 +163,15 @@ class FlushAuthFatalTests(_IsolatedUserDBTestCase):
             await session.commit()
 
         await _enqueue("t1")
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=mock.AsyncMock(return_value={})
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm, "scrobble", new=mock.AsyncMock(return_value={})
+            ),
         ):
             result = await scrobbler.flush_now(SPOTIFY_ID)
 
@@ -192,22 +194,23 @@ class PeriodicRetryUserTests(_IsolatedUserDBTestCase):
                 session,
                 eid,
                 error="boom",
-                next_attempt_at=datetime.now(timezone.utc)
-                - timedelta(seconds=5),
+                next_attempt_at=datetime.now(UTC) - timedelta(seconds=5),
             )
             await session.commit()
 
-        scrobble_args: List[str] = []
+        scrobble_args: list[str] = []
 
         async def fake_scrobble(session_key, artist, track, **kw):
             scrobble_args.append(track)
             return {}
 
-        with mock.patch.object(
-            scrobble_retry, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=fake_scrobble
+        with (
+            mock.patch.object(
+                scrobble_retry,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(scrobbler.lastfm, "scrobble", new=fake_scrobble),
         ):
             sent = await scrobble_retry.retry_user(SPOTIFY_ID)
 
@@ -218,10 +221,13 @@ class PeriodicRetryUserTests(_IsolatedUserDBTestCase):
             self.assertEqual(await queue_repo.count(session), 0)
             # Status summary should reflect the new queue depth so the
             # SettingsPanel badge is correct on next page load.
-            from backend.app.db.repositories import sync_state as sync_repo
+            from app.db.repositories import sync_state as sync_repo
+
             row = await sync_repo.get_state(session, "scrobbler")
             self.assertIsNotNone(row)
-            self.assertEqual((row.last_summary or {}).get("status", {}).get("queued"), 0)
+            self.assertEqual(
+                (row.last_summary or {}).get("status", {}).get("queued"), 0
+            )
 
     async def test_retry_user_skips_when_lastfm_not_connected(self) -> None:
         await _enqueue("t1")  # queue exists but no credentials saved
@@ -244,12 +250,17 @@ class PeriodicRetryUserTests(_IsolatedUserDBTestCase):
         await _enqueue("a")
         await _enqueue("b")
 
-        with mock.patch.object(
-            scrobble_retry, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble",
-            new=mock.AsyncMock(side_effect=RuntimeError("network down")),
+        with (
+            mock.patch.object(
+                scrobble_retry,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm,
+                "scrobble",
+                new=mock.AsyncMock(side_effect=RuntimeError("network down")),
+            ),
         ):
             sent = await scrobble_retry.retry_user(SPOTIFY_ID)
 
@@ -268,15 +279,20 @@ class PeriodicRetryUserTests(_IsolatedUserDBTestCase):
         await _enqueue("a")
         await _enqueue("b")
 
-        with mock.patch.object(
-            scrobble_retry, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble",
-            new=mock.AsyncMock(
-                side_effect=RuntimeError("Last.fm error 9: Invalid session key")
+        with (
+            mock.patch.object(
+                scrobble_retry,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
             ),
-        ) as scr:
+            mock.patch.object(
+                scrobbler.lastfm,
+                "scrobble",
+                new=mock.AsyncMock(
+                    side_effect=RuntimeError("Last.fm error 9: Invalid session key")
+                ),
+            ) as scr,
+        ):
             sent = await scrobble_retry.retry_user(SPOTIFY_ID)
 
         self.assertEqual(sent, 0)
@@ -297,17 +313,20 @@ class PeriodicRetryUserTests(_IsolatedUserDBTestCase):
                 session,
                 eid,
                 error="rate limit",
-                next_attempt_at=datetime.now(timezone.utc)
-                + timedelta(hours=1),
+                next_attempt_at=datetime.now(UTC) + timedelta(hours=1),
             )
             await session.commit()
 
-        with mock.patch.object(
-            scrobble_retry, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=mock.AsyncMock(return_value={})
-        ) as scr:
+        with (
+            mock.patch.object(
+                scrobble_retry,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm, "scrobble", new=mock.AsyncMock(return_value={})
+            ) as scr,
+        ):
             sent = await scrobble_retry.retry_user(SPOTIFY_ID)
 
         self.assertEqual(sent, 0)

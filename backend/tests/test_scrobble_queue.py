@@ -2,8 +2,8 @@
 
 Pending Last.fm scrobbles are persisted to the per-user DB and retried
 in the background. This test module exercises both the low-level
-repository in ``backend.app.db.repositories.scrobble_queue`` and the
-service-level orchestration in ``backend.app.services.scrobbler`` end
+repository in ``app.db.repositories.scrobble_queue`` and the
+service-level orchestration in ``app.services.scrobbler`` end
 to end against an isolated SQLite file under a tmp ``DATA_DIR``,
 mirroring the pattern in ``test_recipes_persistence.py``.
 
@@ -24,29 +24,28 @@ Coverage:
 
 Run:
 
-    python -m unittest backend.tests.test_scrobble_queue -v
+    poetry run pytest tests/test_scrobble_queue.py
 """
+
 from __future__ import annotations
 
 import shutil
 import tempfile
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
 from unittest import mock
 
 from sqlalchemy import create_engine
 
-from backend.app.config import settings
-from backend.app.db import engines as db_engines
-from backend.app.db import paths as db_paths
-from backend.app.db.base import UserBase
-from backend.app.db.models import user as _user_models  # noqa: F401  (register tables)
-from backend.app.db.repositories import scrobble_queue as queue_repo
-from backend.app.db.session import user_session_scope
-from backend.app.services import scrobbler
-
+from app.config import settings
+from app.db import engines as db_engines
+from app.db import paths as db_paths
+from app.db.base import UserBase
+from app.db.models import user as _user_models  # noqa: F401  (register tables)
+from app.db.repositories import scrobble_queue as queue_repo
+from app.db.session import user_session_scope
+from app.services import scrobbler
 
 SPOTIFY_ID = "queueuser"
 
@@ -56,9 +55,9 @@ async def _enqueue_sample(
     *,
     artist: str = "Daft Punk",
     track: str = "One More Time",
-    timestamp: Optional[int] = None,
-    album: Optional[str] = "Discovery",
-    duration_sec: Optional[int] = 320,
+    timestamp: int | None = None,
+    album: str | None = "Discovery",
+    duration_sec: int | None = 320,
 ):
     return await queue_repo.enqueue(
         session,
@@ -137,9 +136,7 @@ class ScrobbleQueueRepoTests(_IsolatedUserDBTestCase):
 
         async with user_session_scope(SPOTIFY_ID) as session:
             entries = await queue_repo.list_all(session)
-            self.assertEqual(
-                [e.track for e in entries], ["early", "mid", "late"]
-            )
+            self.assertEqual([e.track for e in entries], ["early", "mid", "late"])
 
     async def test_delete_removes_only_target_row(self) -> None:
         async with user_session_scope(SPOTIFY_ID) as session:
@@ -166,7 +163,8 @@ class ScrobbleQueueRepoTests(_IsolatedUserDBTestCase):
 
         async with user_session_scope(SPOTIFY_ID) as session:
             removed = await queue_repo.delete_many(
-                session, [ids[0], ids[2], 999_999]  # 999_999 doesn't exist
+                session,
+                [ids[0], ids[2], 999_999],  # 999_999 doesn't exist
             )
             await session.commit()
             self.assertEqual(removed, 2)
@@ -191,7 +189,7 @@ class ScrobbleQueueRepoTests(_IsolatedUserDBTestCase):
             await session.commit()
             entry_id = row.id
 
-        future = datetime.now(timezone.utc) + timedelta(seconds=60)
+        future = datetime.now(UTC) + timedelta(seconds=60)
         async with user_session_scope(SPOTIFY_ID) as session:
             await queue_repo.mark_failed(
                 session, entry_id, error="boom", next_attempt_at=future
@@ -235,8 +233,8 @@ class ScrobbleQueueRepoTests(_IsolatedUserDBTestCase):
             self.assertEqual(len(entry.last_error), 1024)
 
     async def test_list_due_respects_backoff_window(self) -> None:
-        future = datetime.now(timezone.utc) + timedelta(hours=1)
-        past = datetime.now(timezone.utc) - timedelta(minutes=1)
+        future = datetime.now(UTC) + timedelta(hours=1)
+        past = datetime.now(UTC) - timedelta(minutes=1)
 
         async with user_session_scope(SPOTIFY_ID) as session:
             fresh = await _enqueue_sample(session, track="fresh")
@@ -268,8 +266,8 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
     """End-to-end exercise of the scrobbler service against the real DB,
     with the Last.fm HTTP layer mocked."""
 
-    async def _seed(self, n: int = 1) -> List[int]:
-        ids: List[int] = []
+    async def _seed(self, n: int = 1) -> list[int]:
+        ids: list[int] = []
         async with user_session_scope(SPOTIFY_ID) as session:
             for i in range(n):
                 row = await _enqueue_sample(
@@ -318,12 +316,16 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
 
     async def test_flush_now_deletes_rows_on_successful_retry(self) -> None:
         await self._seed(2)
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=mock.AsyncMock(return_value={})
-        ) as scr:
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm, "scrobble", new=mock.AsyncMock(return_value={})
+            ) as scr,
+        ):
             result = await scrobbler.flush_now(SPOTIFY_ID)
 
         self.assertEqual(result["attempted"], 2)
@@ -337,12 +339,17 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
 
     async def test_flush_now_keeps_failures_with_attempts_and_backoff(self) -> None:
         ids = await self._seed(2)
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble",
-            new=mock.AsyncMock(side_effect=RuntimeError("rate limited")),
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm,
+                "scrobble",
+                new=mock.AsyncMock(side_effect=RuntimeError("rate limited")),
+            ),
         ):
             result = await scrobbler.flush_now(SPOTIFY_ID)
 
@@ -368,11 +375,13 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
                 raise RuntimeError("nope")
             return {}
 
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=fake_scrobble
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(scrobbler.lastfm, "scrobble", new=fake_scrobble),
         ):
             result = await scrobbler.flush_now(SPOTIFY_ID)
 
@@ -386,12 +395,16 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
 
     async def test_flush_now_without_lastfm_connection_is_noop(self) -> None:
         await self._seed(1)
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=mock.AsyncMock()
-        ) as scr:
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm, "scrobble", new=mock.AsyncMock()
+            ) as scr,
+        ):
             result = await scrobbler.flush_now(SPOTIFY_ID)
 
         self.assertEqual(result["attempted"], 0)
@@ -424,7 +437,7 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
         }
         state = {"is_playing": True, "item": item}
 
-        scrobble_calls: List[str] = []
+        scrobble_calls: list[str] = []
 
         async def failing_scrobble(*a, **kw):
             scrobble_calls.append("fail")
@@ -436,16 +449,19 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
 
         # Force the scrobble threshold so the first poll attempts a
         # send (rather than waiting for half-duration to elapse).
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler, "_should_scrobble", return_value=True
-        ), mock.patch.object(
-            scrobbler.lastfm, "update_now_playing",
-            new=mock.AsyncMock(return_value=None),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=failing_scrobble
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(scrobbler, "_should_scrobble", return_value=True),
+            mock.patch.object(
+                scrobbler.lastfm,
+                "update_now_playing",
+                new=mock.AsyncMock(return_value=None),
+            ),
+            mock.patch.object(scrobbler.lastfm, "scrobble", new=failing_scrobble),
         ):
             await scrobbler.process_state(request, state)
 
@@ -459,11 +475,13 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
         # Simulate the next poll: scrobble now succeeds, and the
         # _flush_queue path inside process_state should drain the row.
         # Use an idle state so we don't enqueue another scrobble.
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble", new=succeeding_scrobble
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(scrobbler.lastfm, "scrobble", new=succeeding_scrobble),
         ):
             await scrobbler.process_state(request, {"is_playing": False, "item": None})
 
@@ -480,16 +498,19 @@ class ScrobblerServiceTests(_IsolatedUserDBTestCase):
         request = mock.MagicMock()
         request.session = {"spotify_user_id": SPOTIFY_ID}
 
-        with mock.patch.object(
-            scrobbler, "get_lastfm_credentials",
-            new=mock.AsyncMock(return_value={"session_key": "abc"}),
-        ), mock.patch.object(
-            scrobbler.lastfm, "scrobble",
-            new=mock.AsyncMock(side_effect=RuntimeError("still offline")),
+        with (
+            mock.patch.object(
+                scrobbler,
+                "get_lastfm_credentials",
+                new=mock.AsyncMock(return_value={"session_key": "abc"}),
+            ),
+            mock.patch.object(
+                scrobbler.lastfm,
+                "scrobble",
+                new=mock.AsyncMock(side_effect=RuntimeError("still offline")),
+            ),
         ):
-            await scrobbler.process_state(
-                request, {"is_playing": False, "item": None}
-            )
+            await scrobbler.process_state(request, {"is_playing": False, "item": None})
 
         async with user_session_scope(SPOTIFY_ID) as session:
             entries = await queue_repo.list_all(session)

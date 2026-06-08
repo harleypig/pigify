@@ -1,7 +1,7 @@
 """Integration tests for the saved sort presets persistence layer.
 
 These tests cover the per-user-DB-backed sort-preset endpoints in
-``backend.app.api.playlists`` (``/sort/presets``) end-to-end through a
+``app.api.playlists`` (``/sort/presets``) end-to-end through a
 FastAPI ``TestClient``. A throwaway SQLite file under a tmp ``DATA_DIR``
 stands in for the real per-user DB, so each test gets an isolated, empty
 repository.
@@ -21,35 +21,35 @@ Coverage:
 
 Run:
 
-    python -m unittest backend.tests.test_saved_sorts_persistence -v
+    poetry run pytest tests/test_saved_sorts_persistence.py
 """
+
 from __future__ import annotations
 
 import shutil
 import tempfile
 import unittest
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from starlette.middleware.sessions import SessionMiddleware
 
-from backend.app.api import playlists as playlists_api
-from backend.app.config import settings
-from backend.app.db import engines as db_engines
-from backend.app.db import paths as db_paths
-from backend.app.db.base import UserBase
-from backend.app.db.models import user as _user_models  # noqa: F401  (register tables)
-
+from app.api import playlists as playlists_api
+from app.config import settings
+from app.db import engines as db_engines
+from app.db import paths as db_paths
+from app.db.base import UserBase
+from app.db.models import user as _user_models  # noqa: F401  (register tables)
 
 SPOTIFY_ID = "testuser"
 
 
 def _make_preset(
     name: str = "My Sort",
-    keys: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Any]:
+    keys: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Minimal valid SortPreset payload accepted by the POST endpoint."""
     if keys is None:
         keys = [{"field": "added_at", "direction": "desc"}]
@@ -65,7 +65,7 @@ def _build_test_app() -> FastAPI:
     app.include_router(playlists_api.router, prefix="/api/playlists")
 
     @app.post("/__test__/session")
-    async def _set_session(request: Request, payload: Dict[str, Any]):
+    async def _set_session(request: Request, payload: dict[str, Any]):
         for k, v in payload.items():
             request.session[k] = v
         return {"ok": True}
@@ -116,7 +116,7 @@ class SavedSortsPersistenceTests(unittest.TestCase):
         self,
         *,
         authenticated: bool = True,
-        legacy_presets: Optional[List[Dict[str, Any]]] = None,
+        legacy_presets: list[dict[str, Any]] | None = None,
     ) -> TestClient:
         """Build a TestClient with a fresh cookie jar, optionally
         pre-seeded with ``spotify_user_id`` and a legacy
@@ -126,7 +126,7 @@ class SavedSortsPersistenceTests(unittest.TestCase):
         db_engines._user_engines.clear()
         client = TestClient(self.app)
         if authenticated:
-            payload: Dict[str, Any] = {"spotify_user_id": SPOTIFY_ID}
+            payload: dict[str, Any] = {"spotify_user_id": SPOTIFY_ID}
             if legacy_presets is not None:
                 payload["sort_presets"] = legacy_presets
             r = client.post("/__test__/session", json=payload)
@@ -273,9 +273,7 @@ class SavedSortsPersistenceTests(unittest.TestCase):
         # Single row, with the latest keys.
         self.assertEqual(len(listed), 1)
         self.assertEqual(listed[0]["name"], "Same Name")
-        self.assertEqual(
-            listed[0]["keys"], [{"field": "name", "direction": "desc"}]
-        )
+        self.assertEqual(listed[0]["keys"], [{"field": "name", "direction": "desc"}])
 
         # Saving with a different casing must still hit the same row and
         # adopt the new casing for the name.
@@ -318,9 +316,7 @@ class SavedSortsPersistenceTests(unittest.TestCase):
 
         listed = client.get("/api/playlists/sort/presets").json()
         by_name = {p["name"]: p for p in listed}
-        self.assertEqual(
-            set(by_name), {"Legacy Keys Shape", "Legacy Primary Shape"}
-        )
+        self.assertEqual(set(by_name), {"Legacy Keys Shape", "Legacy Primary Shape"})
         self.assertEqual(
             by_name["Legacy Keys Shape"]["keys"],
             [

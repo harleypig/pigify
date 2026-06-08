@@ -11,23 +11,22 @@ These tests don't need a running FastAPI app — they exercise
 
 Run with the stdlib runner so no extra dev dependency is needed:
 
-    python -m unittest backend.tests.test_reorder -v
+    poetry run pytest tests/test_reorder.py
 """
+
 from __future__ import annotations
 
 import random
 import unittest
 from bisect import bisect_left
 from collections import defaultdict
-from typing import List
 
-from backend.app.api.playlists import _compute_reorder_ops
-
+from app.api.playlists import _compute_reorder_ops
 
 # --------------------------- helpers used by tests --------------------------
 
 
-def apply_ops(current: List[str], ops) -> List[str]:
+def apply_ops(current: list[str], ops) -> list[str]:
     """Replay Spotify-style reorder ops against ``current``.
 
     Supports ``range_length >= 1`` so coalesced range moves replay
@@ -42,14 +41,14 @@ def apply_ops(current: List[str], ops) -> List[str]:
         j = op["range_start"]
         ib = op["insert_before"]
         L = op.get("range_length", 1)
-        block = cur[j:j + L]
-        del cur[j:j + L]
+        block = cur[j : j + L]
+        del cur[j : j + L]
         new_idx = ib - L if j < ib else ib
         cur[new_idx:new_idx] = block
     return cur
 
 
-def lcs_length(current: List[str], target: List[str]) -> int:
+def lcs_length(current: list[str], target: list[str]) -> int:
     """Multiset LCS length via the descending-expansion + strict LIS trick.
 
     This is the *same* reduction the implementation uses, so it really is
@@ -61,12 +60,12 @@ def lcs_length(current: List[str], target: List[str]) -> int:
     for i, u in enumerate(current):
         cur_positions[u].append(i)
 
-    expanded: List[int] = []
+    expanded: list[int] = []
     for u in target:
         for p in reversed(cur_positions[u]):
             expanded.append(p)
 
-    tails: List[int] = []
+    tails: list[int] = []
     for x in expanded:
         k = bisect_left(tails, x)
         if k == len(tails):
@@ -76,7 +75,7 @@ def lcs_length(current: List[str], target: List[str]) -> int:
     return len(tails)
 
 
-def lcs_length_dp(a: List[str], b: List[str]) -> int:
+def lcs_length_dp(a: list[str], b: list[str]) -> int:
     """Plain O(len(a)*len(b)) LCS DP — slow but unambiguously correct."""
     m, n = len(a), len(b)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
@@ -95,13 +94,19 @@ def lcs_length_dp(a: List[str], b: List[str]) -> int:
 class TestReorderOpsCorrectness(unittest.TestCase):
     def assert_plan_ok(self, current, target, *, expected_ops=None):
         ops = _compute_reorder_ops(current, target)
-        self.assertEqual(apply_ops(current, ops), target,
-                         f"replaying ops did not produce target ({ops!r})")
+        self.assertEqual(
+            apply_ops(current, ops),
+            target,
+            f"replaying ops did not produce target ({ops!r})",
+        )
         n = len(current)
         # Op count must never exceed the proven single-item minimum
         # (N - LCS); coalescing can only reduce it further.
-        self.assertLessEqual(len(ops), n - lcs_length(current, target),
-                             f"op count {len(ops)} > N - LIS for {current}->{target}")
+        self.assertLessEqual(
+            len(ops),
+            n - lcs_length(current, target),
+            f"op count {len(ops)} > N - LIS for {current}->{target}",
+        )
         if expected_ops is not None:
             self.assertEqual(len(ops), expected_ops)
         # The total items moved (sum of range_length) must still match the
@@ -140,8 +145,9 @@ class TestReorderOpsCorrectness(unittest.TestCase):
 
     def test_full_reverse_is_n_minus_1_ops(self):
         n = 6
-        self.assert_plan_ok(list(range(n)), list(reversed(range(n))),
-                            expected_ops=n - 1)
+        self.assert_plan_ok(
+            list(range(n)), list(reversed(range(n))), expected_ops=n - 1
+        )
 
     def test_swap_two_adjacent(self):
         self.assert_plan_ok([1, 2, 3, 4], [1, 3, 2, 4], expected_ops=1)
@@ -152,8 +158,7 @@ class TestReorderOpsCorrectness(unittest.TestCase):
     # ------ duplicates ------
 
     def test_duplicates_already_sorted(self):
-        self.assert_plan_ok(["a", "a", "b", "b"], ["a", "a", "b", "b"],
-                            expected_ops=0)
+        self.assert_plan_ok(["a", "a", "b", "b"], ["a", "a", "b", "b"], expected_ops=0)
 
     def test_duplicates_simple_rotation(self):
         # Multiset matches; minimal moves is 1 (move the trailing 'a' to front).
@@ -173,6 +178,7 @@ class TestReorderOpsCorrectness(unittest.TestCase):
 
     def test_different_multiset_raises_409(self):
         from fastapi import HTTPException
+
         with self.assertRaises(HTTPException) as ctx:
             _compute_reorder_ops(["a", "b"], ["a", "c"])
         self.assertEqual(ctx.exception.status_code, 409)
@@ -201,16 +207,14 @@ class TestFuzzedShuffles(unittest.TestCase):
 
     def test_distinct_shuffles_size_20(self):
         # Distinct elements: LCS == LIS of the position permutation.
-        self._run_fuzz(n=20, alphabet=list("abcdefghijklmnopqrst"),
-                       trials=80, seed=1)
+        self._run_fuzz(n=20, alphabet=list("abcdefghijklmnopqrst"), trials=80, seed=1)
 
     def test_duplicates_shuffles_size_30(self):
         # Heavy duplication stresses the multiset assignment logic.
         self._run_fuzz(n=30, alphabet=list("abcd"), trials=80, seed=2)
 
     def test_larger_distinct_size_100(self):
-        self._run_fuzz(n=100, alphabet=list(range(100)),
-                       trials=10, seed=3)
+        self._run_fuzz(n=100, alphabet=list(range(100)), trials=10, seed=3)
 
 
 class TestCoalescedRangeMoves(unittest.TestCase):
@@ -253,7 +257,7 @@ class TestCoalescedRangeMoves(unittest.TestCase):
         # A long block move where coalescing collapses 5 single-item ops
         # into a single range op of length 5. This is the headline win
         # the task is asking for.
-        current = list("ABCDEfghij")          # A..E move, f..j stay.
+        current = list("ABCDEfghij")  # A..E move, f..j stay.
         target = list("fghijABCDE")
         ops = _compute_reorder_ops(current, target)
         self.assertEqual(apply_ops(current, ops), target)
