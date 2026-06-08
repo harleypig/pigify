@@ -67,16 +67,19 @@ Docker stack. Full command reference: `.claude/WORKFLOW.md`.
 
 ## Deployment & access control
 
-Pigify is **not meant to be public.** Run it behind an authentication
-layer (Authelia SSO in the author's setup, or any forward-auth proxy)
-that gates access to the app — this is separate from the app's own Spotify
-OAuth, which only authorizes the Spotify API for the signed-in user. A
-Traefik + Authelia overlay is provided at `deploy/harleydev/pigify.yml`.
-CI publishes images to ghcr.io on `v*` tags.
+Pigify is **not meant to be public**, and it's deployment-agnostic — fit it
+into whatever you run. Terminate TLS at the bundled frontend (standalone) or
+at your own reverse proxy (Traefik, Caddy, nginx, ingress, …). Gate access
+either with pigify's own built-in auth (*planned, not yet built*) or behind
+any external forward-auth / SSO proxy (Authelia, Authentik, oauth2-proxy, …)
+— this is separate from the app's own Spotify OAuth, which only authorizes
+the Spotify API. See **`docs/DEPLOYMENT.md`**. CI publishes images to ghcr.io
+on `v*` tags.
 
 ## Documentation
 
 - `docs/ARCHITECTURE.md` — components, data flow, persistence
+- `docs/DEPLOYMENT.md` — TLS + access-control options (auth-agnostic)
 - `docs/DATABASE.md` — two-tier SQLite + Alembic
 - `docs/INTEGRATIONS.md` — Last.fm / MusicBrainz / Wikipedia
 - `docs/SPOTIFY_SETUP.md` — Spotify Developer Dashboard

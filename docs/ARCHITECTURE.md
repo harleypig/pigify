@@ -81,14 +81,19 @@ instead. See `DATABASE.md`.
 
 ## Deployment
 
-- **Standalone:** `docker compose up --build` (generic, self-contained).
-- **Behind a reverse proxy:** see `deploy/harleydev/pigify.yml` — Traefik
-  terminates TLS, the backend is internal-only, and the frontend serves
-  the SPA + `/api` proxy.
-- **Access control:** pigify is not meant to be public. It sits behind an
-  authentication layer (Authelia SSO in the harleydev deploy, or generic
-  forward-auth elsewhere) that gates access to the app. This is *separate
-  from* the app's own Spotify OAuth, which authorizes the Spotify API for
-  the signed-in user. The Spotify callback is hit by the already-
-  authenticated browser, so it passes the SSO chain without special-casing.
+pigify is deployment- and auth-agnostic — see `docs/DEPLOYMENT.md` for the
+full guide. In short:
+
+- **Standalone:** `docker compose up --build` (self-contained; the frontend
+  terminates TLS with mounted certs).
+- **Behind a reverse proxy:** let your proxy (Traefik, Caddy, nginx,
+  ingress, …) terminate TLS and mount `deploy/reverse-proxy/nginx.conf` so
+  the frontend serves plain HTTP on 8080.
+- **Access control:** pigify is not meant to be public. Gate it either with
+  its own built-in authentication (*planned, not yet built*) or behind any
+  external forward-auth / SSO proxy (Authelia, Authentik, oauth2-proxy, …).
+  This is *separate from* the app's own Spotify OAuth, which only authorizes
+  the Spotify API for the signed-in user. The Spotify callback is hit by the
+  already-authenticated browser, so it passes the auth layer without
+  special-casing.
 - Images are published to ghcr.io on `v*` tags by CI.
