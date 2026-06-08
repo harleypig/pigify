@@ -10,6 +10,12 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from app.auth.session import (
+    clear_session,
+    establish_session,
+    require_spotify_id,
+    require_token,
+)
 from app.config import settings
 from app.db.bootstrap import apply_user_migrations
 from app.db.paths import user_db_path, user_db_url
@@ -50,17 +56,13 @@ async def _load_profile(spotify_id: str) -> ProfileResponse:
 
 @me_router.get("/profile", response_model=ProfileResponse)
 async def get_profile(request: Request) -> ProfileResponse:
-    spotify_id = request.session.get("spotify_user_id")
-    if not spotify_id:
-        raise HTTPException(401, "Not authenticated")
+    spotify_id = require_spotify_id(request)
     return await _load_profile(spotify_id)
 
 
 @me_router.put("/profile", response_model=ProfileResponse)
 async def update_profile(request: Request, body: ProfileUpdate) -> ProfileResponse:
-    spotify_id = request.session.get("spotify_user_id")
-    if not spotify_id:
-        raise HTTPException(401, "Not authenticated")
+    spotify_id = require_spotify_id(request)
     async with system_session_scope() as session:
         await users_repo.set_custom_display_name(
             session, spotify_id, body.custom_display_name
@@ -174,11 +176,14 @@ async def spotify_callback(
         ) from init_err
 
     # Only now publish the session — every dependent piece is in place.
-    request.session["access_token"] = access_token
-    request.session["refresh_token"] = token_data.get("refresh_token")
-    request.session["token_expires_at"] = token_data.get("expires_in", 3600)
-    request.session["spotify_user_id"] = spotify_id
-    request.session["pigify_user_id"] = internal_id
+    establish_session(
+        request,
+        spotify_id=spotify_id,
+        access_token=access_token,
+        refresh_token=token_data.get("refresh_token"),
+        pigify_user_id=internal_id,
+        token_expires_in=token_data.get("expires_in", 3600),
+    )
 
     return RedirectResponse(url=f"{settings.FRONTEND_URL}/")
 
@@ -188,9 +193,7 @@ async def get_current_user(request: Request):
     """
     Get current authenticated user information.
     """
-    access_token = request.session.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    access_token = require_token(request)
 
     try:
         spotify = SpotifyService(access_token)
@@ -207,10 +210,7 @@ async def get_access_token(request: Request):
     """
     Get current access token for Spotify Web SDK.
     """
-    access_token = request.session.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
+    access_token = require_token(request)
     return {"access_token": access_token}
 
 
@@ -219,5 +219,5 @@ async def logout(request: Request):
     """
     Logout current user by clearing session.
     """
-    request.session.clear()
+    clear_session(request)
     return {"message": "Logged out successfully"}

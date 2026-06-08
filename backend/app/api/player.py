@@ -8,6 +8,7 @@ import contextlib
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from app.auth.session import require_token as _get_token
 from app.services import scrobbler
 from app.services.spotify import SpotifyService
 
@@ -17,13 +18,6 @@ router = APIRouter()
 class PlayRequest(BaseModel):
     track_uri: str | None = None
     device_id: str | None = None
-
-
-def _get_token(request: Request) -> str:
-    token = request.session.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return token
 
 
 @router.get("/state")

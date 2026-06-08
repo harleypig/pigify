@@ -11,9 +11,10 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.auth.session import require_spotify_id
 from app.db.engines import get_system_engine, get_user_engine
 
 _system_factory: async_sessionmaker[AsyncSession] | None = None
@@ -61,10 +62,7 @@ async def SystemSession() -> AsyncIterator[AsyncSession]:
 
 
 def _spotify_id_from_request(request: Request) -> str:
-    sid = request.session.get("spotify_user_id")
-    if not sid:
-        raise HTTPException(401, "Not authenticated")
-    return sid
+    return require_spotify_id(request)
 
 
 async def UserSession(

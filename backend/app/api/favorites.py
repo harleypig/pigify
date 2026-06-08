@@ -14,6 +14,7 @@ Endpoints:
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from app.auth.session import require_token
 from app.models.favorites import (
     Conflict,
     Favorite,
@@ -30,10 +31,7 @@ router = APIRouter()
 
 
 def _services(request: Request) -> FavoritesService:
-    token = request.session.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    spotify = SpotifyService(token)
+    spotify = SpotifyService(require_token(request))
     return FavoritesService(
         spotify,
         lastfm_session_key=request.session.get("lastfm_session_key"),
