@@ -24,15 +24,24 @@ env:
 
 jobs:
   precommit:
+    # Always runs the full hook suite (format/lint, type-check, tests,
+    # hadolint) on every PR — including docs-only changes. Matrixed across
+    # the supported Python versions so ruff / pyright / pytest run on each
+    # (the runtime image is built on 3.14; 3.12 stays because pyproject
+    # allows ^3.12). This subsumes a separate backend-tests job.
     name: Pre-commit checks
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14"]
     steps:
       - uses: actions/checkout@v6.0.3
 
       - uses: actions/setup-python@v6.2.0
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install Poetry
         run: pipx install poetry==2.4.1
@@ -57,35 +66,6 @@ jobs:
           pre-commit run --all-files
           --config .pre-commit-config.yaml
           --show-diff-on-failure
-
-  backend-tests:
-    # Run the backend suite across the supported Python versions. The
-    # runtime image is built on 3.14 (backend/Dockerfile); 3.12 stays in the
-    # matrix so local dev on 3.12 keeps working (pyproject allows ^3.12).
-    name: Backend tests
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12", "3.14"]
-    steps:
-      - uses: actions/checkout@v6.0.3
-
-      - uses: actions/setup-python@v6.2.0
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Poetry
-        run: pipx install poetry==2.4.1
-
-      - name: Install backend dependencies
-        working-directory: backend
-        run: poetry install --only main,test
-
-      - name: Run pytest
-        working-directory: backend
-        run: poetry run pytest
 
   build:
     # Validates that a changed component's image builds (no push) and scans
