@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Login from "./components/Login";
 import NowPlayingBar from "./components/NowPlayingBar";
 import PlaylistSelector from "./components/PlaylistSelector";
@@ -94,7 +94,7 @@ function App() {
     }
   }, [panelCollapsed]);
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const userData = await apiService.getCurrentUser();
       setUser(userData);
@@ -108,7 +108,7 @@ function App() {
     } catch (_error) {
       setIsAuthenticated(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkAuth();

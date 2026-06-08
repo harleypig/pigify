@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { spotifyService, type WebPlaybackState } from "../services/spotify";
 import "./Player.css";
 
@@ -12,16 +12,16 @@ function Player({ trackUri }: PlayerProps) {
     null,
   );
 
-  const playTrack = async () => {
+  const playTrack = useCallback(async () => {
     try {
       await spotifyService.play(trackUri);
       setIsPlaying(true);
     } catch (error) {
       console.error("Error playing track:", error);
     }
-  };
+  }, [trackUri]);
 
-  const updateState = async () => {
+  const updateState = useCallback(async () => {
     try {
       const state = await spotifyService.getCurrentState();
       setCurrentState(state);
@@ -31,7 +31,7 @@ function Player({ trackUri }: PlayerProps) {
     } catch (_error) {
       // Silently handle errors
     }
-  };
+  }, []);
 
   useEffect(() => {
     playTrack();

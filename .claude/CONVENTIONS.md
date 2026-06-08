@@ -105,11 +105,11 @@ dimension:
 | # | Dimension | Status |
 |---|-----------|--------|
 | 1 | Format | **Active** — `ruff format` (backend), `biome` (frontend). |
-| 2 | Lint | **Active** — `ruff check`, `biome check`. 3 biome rules deferred (TODO.md). |
+| 2 | Lint | **Active** — `ruff check`, `biome check` (recommended set, no rule overrides). |
 | 3 | Type-check | **Active** — `pyright app` (0 errors, no suppressions), `tsc --noEmit`. |
 | 4 | Code smell / complexity | **Active** — covered by ruff (B/C4/SIM/RUF) + biome recommended. |
 | 5 | Security (SAST/SCA/DAST/secrets) | **Active** — semgrep + osv-scanner + trivy + ZAP baseline in CI; dependabot; gitleaks + detect-private-key in pre-commit. See `.github/`. |
-| 6 | Tests | **Active** — backend pytest (362), frontend Vitest (104, incl. jsdom+RTL component tests). Large components + `TrackList` still to cover (TODO.md). |
+| 6 | Tests | **Active** — backend pytest (365), frontend Vitest (108, incl. jsdom+RTL component tests). Large components (RecipeBuilder/SettingsPanel/NowPlayingBar) still to cover (TODO.md). |
 | 7 | UI/UX & accessibility | **Off (manual)** — no automated a11y yet; biome a11y rules cover some. Manual pass during review. |
 | 8 | End-to-end | **Planned** — no Playwright suite yet; exercise critical flows manually. |
 | 9 | Compatibility | **Active** (backend) — Python 3.12/3.14 CI matrix. Single web target otherwise; desktop/mobile are future (see top). |

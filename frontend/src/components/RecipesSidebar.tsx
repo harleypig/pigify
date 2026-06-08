@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   apiErrorMessage,
   recipesApi,
@@ -15,7 +15,7 @@ export default function RecipesSidebar() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setRecipes(await recipesApi.list());
@@ -24,7 +24,7 @@ export default function RecipesSidebar() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
