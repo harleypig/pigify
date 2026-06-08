@@ -14,8 +14,6 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Tests
 
-- [ ] Component tests for the large components not yet covered:
-      `RecipeBuilder`, `SettingsPanel`, `NowPlayingBar`.
 - [ ] (Optional) extract pure helpers trapped in components (e.g. App's
       `pickAvatarUrl`) into modules and unit-test them directly.
 
