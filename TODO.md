@@ -14,31 +14,14 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Quality / tech-debt
 
-- [ ] **biome — re-enable `correctness/useExhaustiveDependencies`** (the
-      last rule still disabled in `frontend/biome.json`). Audit each
-      `useEffect` dependency list; behaviour-affecting, do carefully.
-      Concrete case: `TrackList.tsx`'s load effect lists non-memoized
-      callbacks and sets state synchronously, so it re-fetches every render
-      (throttled only by the network in the app). Fixing it unblocks
-      `TrackList` component tests (see Tests). (`noArrayIndexKey` and
-      `noExplicitAny` are now re-enabled and clean.)
 - [ ] **markdownlint in pre-commit** — add the check hook to
       `.pre-commit-config.yaml` plus a `--fix` counterpart in
       `.pre-commit-config-fix.yaml`, then fix the docs to pass.
 
 ## Tests
 
-- [x] **Component render testing (jsdom + React Testing Library).** Wired
-      jsdom + RTL (`*.test.tsx` opt in via a `// @vitest-environment jsdom`
-      docblock; `globals: true` for auto-cleanup; jest-dom matchers). Added
-      an `App` mount smoke test + render/interaction tests for Login,
-      HeartButton, UserMenu, PlaylistSelector, Player, SortMenu,
-      RecipesSidebar, TrackInfoPanel (104 frontend tests total).
 - [ ] Component tests for the large components not yet covered:
       `RecipeBuilder`, `SettingsPanel`, `NowPlayingBar`.
-- [ ] `TrackList`: only an import smoke test today — blocked by the
-      re-render loop noted under the biome `useExhaustiveDependencies`
-      item; fix that effect, then add real coverage.
 - [ ] (Optional) extract pure helpers trapped in components (e.g. App's
       `pickAvatarUrl`) into modules and unit-test them directly.
 

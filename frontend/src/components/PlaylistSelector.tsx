@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiService, type Playlist } from "../services/api";
 import "./PlaylistSelector.css";
 
@@ -15,7 +15,7 @@ function PlaylistSelector({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPlaylists = async () => {
+  const loadPlaylists = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiService.getPlaylists();
@@ -27,7 +27,7 @@ function PlaylistSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadPlaylists();

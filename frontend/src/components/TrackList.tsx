@@ -61,7 +61,7 @@ function TrackList({
       .catch(() => {});
   }, []);
 
-  const loadTracks = async () => {
+  const loadTracks = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiService.getAllPlaylistTracks(playlistId);
@@ -99,16 +99,16 @@ function TrackList({
     } finally {
       setLoading(false);
     }
-  };
+  }, [playlistId]);
 
-  const refreshUndoStatus = async () => {
+  const refreshUndoStatus = useCallback(async () => {
     try {
       const r = await apiService.getUndoStatus(playlistId);
       setUndoAvailable(r.available);
     } catch {
       setUndoAvailable(false);
     }
-  };
+  }, [playlistId]);
 
   // Load tracks + undo status when playlist changes.
   useEffect(() => {
@@ -116,7 +116,6 @@ function TrackList({
     refreshUndoStatus();
     setHydration({ audio_features: {}, lastfm: {} });
     setWarnings([]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshUndoStatus, loadTracks]);
 
   // Hydrate when sort spec needs data we don't have.

@@ -1,29 +1,127 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Track } from "../services/api";
 
-// TrackList cannot be rendered in a unit test as-is: its load effect lists
-// the (non-memoized) `loadTracks` / `refreshUndoStatus` callbacks in its
-// dependency array, and `loadTracks` calls `setLoading(true)` synchronously.
-// So every render schedules a state update that triggers another render —
-// an unbounded loop that OOMs the test worker, regardless of how the mocked
-// API promises resolve. In the running app only network latency throttles
-// this; under jsdom with no real I/O it spins forever.
-//
-// Per the testing brief, this is reduced to a module-level smoke test that
-// confirms the component imports cleanly and is a renderable function.
-// Behavioral coverage (rendering rows, row-click selection, error state)
-// requires refactoring the component's effect dependencies first — noted in
-// the test report. The collaborating units it composes — SortMenu and
-// HeartButton — are covered directly in their own test files.
-
-// Stub the API + child-component side modules so importing TrackList pulls
-// in no network client or browser-only code.
-vi.mock("../services/api", () => ({ apiService: {} }));
+// TrackList loads its data through apiService and composes HeartButton, which
+// also reaches for apiService.checkFavorites. Mock the whole API module so no
+// network client is loaded and every call resolves deterministically.
+const getSortFields = vi.fn();
+const listSortPresets = vi.fn();
+const getAllPlaylistTracks = vi.fn();
+const checkFavorites = vi.fn();
+const getUndoStatus = vi.fn();
+vi.mock("../services/api", () => ({
+  apiService: {
+    getSortFields: (...a: unknown[]) => getSortFields(...a),
+    listSortPresets: (...a: unknown[]) => listSortPresets(...a),
+    getAllPlaylistTracks: (...a: unknown[]) => getAllPlaylistTracks(...a),
+    checkFavorites: (...a: unknown[]) => checkFavorites(...a),
+    getUndoStatus: (...a: unknown[]) => getUndoStatus(...a),
+  },
+}));
 
 import TrackList from "./TrackList";
 
-describe("TrackList (import smoke)", () => {
-  it("imports without throwing and exports a component function", () => {
-    expect(typeof TrackList).toBe("function");
+const track = (over: Partial<Track> = {}): Track => ({
+  id: "id1",
+  name: "Song One",
+  artists: ["Artist One"],
+  album: "Album One",
+  duration_ms: 200000,
+  uri: "spotify:track:id1",
+  image_url: "http://img/one.jpg",
+  explicit: false,
+  ...over,
+});
+
+const TRACKS: Track[] = [
+  track(),
+  track({
+    id: "id2",
+    name: "Song Two",
+    artists: ["Artist Two"],
+    album: "Album Two",
+    uri: "spotify:track:id2",
+    image_url: "",
+  }),
+];
+
+describe("TrackList", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Sort metadata is loaded once on mount; keep it empty so no hydration or
+    // sorting transforms run (the rows render in load order).
+    getSortFields.mockResolvedValue({ fields: [] });
+    listSortPresets.mockResolvedValue([]);
+    getUndoStatus.mockResolvedValue({ available: false, applied_at: null });
+    // Loved state per track — supplied so HeartButton does not fetch again.
+    checkFavorites.mockResolvedValue([
+      { sources: { spotify: false, lastfm: null } },
+      { sources: { spotify: false, lastfm: null } },
+    ]);
+  });
+
+  it("shows the loading state before tracks resolve", () => {
+    // Never-resolving promise keeps the component in its initial loading state.
+    getAllPlaylistTracks.mockReturnValue(new Promise(() => {}));
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    expect(screen.getByText("Loading tracks…")).toBeInTheDocument();
+  });
+
+  it("renders a row per track from the loaded data", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    expect(await screen.findByText("Song One")).toBeInTheDocument();
+    expect(screen.getByText("Song Two")).toBeInTheDocument();
+    expect(getAllPlaylistTracks).toHaveBeenCalledWith("pl1");
+    // Header track count reflects the loaded rows.
+    expect(screen.getByText("2 tracks")).toBeInTheDocument();
+  });
+
+  it("renders an empty track list when the playlist has no tracks", async () => {
+    getAllPlaylistTracks.mockResolvedValue([]);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    expect(await screen.findByText("0 tracks")).toBeInTheDocument();
+    expect(screen.queryByText("Song One")).not.toBeInTheDocument();
+  });
+
+  it("shows the error state when loading tracks fails", async () => {
+    getAllPlaylistTracks.mockRejectedValue(new Error("boom"));
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    expect(
+      await screen.findByText("Failed to load tracks"),
+    ).toBeInTheDocument();
+  });
+
+  it("selects and focuses a track when its row is clicked", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+    const onTrackSelect = vi.fn();
+    const onTrackFocus = vi.fn();
+
+    render(
+      <TrackList
+        playlistId="pl1"
+        onTrackSelect={onTrackSelect}
+        onTrackFocus={onTrackFocus}
+      />,
+    );
+
+    const row = await screen.findByRole("button", {
+      name: "Play Song One by Artist One",
+    });
+    await userEvent.click(row);
+
+    expect(onTrackSelect).toHaveBeenCalledWith("spotify:track:id1");
+    expect(onTrackFocus).toHaveBeenCalledWith("id1");
   });
 });
