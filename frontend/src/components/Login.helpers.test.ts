@@ -14,4 +14,9 @@ describe("authMessageFromSearch", () => {
   it("returns null for an unrecognized error", () => {
     expect(authMessageFromSearch("?error=whatever")).toBeNull();
   });
+
+  it("explains a failed demo invite", () => {
+    expect(authMessageFromSearch("?error=demo_invalid")).toContain("demo");
+    expect(authMessageFromSearch("?error=demo_failed")).toContain("demo");
+  });
 });

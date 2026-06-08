@@ -14,9 +14,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Make the access gate on-by-default and fail-closed.",
-      "Refresh generated changelog before PR.",
-      "Built-in access gate (Spotify-ID allowlist).",
+      "Give demo invites a redeem window plus a session duration.",
+      "Refresh generated changelog.",
+      "Demo invites — single-use, time-boxed guest access.",
+      "Built-in auth, phase 2: Spotify-ID access gate.",
       "Built-in auth, phase 1: session seam + dev login bypass.",
       "Document changelog regen as a pre-PR prep step.",
       "Extract pure component helpers into tested modules.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Upgrade backend image to Python 3.14 + add test matrix.",
       "Upgrade to Vite 8 + Vitest 4.",
       "Bump @types/node from 22.19.20 to 25.9.2 in /frontend.",
-      "Bump node from 20-alpine to 26-alpine in /frontend.",
-      "…and 120 earlier changes."
+      "…and 121 earlier changes."
     ]
   },
   {

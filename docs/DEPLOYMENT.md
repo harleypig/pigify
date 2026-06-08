@@ -71,6 +71,63 @@ The Spotify OAuth callback (`/api/auth/spotify/callback`) is hit by the
 already-authenticated browser (it carries your auth proxy's session
 cookie), so it passes the auth layer without any path whitelist.
 
+## Demo invites (time-boxed guest access)
+
+To show pigify to someone without giving them standing access, mint a
+**demo invite**: a single-use code with two independent windows — the
+invitee has a **redeem window** to open the link (`--lifetime`, default a
+week), and once redeemed their session lasts a fixed **duration**
+(`--duration`, default an hour). An invite is either **real** (backed by a
+Spotify refresh token you supply — the guest sees that account's real
+library) or **placeholder** (a UI-only identity; Spotify panels are empty).
+For real invites use a **throwaway demo Spotify account**, never your own —
+its refresh token is stored with the invite.
+
+### Minting (owner, via CLI)
+
+```bash
+cd backend
+# placeholder demo (default: a week to redeem, 1h of access once redeemed):
+poetry run python -m app.auth.invites_cli create --kind placeholder --label "Guest"
+# real demo backed by a demo account's refresh token, custom windows:
+poetry run python -m app.auth.invites_cli create --kind real \
+  --refresh-token "<token>" --lifetime 86400 --duration 1800
+poetry run python -m app.auth.invites_cli list
+poetry run python -m app.auth.invites_cli revoke <code>
+```
+
+`create` prints the code and a ready-to-send link,
+`<FRONTEND_URL>/api/demo/redeem?code=<code>`. The guest opens it, gets a
+time-boxed session, and lands in the app; the code is burned on first use.
+(Get a real demo account's refresh token the same way as the dev bypass —
+see `WORKFLOW.md`'s dev refresh-token helper.)
+
+### Reaching a demo behind a forward-auth proxy
+
+If pigify sits behind Authelia / Authentik / oauth2-proxy, a guest can't get
+past that proxy — so a demo needs a route to pigify the proxy does **not**
+gate. Bypassing only `/api/demo/redeem` is not enough: after redeeming, the
+browser hits `/` and `/api/...`, which the proxy still blocks.
+
+The workable pattern is a **separate demo entrypoint with no forward-auth**,
+pointing at the same pigify. pigify's own gate keeps it safe — a visitor
+with no invite can do nothing (the access gate denies Spotify logins for
+non-allowlisted ids), and the invite is the only way to get a session. With
+Traefik, add a router for a demo host without the forward-auth middleware
+(illustrative):
+
+```yaml
+labels:
+  - "traefik.http.routers.pigify-demo.rule=Host(`demo.pigify.example`)"
+  - "traefik.http.routers.pigify-demo.entrypoints=websecure"
+  - "traefik.http.routers.pigify-demo.tls=true"
+  # deliberately NO forward-auth middleware on this router
+```
+
+Then send guests `https://demo.pigify.example/api/demo/redeem?code=<code>`.
+Manual setup is fine for occasional demos; automating the router is a later
+nicety.
+
 ## Configuration
 
 Set the runtime config via env / Docker secrets (see `.env.example` and

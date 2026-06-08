@@ -73,7 +73,9 @@ secrets/        Docker secret files (gitignored)
   by default and fail-closed** — a Spotify-ID allowlist checked at the OAuth
   callback (`BUILTIN_AUTH_ENABLED` / `ALLOWED_SPOTIFY_IDS`; see
   `docs/DEPLOYMENT.md`); set it off to delegate gating to an external proxy.
-  Demo invites are still in progress (see `TODO.md`).
+  Demo invites (`app/auth/invites.py`, minted via
+  `python -m app.auth.invites_cli`) grant single-use, time-boxed real or
+  placeholder sessions through `/api/demo/redeem`.
 
 ## Frontend
 
