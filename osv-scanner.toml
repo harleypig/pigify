@@ -1,23 +1,10 @@
 # osv-scanner allowlist — reviewed, accepted findings. Each needs a reason.
-# See the global rules/osv-scanner.md. Re-evaluate when the deferred bumps
-# are possible (tracked in TODO.md).
-
-# (The starlette runtime CVE was resolved by bumping to 1.2.x — FastAPI
-# 0.136 turned out to be compatible — so its allowlist entries were
-# removed.)
-
-# Dev-only build tooling. These are NOT present in the shipped image (the
-# frontend is multi-stage; the final nginx stage carries no node_modules),
-# so they are not runtime-exploitable. The fixes are major bumps deferred
-# with the React 18 / Vite 5 toolchain decision.
-[[IgnoredVulns]]
-id = "GHSA-67mh-4wv8-2f99"
-reason = "esbuild (dev only); not in the shipped image; fix is a major bump (tracked in TODO.md)"
-
-[[IgnoredVulns]]
-id = "GHSA-4w7w-66w2-5vf9"
-reason = "vite (dev only); not in the shipped image; Vite 5 kept deliberately (tracked in TODO.md)"
-
-[[IgnoredVulns]]
-id = "GHSA-5xrq-8626-4rwp"
-reason = "vitest (dev only); not in the shipped image; major bump deferred (tracked in TODO.md)"
+# See the global rules/osv-scanner.md.
+#
+# Currently empty: the previously-allowlisted findings were all resolved by
+# dependency bumps —
+#   - starlette runtime CVE: bumped to 1.2.x (FastAPI 0.136 compatible).
+#   - esbuild / vite / vitest (dev only): cleared by the Vite 8 + Vitest 4
+#     upgrade.
+# Add new entries here (with a reason) only when a finding is genuinely
+# accepted rather than fixed.
