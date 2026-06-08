@@ -108,15 +108,15 @@ dimension:
 | 2 | Lint | **Active** — `ruff check`, `biome check`. 3 biome rules deferred (TODO.md). |
 | 3 | Type-check | **Active** — `pyright app`, `tsc --noEmit`. One scoped pyright pragma deferred (TODO.md). |
 | 4 | Code smell / complexity | **Active** — covered by ruff (B/C4/SIM/RUF) + biome recommended. |
-| 5 | Security (SAST/SCA/DAST/secrets) | **Active** — semgrep + osv-scanner + trivy + ZAP baseline in CI; dependabot. See `.github/`. |
-| 6 | Tests | **Active** (backend pytest) / **Planned-grow** (frontend Vitest: smoke tests now, expand — TODO.md). |
+| 5 | Security (SAST/SCA/DAST/secrets) | **Active** — semgrep + osv-scanner + trivy + ZAP baseline in CI; dependabot; gitleaks + detect-private-key in pre-commit. See `.github/`. |
+| 6 | Tests | **Active** — backend pytest (362), frontend Vitest (104, incl. jsdom+RTL component tests). Large components + `TrackList` still to cover (TODO.md). |
 | 7 | UI/UX & accessibility | **Off (manual)** — no automated a11y yet; biome a11y rules cover some. Manual pass during review. |
 | 8 | End-to-end | **Planned** — no Playwright suite yet; exercise critical flows manually. |
-| 9 | Compatibility | **N/A** for now (single web target; desktop/mobile are future — see top). |
+| 9 | Compatibility | **Active** (backend) — Python 3.12/3.14 CI matrix. Single web target otherwise; desktop/mobile are future (see top). |
 | 10 | Performance & load | **Off** — not measured yet; revisit if latency/throughput matters. |
 | 11 | Reliability & observability | **Off** — `/health` + `/api/health/db` liveness only; no metrics/alerting yet. |
 | 12 | Build | **Active** — `docker compose build`; `npm run build`; trivy image scan in CI. |
-| 13 | Documentation | **Active** — README + `docs/` + this file; markdownlint. |
+| 13 | Documentation | **Active** (content: README + `docs/` + this file). markdownlint is **Planned** — not wired yet (TODO.md). |
 | 14 | Code review | **Informal** — solo repo; PRs self-reviewed (or via the pr-review tooling). |
 | 15 | CI | **Active** — `.github/workflows/ci.yml` runs the above and gates merges. |
 
