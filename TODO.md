@@ -40,6 +40,13 @@ Re-enable each (remove the override) once the code is cleaned:
 
 - [ ] Grow Vitest coverage beyond the initial smoke tests (sort engine,
       API client, any pure helpers).
+- [ ] **Component render testing (jsdom + React Testing Library).** Adds
+      the `jsdom` + `@testing-library/react` dev deps and a Vitest jsdom
+      environment. Start with an `App` mount smoke test (render with the
+      API client mocked, assert it mounts without throwing) — this would
+      automate the runtime check that a React major bump currently relies
+      on a manual browser pass for. Then grow to per-component render/
+      interaction tests. (Full browser e2e via Playwright stays separate.)
 
 ## Repo hardening
 
