@@ -62,6 +62,26 @@ npm test             # vitest
 npm run build        # production build
 ```
 
+## Changelog (regenerate before a PR)
+
+The "What's new" changelog (`frontend/src/data/changelog.ts`) is generated
+from git history. It auto-regenerates on `npm run dev` / `npm run build`
+(via the `predev` / `prebuild` hooks), but the committed copy drifts behind
+`master` as commits land. This is a **mutating prep step** (same class as
+Format), so run it as the **last step before opening a PR**, after all code
+is committed, and **commit the refresh**:
+
+```bash
+cd frontend
+npm run generate:changelog   # writes src/data/changelog.ts from git history
+# if it changed:
+git add src/data/changelog.ts
+git commit -m "chore(frontend): refresh generated changelog before PR"
+```
+
+Never run this in CI — CI gates and must not commit. The qa-check skill
+treats it as the Documentation-dimension prep action.
+
 ## Pre-commit
 
 Check-only hooks run on `git commit` (`.pre-commit-config.yaml`).
