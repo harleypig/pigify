@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Give demo invites a redeem window plus a session duration.",
+      "Refresh generated changelog.",
       "Demo invites — single-use, time-boxed guest access.",
       "Built-in auth, phase 2: Spotify-ID access gate.",
       "Built-in auth, phase 1: session seam + dev login bypass.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Upgrade backend image to Python 3.14 + add test matrix.",
       "Upgrade to Vite 8 + Vitest 4.",
       "Bump @types/node from 22.19.20 to 25.9.2 in /frontend.",
-      "Bump node from 20-alpine to 26-alpine in /frontend.",
-      "Bump typescript from 5.9.3 to 6.0.3 in /frontend.",
-      "…and 119 earlier changes."
+      "…and 121 earlier changes."
     ]
   },
   {
