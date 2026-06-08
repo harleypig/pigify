@@ -1,5 +1,14 @@
 # Tasks
 
+## Authentication
+
+- [ ] **Built-in authentication mode.** pigify should be able to gate its
+      own access (so it can run standalone, without an external auth proxy)
+      *as well as* sit behind one (Authelia / Authentik / oauth2-proxy /
+      …). This app-level auth does not exist yet — today, access control
+      relies on an external forward-auth proxy. Keep it auth-agnostic so a
+      random user can fit it into their own setup. See `docs/DEPLOYMENT.md`.
+
 ## Spotify Custom Frontend
 
 - [ ] Build custom front-end for Spotify (see `todo-spotify.md`)
