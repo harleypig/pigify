@@ -6,9 +6,16 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_VERSION=2.4.1
 
-# Install Poetry. (Base-image CVEs are tracked via dependabot's docker
-# updates + deliberate base bumps, not a non-deterministic blanket upgrade.)
-RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
+# Patch known base-image CVEs in these libs (gnutls DoS/auth-bypass,
+# krb5), then install Poetry. Targeted --only-upgrade keeps the build
+# deterministic (vs a blanket upgrade); dependabot's docker updates bump
+# the base image over time.
+# hadolint ignore=DL3008
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade \
+        libgnutls30 libgssapi-krb5-2 libk5crypto3 libkrb5-3 libkrb5support0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
 WORKDIR /app
 

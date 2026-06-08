@@ -1,0 +1,30 @@
+# osv-scanner allowlist — reviewed, accepted findings. Each needs a reason.
+# See the global rules/osv-scanner.md. Re-evaluate when the deferred bumps
+# are possible (tracked in TODO.md).
+
+# Runtime: starlette DoS (medium). The fix is starlette 1.0, a major bump
+# FastAPI 0.136 does not yet support. The app runs behind Authelia SSO, so
+# the exposure is low. Re-bump once FastAPI supports starlette 1.x.
+[[IgnoredVulns]]
+id = "PYSEC-2026-161"
+reason = "starlette 1.0 (fix) not yet supported by FastAPI; app is behind SSO; tracked in TODO.md"
+
+[[IgnoredVulns]]
+id = "GHSA-86qp-5c8j-p5mr"
+reason = "Alias of PYSEC-2026-161 (starlette); see above"
+
+# Dev-only build tooling. These are NOT present in the shipped image (the
+# frontend is multi-stage; the final nginx stage carries no node_modules),
+# so they are not runtime-exploitable. The fixes are major bumps deferred
+# with the React 18 / Vite 5 toolchain decision.
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+reason = "esbuild (dev only); not in the shipped image; fix is a major bump (tracked in TODO.md)"
+
+[[IgnoredVulns]]
+id = "GHSA-4w7w-66w2-5vf9"
+reason = "vite (dev only); not in the shipped image; Vite 5 kept deliberately (tracked in TODO.md)"
+
+[[IgnoredVulns]]
+id = "GHSA-5xrq-8626-4rwp"
+reason = "vitest (dev only); not in the shipped image; major bump deferred (tracked in TODO.md)"
