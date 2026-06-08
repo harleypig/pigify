@@ -56,3 +56,24 @@ Re-enable each (remove the override) once the code is cleaned:
          (`args: [--branch, master]`) to `.pre-commit-config.yaml`.
       Deferred until tests exist so the required checks are meaningful and
       don't block routine work prematurely.
+
+### Security scanners — promote from non-blocking to required
+
+The Semgrep / OSV-Scanner / DAST jobs run `continue-on-error: true` for
+now (visible, non-blocking) so first-run findings don't block the
+conversion. Triage these, then drop `continue-on-error` (and add them to
+the branch ruleset's required checks):
+
+- [ ] **Semgrep**: suppress the MD5 finding in `app/services/lastfm.py`
+      with `# nosemgrep: ...insecure-hash-algorithm-md5` + reason (Last.fm
+      API *requires* MD5 request signatures), and guard the `float()`
+      nan-injection in `app/api/playlists.py` (reject NaN). Consider
+      narrowing the gate to ERROR-only first.
+- [ ] **OSV-Scanner**: bump `starlette` off the allowlisted CVE once
+      FastAPI supports starlette 1.x; bump the dev tooling
+      (`vite`/`vitest`/`esbuild`) when the frontend toolchain is upgraded,
+      then trim `osv-scanner.toml`.
+- [ ] **DAST (ZAP)**: add the baseline WARNs to `.zap/baseline-rules.tsv`
+      with reasons (CSP `style-src 'unsafe-inline'`, COEP, cache-control)
+      and add an HSTS header (or accept it as proxy-provided), then make
+      the baseline a required check.
