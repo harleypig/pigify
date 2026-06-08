@@ -39,19 +39,29 @@ In both cases the backend stays internal; the frontend reaches it as
 
 ## Access control (authentication)
 
-**pigify is not meant to be public.** How you gate access is up to you —
-two complementary models:
+**pigify is not meant to be public, and defaults to locked.** The built-in
+access gate is **ON by default and fail-closed**, so a fresh install denies
+everyone until you say otherwise — it is never accidentally wide open. Two
+models, the first being the default:
 
-- **Built-in authentication** *(planned — not yet implemented).* A future
-  mode where pigify gates app access itself, so it can run standalone
-  without an external auth layer. Tracked in `TODO.md`.
+- **Built-in access gate (default).** pigify gates access itself, no
+  external auth layer needed. It ships enabled (`BUILTIN_AUTH_ENABLED=true`);
+  add the permitted Spotify account IDs to `ALLOWED_SPOTIFY_IDS`
+  (comma-separated). After Spotify login only those accounts get a session;
+  everyone else is redirected back to the login screen. **Fail-closed:** an
+  empty allowlist denies everyone — so out of the box **nobody can log in
+  until you add your own id**. A denied login is logged with its Spotify ID,
+  so the easy path is: try to log in once, copy your ID from the backend
+  logs into `ALLOWED_SPOTIFY_IDS`, restart. (A Spotify app in Development
+  Mode is *also* capped at the 25 users you add in the Spotify dashboard — a
+  coarser allowlist on top of this one.)
 
-- **An external forward-auth / SSO proxy.** Put pigify behind whatever you
-  already use — **Authelia, Authentik, oauth2-proxy, Cloudflare Access,
-  Pomerium, …** — and let it require login before requests reach the app.
-  This is the recommended approach today. With Traefik, for example, that
-  means attaching your forward-auth middleware to the pigify router; the
-  equivalents exist for other proxies.
+- **An external forward-auth / SSO proxy.** If you already run **Authelia,
+  Authentik, oauth2-proxy, Cloudflare Access, Pomerium, …**, let it require
+  login before requests reach the app and set `BUILTIN_AUTH_ENABLED=false`
+  to delegate gating to it. With Traefik, for example, attach your
+  forward-auth middleware to the pigify router; the equivalents exist for
+  other proxies.
 
 > Note: the app's **Spotify OAuth is not your access-control layer.** It
 > authorizes the *Spotify API* for the signed-in user — it does not decide

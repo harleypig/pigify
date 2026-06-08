@@ -11,6 +11,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from app.auth.dev_bypass import maybe_establish_dev_session
+from app.auth.gate import is_spotify_id_allowed
 from app.auth.provisioning import provision_user
 from app.auth.session import (
     clear_session,
@@ -154,6 +155,15 @@ async def spotify_callback(
         spotify = SpotifyService(access_token)
         user = await spotify.get_current_user()
         spotify_id = user.id
+
+        # Built-in access gate: a standalone instance may restrict which
+        # Spotify accounts can establish a session. Reject before doing any
+        # work (provisioning, session) for this user.
+        if not is_spotify_id_allowed(spotify_id):
+            logger.info("login denied by built-in access gate: %s", spotify_id)
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/?error=not_authorized"
+            )
 
         internal_id = await provision_user(
             spotify_id=spotify_id,

@@ -69,8 +69,11 @@ secrets/        Docker secret files (gitignored)
   `SessionGrant`, one expiry check, and `require_token` / `require_spotify_id`
   dependencies (no scattered `request.session.get(...)`). A development-only,
   fail-closed `DEV_AUTH_BYPASS` seeds a session without the OAuth round-trip
-  (see `WORKFLOW.md`); a built-in production access gate and demo invites are
-  in progress (see `TODO.md`).
+  (see `WORKFLOW.md`). The built-in access gate (`app/auth/gate.py`) is **on
+  by default and fail-closed** — a Spotify-ID allowlist checked at the OAuth
+  callback (`BUILTIN_AUTH_ENABLED` / `ALLOWED_SPOTIFY_IDS`; see
+  `docs/DEPLOYMENT.md`); set it off to delegate gating to an external proxy.
+  Demo invites are still in progress (see `TODO.md`).
 
 ## Frontend
 

@@ -14,10 +14,11 @@ auth-agnostic (it can sit behind Authelia / Authentik / oauth2-proxy /
 - [x] **Local dev auth bypass.** `DEV_AUTH_BYPASS` (development-only,
       fail-closed) skips the OAuth round-trip — real data via a refresh
       token, or a UI-only placeholder identity. See `WORKFLOW.md`.
-- [ ] **Built-in production access gate.** A Spotify-ID allowlist checked
-      at the OAuth callback so pigify can gate itself standalone; fail-closed
-      (deny-all) when enabled but unconfigured. Untouched ⇒ today's open
-      behavior (for proxy deployments).
+- [x] **Built-in production access gate.** `BUILTIN_AUTH_ENABLED` +
+      `ALLOWED_SPOTIFY_IDS` (Spotify-ID allowlist) checked at the OAuth
+      callback. **On by default and fail-closed:** a fresh install denies
+      everyone until you allowlist your own id; set off to delegate gating
+      to an external proxy. See `docs/DEPLOYMENT.md`.
 - [ ] **Demo invites.** Owner-minted, single-use, time-boxed (1h after
       activation) codes that grant a real or placeholder session, on a
       proxy-bypassable `/api/demo/*` path (document the Authelia bypass
