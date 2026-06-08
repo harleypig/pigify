@@ -16,6 +16,7 @@ from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
+from app.auth.session import read_grant, require_spotify_id, require_token
 from app.config import settings
 from app.db.repositories import enrichment_cache
 from app.db.session import user_session_scope
@@ -61,7 +62,8 @@ async def lastfm_login(request: Request):
 async def lastfm_callback(request: Request, token: str | None = None):
     if not token:
         raise HTTPException(400, "Missing token from Last.fm")
-    spotify_id = request.session.get("spotify_user_id")
+    grant = read_grant(request)
+    spotify_id = grant.spotify_id if grant else None
     if not spotify_id:
         # Without a known Spotify user we have nowhere durable to put
         # the session key — sign in to Spotify first.
@@ -82,7 +84,8 @@ async def lastfm_callback(request: Request, token: str | None = None):
 
 @router.post("/lastfm/disconnect")
 async def lastfm_disconnect(request: Request):
-    spotify_id = request.session.get("spotify_user_id")
+    grant = read_grant(request)
+    spotify_id = grant.spotify_id if grant else None
     if spotify_id:
         await clear_lastfm_credentials(spotify_id)
         await scrobbler.reset_for_user(spotify_id)
@@ -91,7 +94,8 @@ async def lastfm_disconnect(request: Request):
 
 @router.get("/lastfm/status")
 async def lastfm_status(request: Request):
-    spotify_id = request.session.get("spotify_user_id")
+    grant = read_grant(request)
+    spotify_id = grant.spotify_id if grant else None
     status = await scrobbler.get_status(spotify_id) if spotify_id else {}
     conn = await get_connection(request, "lastfm")
     return {
@@ -104,10 +108,10 @@ async def lastfm_status(request: Request):
 
 
 def _require_spotify_id(request: Request) -> str:
-    spotify_id = request.session.get("spotify_user_id")
-    if not spotify_id:
+    grant = read_grant(request)
+    if not grant or not grant.spotify_id:
         raise HTTPException(401, "Sign in to Spotify first")
-    return spotify_id
+    return grant.spotify_id
 
 
 @router.get("/lastfm/queue")
@@ -236,7 +240,8 @@ async def lastfm_similar(
 @router.get("/musicbrainz/track/{spotify_track_id}")
 async def musicbrainz_track(spotify_track_id: str, request: Request):
     """Resolve a Spotify track ID to a MusicBrainz recording (via ISRC)."""
-    access_token = request.session.get("access_token")
+    grant = read_grant(request)
+    access_token = grant.access_token if grant else None
     if not access_token:
         raise HTTPException(401, "Spotify session required to look up the track")
 
@@ -273,7 +278,8 @@ async def wikipedia_track(spotify_track_id: str, request: Request):
     Replaces the previously-deferred Songfacts integration. Wikipedia's
     public REST + action APIs require no key.
     """
-    access_token = request.session.get("access_token")
+    grant = read_grant(request)
+    access_token = grant.access_token if grant else None
     if not access_token:
         raise HTTPException(401, "Spotify session required to look up the track")
 
@@ -353,12 +359,8 @@ async def combined_track_detail(
     Wikipedia article) are memoized in the per-user enrichment cache so
     repeat opens of the same track skip the outbound API round trips.
     """
-    access_token = request.session.get("access_token")
-    if not access_token:
-        raise HTTPException(401, "Not authenticated")
-    spotify_user_id = request.session.get("spotify_user_id")
-    if not spotify_user_id:
-        raise HTTPException(401, "Not authenticated")
+    access_token = require_token(request)
+    spotify_user_id = require_spotify_id(request)
     spotify = SpotifyService(access_token)
     track = await spotify.get_track(spotify_track_id)
     if not track:

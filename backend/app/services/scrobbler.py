@@ -32,6 +32,7 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.session import read_grant
 from app.config import settings
 from app.db.repositories import scrobble_queue as queue_repo
 from app.db.repositories import sync_state as sync_repo
@@ -191,7 +192,8 @@ async def process_state(request: Request, state: dict[str, Any] | None) -> None:
     Called from /api/player/state. Updates internal scrobble bookkeeping
     and fires any pending Last.fm calls. Never raises.
     """
-    spotify_id = request.session.get("spotify_user_id")
+    grant = read_grant(request)
+    spotify_id = grant.spotify_id if grant else None
     if not spotify_id:
         return
 

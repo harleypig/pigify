@@ -62,6 +62,17 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "https://localhost:8080"
     ENVIRONMENT: str = "development"
 
+    # Local-development auth bypass. Skips the Spotify OAuth round-trip so
+    # iterating locally doesn't require logging in each time. ONLY honoured
+    # when ENVIRONMENT == "development": the validator below refuses to boot
+    # if it is enabled anywhere else, so it can never weaken a real
+    # deployment. With DEV_SPOTIFY_REFRESH_TOKEN set, the bypass logs you in
+    # as that real Spotify account (real data, no round-trip); without it, it
+    # seeds a UI-only placeholder identity (DEV_SPOTIFY_ID).
+    DEV_AUTH_BYPASS: bool = False
+    DEV_SPOTIFY_ID: str = "dev-user"
+    DEV_SPOTIFY_REFRESH_TOKEN: str = ""
+
     # Concurrency caps for outbound API hydration during recipe resolution.
     # Tunable via env so we can dial up if Spotify/Last.fm tolerate more.
     LASTFM_HYDRATE_CONCURRENCY: int = 10
@@ -128,6 +139,18 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SECRET_KEY must be set to a strong, unique value in production "
                 "(refusing to boot with the built-in default)."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _dev_bypass_only_in_development(self) -> "Settings":
+        # Fail closed: the auth bypass must never be reachable outside local
+        # development. Enabling it in any other environment aborts boot.
+        if self.DEV_AUTH_BYPASS and self.ENVIRONMENT.lower() != "development":
+            raise ValueError(
+                "DEV_AUTH_BYPASS may only be enabled when ENVIRONMENT=development "
+                "(refusing to boot: the dev auth bypass must never run outside "
+                "local development)."
             )
         return self
 

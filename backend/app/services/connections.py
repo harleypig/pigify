@@ -18,6 +18,7 @@ from typing import Any, Literal
 from fastapi import Request
 from pydantic import BaseModel
 
+from app.auth.session import read_grant
 from app.config import settings
 from app.db.repositories import service_connections as conn_repo
 from app.db.session import user_session_scope
@@ -72,7 +73,8 @@ def _spotify_id(request: Request) -> str | None:
     if request is None:
         return None
     try:
-        return request.session.get("spotify_user_id")
+        grant = read_grant(request)
+        return grant.spotify_id if grant else None
     except Exception:
         return None
 

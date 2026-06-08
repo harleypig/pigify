@@ -5,12 +5,23 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Authentication
 
-- [ ] **Built-in authentication mode.** pigify should gate its own access
-      (so it can run standalone, without an external auth proxy) *as well
-      as* sit behind one (Authelia / Authentik / oauth2-proxy / …). This
-      app-level auth does not exist yet — today access control relies on an
-      external forward-auth proxy. Keep it auth-agnostic so anyone can fit
-      it into their own setup. See `docs/DEPLOYMENT.md`.
+Built on a single session seam (`app/auth/session.py`): every grant —
+Spotify OAuth, the dev bypass, demo invites — shares one representation,
+one expiry check, and one set of access dependencies. pigify stays
+auth-agnostic (it can sit behind Authelia / Authentik / oauth2-proxy /
+… *or* gate itself). See `docs/DEPLOYMENT.md`.
+
+- [x] **Local dev auth bypass.** `DEV_AUTH_BYPASS` (development-only,
+      fail-closed) skips the OAuth round-trip — real data via a refresh
+      token, or a UI-only placeholder identity. See `WORKFLOW.md`.
+- [ ] **Built-in production access gate.** A Spotify-ID allowlist checked
+      at the OAuth callback so pigify can gate itself standalone; fail-closed
+      (deny-all) when enabled but unconfigured. Untouched ⇒ today's open
+      behavior (for proxy deployments).
+- [ ] **Demo invites.** Owner-minted, single-use, time-boxed (1h after
+      activation) codes that grant a real or placeholder session, on a
+      proxy-bypassable `/api/demo/*` path (document the Authelia bypass
+      rule). For invite-based demos.
 
 ## Tests
 
