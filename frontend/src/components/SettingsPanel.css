@@ -109,7 +109,7 @@
   flex-wrap: wrap;
 }
 
-.sp-row input[type='number'] {
+.sp-row input[type="number"] {
   width: 80px;
   background: #222;
   color: #eee;
