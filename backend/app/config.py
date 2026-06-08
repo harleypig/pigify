@@ -73,14 +73,15 @@ class Settings(BaseSettings):
     DEV_SPOTIFY_ID: str = "dev-user"
     DEV_SPOTIFY_REFRESH_TOKEN: str = ""
 
-    # Built-in access gate, for standalone deployments without an external
-    # auth proxy. When enabled, only Spotify accounts in ALLOWED_SPOTIFY_IDS
-    # may establish a session; an enabled-but-empty allowlist denies everyone
-    # (fail-closed). When disabled (default), access is open — gate with an
-    # external forward-auth proxy instead (see docs/DEPLOYMENT.md). The list
-    # is a comma-separated string so it sets cleanly from an env var; read it
-    # via the parsed `allowed_spotify_ids` property.
-    BUILTIN_AUTH_ENABLED: bool = False
+    # Built-in access gate. ON by default and fail-closed: out of the box,
+    # only Spotify accounts in ALLOWED_SPOTIFY_IDS may establish a session,
+    # and an empty allowlist denies everyone — so a fresh install is locked
+    # until you add your own Spotify id, never accidentally wide open. Set
+    # BUILTIN_AUTH_ENABLED=false only when an external forward-auth proxy
+    # gates access instead (see docs/DEPLOYMENT.md). The allowlist is a
+    # comma-separated string so it sets cleanly from an env var; read it via
+    # the parsed `allowed_spotify_ids` property.
+    BUILTIN_AUTH_ENABLED: bool = True
     ALLOWED_SPOTIFY_IDS: str = ""
 
     # Concurrency caps for outbound API hydration during recipe resolution.

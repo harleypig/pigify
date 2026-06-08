@@ -151,8 +151,10 @@ class TestAllowedSpotifyIdsParsing(unittest.TestCase):
         s = Settings(_env_file=None, ALLOWED_SPOTIFY_IDS="solo")
         self.assertEqual(s.allowed_spotify_ids, ["solo"])
 
-    def test_gate_defaults_off(self):
-        self.assertFalse(Settings(_env_file=None).BUILTIN_AUTH_ENABLED)
+    def test_gate_defaults_on(self):
+        # Fail-closed by default: a fresh install gates access (and, with an
+        # empty allowlist, denies everyone) rather than being wide open.
+        self.assertTrue(Settings(_env_file=None).BUILTIN_AUTH_ENABLED)
 
 
 class TestCorsDefaults(unittest.TestCase):

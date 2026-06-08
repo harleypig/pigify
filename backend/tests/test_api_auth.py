@@ -141,9 +141,12 @@ class AuthApiTest(unittest.TestCase):
             }
         )
 
+        # Gate off here: this exercises the OAuth success mechanics (the
+        # gate has its own allow/deny tests below).
         with (
             patch.object(auth_mod, "SpotifyService", cls),
             patch("app.auth.provisioning.apply_user_migrations", AsyncMock()),
+            patch.object(settings, "BUILTIN_AUTH_ENABLED", False),
         ):
             resp = client.get(
                 "/api/auth/spotify/callback?code=abc&state=s1",

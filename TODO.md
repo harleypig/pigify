@@ -16,8 +16,9 @@ auth-agnostic (it can sit behind Authelia / Authentik / oauth2-proxy /
       token, or a UI-only placeholder identity. See `WORKFLOW.md`.
 - [x] **Built-in production access gate.** `BUILTIN_AUTH_ENABLED` +
       `ALLOWED_SPOTIFY_IDS` (Spotify-ID allowlist) checked at the OAuth
-      callback; fail-closed (deny-all) when enabled but unconfigured;
-      untouched ⇒ today's open behavior. See `docs/DEPLOYMENT.md`.
+      callback. **On by default and fail-closed:** a fresh install denies
+      everyone until you allowlist your own id; set off to delegate gating
+      to an external proxy. See `docs/DEPLOYMENT.md`.
 - [ ] **Demo invites.** Owner-minted, single-use, time-boxed (1h after
       activation) codes that grant a real or placeholder session, on a
       proxy-bypassable `/api/demo/*` path (document the Authelia bypass
