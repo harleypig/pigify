@@ -116,7 +116,7 @@ dimension:
 | 10 | Performance & load | **Off** — not measured yet; revisit if latency/throughput matters. |
 | 11 | Reliability & observability | **Off** — `/health` + `/api/health/db` liveness only; no metrics/alerting yet. |
 | 12 | Build | **Active** — `docker compose build`; `npm run build`; trivy image scan in CI. |
-| 13 | Documentation | **Active** — README + `docs/` + this file; markdownlint (`.markdownlint.json`) wired into pre-commit. |
+| 13 | Documentation | **Active** — README + `docs/` + this file; markdownlint (`.markdownlint.json`) wired into pre-commit. Generated "What's new" changelog regenerated as a pre-PR prep step (`npm run generate:changelog`, then commit — never in CI); see `WORKFLOW.md`. |
 | 14 | Code review | **Informal** — solo repo; PRs self-reviewed (or via the pr-review tooling). |
 | 15 | CI | **Active** — `.github/workflows/ci.yml` runs the above and gates merges. |
 
