@@ -17,7 +17,7 @@ script changes easily.
 
 ## YAML layout
 
-```
+```text
 config/
   rules/*.yml        # event-driven actions
   mixes/*.yml        # generated playlists
@@ -105,7 +105,7 @@ mixer run rule skip5_to_y
 
 ## Front-end UX (intuitive but powerful)
 
-* **Ranked to-do list of features**: maintain a prioritized backlog of front-end capabilities. At a minimum, provide or explicitly acknowledge existing Spotify client features (noting which will be left out).
+* **Ranked to-do list of features**: maintain a prioritized backlog of front-end capabilities. At a minimum, provide or acknowledge existing Spotify client features (noting which will be left out).
 * **Visual builder** mirrors YAML (conditions → chips, groups → nested blocks).
 * **Live preview**: shows candidate tracks, per-condition hit counts, and why each track matched (provenance tooltip).
 * **Save = writes YAML**: YAML editor pane stays available for power-edits.

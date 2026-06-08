@@ -28,7 +28,7 @@ See `docs/ARCHITECTURE.md` for the full picture and
 
 ## Spotify dashboard description (≤256 chars)
 
-```
+```text
 Pigify is a custom Spotify web app for playlist management and playback. Built with FastAPI and React, it runs as a self-hosted Docker container with enhanced playlist features and privacy-focused hosting.
 ```
 
