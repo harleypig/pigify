@@ -16,25 +16,26 @@ Wire format compatibility:
 - Legacy session-cookie recipes are migrated into the DB on first
   authenticated access, then the cookie entry is cleared.
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any, cast
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.repositories import saved_filters as saved_filters_repo
-from backend.app.db.session import user_session_scope
-from backend.app.models.playlist import Track
-from backend.app.services.recipes import (
+from app.db.repositories import saved_filters as saved_filters_repo
+from app.db.session import user_session_scope
+from app.models.playlist import Track
+from app.services.recipes import (
     Recipe,
     StoredRecipe,
     resolve_recipe,
 )
-from backend.app.services.spotify import SpotifyService
+from app.services.spotify import SpotifyService
 
 router = APIRouter()
 
@@ -53,12 +54,12 @@ def _require_spotify_user(request: Request) -> str:
     return sid
 
 
-def _lastfm_username(request: Request) -> Optional[str]:
+def _lastfm_username(request: Request) -> str | None:
     return (request.session.get("lastfm") or {}).get("username")
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _new_id() -> str:
@@ -68,7 +69,7 @@ def _new_id() -> str:
 # ============================ Persistence helpers ===========================
 
 
-def _row_to_payload(row) -> Dict[str, Any]:
+def _row_to_payload(row) -> dict[str, Any]:
     """Return the StoredRecipe-shaped dict stored on the row.
 
     Defensive: if a row's `definition` somehow lost the bookkeeping fields
@@ -86,7 +87,7 @@ def _row_to_payload(row) -> Dict[str, Any]:
     return payload
 
 
-async def _list_payloads(session: AsyncSession) -> List[Dict[str, Any]]:
+async def _list_payloads(session: AsyncSession) -> list[dict[str, Any]]:
     rows = await saved_filters_repo.list_all(session)
     payloads = [_row_to_payload(r) for r in rows]
     payloads.sort(key=lambda p: p.get("created_at") or "")
@@ -97,7 +98,9 @@ async def _find_row_by_recipe_id(session: AsyncSession, recipe_id: str):
     return await saved_filters_repo.get_by_recipe_id(session, recipe_id)
 
 
-async def _unique_name(session: AsyncSession, name: str, *, exclude_id: Optional[int] = None) -> str:
+async def _unique_name(
+    session: AsyncSession, name: str, *, exclude_id: int | None = None
+) -> str:
     """Disambiguate `name` against the unique `saved_filters.name` column.
 
     Mirrors the legacy session-storage behaviour where two recipes could
@@ -143,9 +146,7 @@ async def _migrate_session_recipes(request: Request, session: AsyncSession) -> N
             payload.setdefault("created_at", _now())
             payload.setdefault("updated_at", payload["created_at"])
             row_name = await _unique_name(session, name)
-            await saved_filters_repo.create(
-                session, name=row_name, definition=payload
-            )
+            await saved_filters_repo.create(session, name=row_name, definition=payload)
             existing_ids.add(rid)
     except Exception:
         # Leave the legacy cookie in place so the next request can retry.
@@ -156,7 +157,7 @@ async def _migrate_session_recipes(request: Request, session: AsyncSession) -> N
 # =============================== CRUD =======================================
 
 
-@router.get("", response_model=List[StoredRecipe])
+@router.get("", response_model=list[StoredRecipe])
 async def list_recipes(request: Request):
     spotify_id = _require_spotify_user(request)
     async with user_session_scope(spotify_id) as session:
@@ -179,9 +180,7 @@ async def create_recipe(request: Request, recipe: Recipe):
     async with user_session_scope(spotify_id) as session:
         await _migrate_session_recipes(request, session)
         row_name = await _unique_name(session, stored.name)
-        await saved_filters_repo.create(
-            session, name=row_name, definition=payload
-        )
+        await saved_filters_repo.create(session, name=row_name, definition=payload)
         await session.commit()
     return stored
 
@@ -210,7 +209,7 @@ async def update_recipe(request: Request, recipe_id: str, recipe: Recipe):
     return updated
 
 
-@router.delete("/{recipe_id}", response_model=List[StoredRecipe])
+@router.delete("/{recipe_id}", response_model=list[StoredRecipe])
 async def delete_recipe(request: Request, recipe_id: str):
     spotify_id = _require_spotify_user(request)
     async with user_session_scope(spotify_id) as session:
@@ -222,7 +221,7 @@ async def delete_recipe(request: Request, recipe_id: str):
         return await _list_payloads(session)
 
 
-async def _load_recipe_payload(request: Request, recipe_id: str) -> Dict[str, Any]:
+async def _load_recipe_payload(request: Request, recipe_id: str) -> dict[str, Any]:
     spotify_id = _require_spotify_user(request)
     async with user_session_scope(spotify_id) as session:
         await _migrate_session_recipes(request, session)
@@ -242,11 +241,11 @@ class TrackSource(BaseModel):
 
 
 class ResolveResponse(BaseModel):
-    tracks: List[Track]
-    warnings: List[str] = Field(default_factory=list)
-    bucket_counts: List[int] = Field(default_factory=list)
+    tracks: list[Track]
+    warnings: list[str] = Field(default_factory=list)
+    bucket_counts: list[int] = Field(default_factory=list)
     # track_id -> ordered list of playlist sources the track was pulled from
-    track_sources: Dict[str, List[TrackSource]] = Field(default_factory=dict)
+    track_sources: dict[str, list[TrackSource]] = Field(default_factory=dict)
     resolved_at: str
 
 
@@ -259,7 +258,7 @@ async def resolve_adhoc(request: Request, recipe: Recipe):
         tracks=result.tracks,
         warnings=result.warnings,
         bucket_counts=result.bucket_counts,
-        track_sources=result.track_sources,
+        track_sources=cast("dict[str, list[TrackSource]]", result.track_sources),
         resolved_at=_now(),
     )
 
@@ -274,7 +273,7 @@ async def resolve_saved(request: Request, recipe_id: str):
         tracks=result.tracks,
         warnings=result.warnings,
         bucket_counts=result.bucket_counts,
-        track_sources=result.track_sources,
+        track_sources=cast("dict[str, list[TrackSource]]", result.track_sources),
         resolved_at=_now(),
     )
 
@@ -283,20 +282,22 @@ async def resolve_saved(request: Request, recipe_id: str):
 
 
 class PlayRequest(BaseModel):
-    device_id: Optional[str] = None
+    device_id: str | None = None
     # If provided, skip resolving and use this URI list directly (lets the UI
     # play exactly what the preview showed).
-    uris: Optional[List[str]] = None
+    uris: list[str] | None = None
 
 
 class PlayResponse(BaseModel):
     started: bool
     track_count: int
     queued: int
-    warnings: List[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
-async def _play_uris(spotify: SpotifyService, uris: List[str], device_id: Optional[str]) -> int:
+async def _play_uris(
+    spotify: SpotifyService, uris: list[str], device_id: str | None
+) -> int:
     """Start playback with the first URI then enqueue the rest. Returns # queued."""
     if not uris:
         return 0
@@ -315,9 +316,13 @@ async def _play_uris(spotify: SpotifyService, uris: List[str], device_id: Option
 
 
 @router.post("/{recipe_id}/play", response_model=PlayResponse)
-async def play_recipe(request: Request, recipe_id: str, body: PlayRequest = PlayRequest()):
+async def play_recipe(
+    request: Request,
+    recipe_id: str,
+    body: PlayRequest = PlayRequest(),  # noqa: B008
+):
     spotify = SpotifyService(_require_token(request))
-    warnings: List[str] = []
+    warnings: list[str] = []
 
     if body.uris:
         uris = body.uris
@@ -334,15 +339,18 @@ async def play_recipe(request: Request, recipe_id: str, body: PlayRequest = Play
     try:
         queued = await _play_uris(spotify, uris, body.device_id)
     except Exception as e:
-        raise HTTPException(500, f"Failed to start playback: {e}")
+        raise HTTPException(500, f"Failed to start playback: {e}") from e
 
     return PlayResponse(
-        started=True, track_count=len(uris), queued=queued, warnings=warnings,
+        started=True,
+        track_count=len(uris),
+        queued=queued,
+        warnings=warnings,
     )
 
 
 @router.post("/play-adhoc", response_model=PlayResponse)
-async def play_adhoc(request: Request, recipe: Recipe, device_id: Optional[str] = None):
+async def play_adhoc(request: Request, recipe: Recipe, device_id: str | None = None):
     """Resolve and play an unsaved recipe in one call."""
     spotify = SpotifyService(_require_token(request))
     result = await resolve_recipe(recipe, spotify, _lastfm_username(request))
@@ -352,7 +360,7 @@ async def play_adhoc(request: Request, recipe: Recipe, device_id: Optional[str] 
     try:
         queued = await _play_uris(spotify, uris, device_id)
     except Exception as e:
-        raise HTTPException(500, f"Failed to start playback: {e}")
+        raise HTTPException(500, f"Failed to start playback: {e}") from e
     return PlayResponse(
         started=True,
         track_count=len(uris),
@@ -362,22 +370,24 @@ async def play_adhoc(request: Request, recipe: Recipe, device_id: Optional[str] 
 
 
 class MaterializeRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
     public: bool = False
     # If provided, materialize these exact URIs (typically the preview's
     # already-resolved set). Otherwise the recipe is resolved fresh.
-    uris: Optional[List[str]] = None
+    uris: list[str] | None = None
 
 
 class MaterializeResponse(BaseModel):
     playlist_id: str
-    playlist_url: Optional[str] = None
+    playlist_url: str | None = None
     track_count: int
 
 
 @router.post("/{recipe_id}/materialize", response_model=MaterializeResponse)
-async def materialize_recipe(request: Request, recipe_id: str, body: MaterializeRequest):
+async def materialize_recipe(
+    request: Request, recipe_id: str, body: MaterializeRequest
+):
     spotify = SpotifyService(_require_token(request))
 
     raw = await _load_recipe_payload(request, recipe_id)
@@ -393,9 +403,14 @@ async def materialize_recipe(request: Request, recipe_id: str, body: Materialize
         raise HTTPException(400, "Recipe resolved to zero tracks")
 
     user = await spotify.get_current_user()
-    name = body.name or f"{raw.get('name', 'Recipe')} ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
+    name = (
+        body.name
+        or f"{raw.get('name', 'Recipe')} ({datetime.now().strftime('%Y-%m-%d %H:%M')})"
+    )
     description = body.description or "Generated by Pigify recipe"
-    pl = await spotify.create_playlist(user.id, name=name, description=description, public=body.public)
+    pl = await spotify.create_playlist(
+        user.id, name=name, description=description, public=body.public
+    )
     pid = pl.get("id")
     if not pid:
         raise HTTPException(500, "Spotify did not return a playlist id")

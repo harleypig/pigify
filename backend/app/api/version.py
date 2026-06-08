@@ -1,17 +1,17 @@
 """App version / build info endpoint."""
+
 from __future__ import annotations
 
 import logging
 import platform
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 import fastapi
 from fastapi import APIRouter
 
-from backend.app.db.models.system import SchemaVersion
-from backend.app.db.session import system_session_scope
+from app.db.models.system import SchemaVersion
+from app.db.session import system_session_scope
 
 router = APIRouter()
 log = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 
-def _git_short_sha() -> Optional[str]:
+def _git_short_sha() -> str | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
@@ -37,7 +37,7 @@ def _git_short_sha() -> Optional[str]:
 
 
 def _backend_version() -> str:
-    from backend.app.main import app
+    from app.main import app
 
     return getattr(app, "version", "unknown")
 
@@ -45,13 +45,13 @@ def _backend_version() -> str:
 @router.get("")
 async def get_version():
     """Return backend, runtime, and DB schema version info."""
-    schema_version: Optional[str] = None
+    schema_version: str | None = None
     try:
         async with system_session_scope() as session:
             row = await session.get(SchemaVersion, "system")
             if row is not None:
                 schema_version = row.version
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.exception("failed to read schema version")
 
     return {

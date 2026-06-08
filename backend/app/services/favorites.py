@@ -5,10 +5,11 @@ Coordinates write-through love/unlove and reconciliation across Spotify
 Saved Tracks and Last.fm loved tracks. Designed to degrade gracefully
 when a service is not connected.
 """
-from datetime import datetime, timezone
-from typing import List, Optional, Tuple
 
-from backend.app.models.favorites import (
+from datetime import UTC, datetime
+from typing import Literal
+
+from app.models.favorites import (
     Conflict,
     ConnectionStatus,
     Favorite,
@@ -17,12 +18,12 @@ from backend.app.models.favorites import (
     TrackIdentity,
     WriteThroughResult,
 )
-from backend.app.services import lastfm
-from backend.app.services.spotify import SpotifyService
+from app.services import lastfm
+from app.services.spotify import SpotifyService
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _norm(s: str) -> str:
@@ -40,14 +41,14 @@ class FavoritesService:
 
     Last.fm credentials (session key + username) are passed in from the
     request session; the underlying API is the module-level functions in
-    ``backend.app.services.lastfm``.
+    ``app.services.lastfm``.
     """
 
     def __init__(
         self,
         spotify: SpotifyService,
-        lastfm_session_key: Optional[str] = None,
-        lastfm_username: Optional[str] = None,
+        lastfm_session_key: str | None = None,
+        lastfm_username: str | None = None,
     ):
         self.spotify = spotify
         self.lastfm_session_key = lastfm_session_key
@@ -67,26 +68,32 @@ class FavoritesService:
 
     # ------------------------------------------------------------------ status
 
-    def connection_status(self) -> List[ConnectionStatus]:
+    def connection_status(self) -> list[ConnectionStatus]:
         out = [ConnectionStatus(service="spotify", connected=True)]
         if not self.lastfm_app_configured:
-            out.append(ConnectionStatus(
-                service="lastfm",
-                connected=False,
-                detail="Last.fm app credentials not configured on the server.",
-            ))
+            out.append(
+                ConnectionStatus(
+                    service="lastfm",
+                    connected=False,
+                    detail="Last.fm app credentials not configured on the server.",
+                )
+            )
         elif not self.lastfm_user_connected:
-            out.append(ConnectionStatus(
-                service="lastfm",
-                connected=False,
-                detail="Connect your Last.fm account to enable sync.",
-            ))
+            out.append(
+                ConnectionStatus(
+                    service="lastfm",
+                    connected=False,
+                    detail="Connect your Last.fm account to enable sync.",
+                )
+            )
         else:
-            out.append(ConnectionStatus(
-                service="lastfm",
-                connected=True,
-                username=self.lastfm_username,
-            ))
+            out.append(
+                ConnectionStatus(
+                    service="lastfm",
+                    connected=True,
+                    username=self.lastfm_username,
+                )
+            )
         return out
 
     # ------------------------------------------------------------------ check
@@ -122,8 +129,10 @@ class FavoritesService:
     async def unlove(self, track: TrackIdentity) -> WriteThroughResult:
         return await self._write(track, "unlove")
 
-    async def _write(self, track: TrackIdentity, action: str) -> WriteThroughResult:
-        results: List[ServiceResult] = []
+    async def _write(
+        self, track: TrackIdentity, action: Literal["love", "unlove"]
+    ) -> WriteThroughResult:
+        results: list[ServiceResult] = []
 
         # Spotify
         if track.spotify_id:
@@ -136,13 +145,19 @@ class FavoritesService:
             except Exception as e:
                 results.append(ServiceResult(service="spotify", ok=False, error=str(e)))
         else:
-            results.append(ServiceResult(
-                service="spotify", ok=False, skipped=True,
-                error="No Spotify track id provided",
-            ))
+            results.append(
+                ServiceResult(
+                    service="spotify",
+                    ok=False,
+                    skipped=True,
+                    error="No Spotify track id provided",
+                )
+            )
 
         # Last.fm
         if self.lastfm_user_connected and track.artist and track.name:
+            # lastfm_user_connected implies session_key is set.
+            assert self.lastfm_session_key is not None
             try:
                 if action == "love":
                     await lastfm.love_track(
@@ -161,12 +176,19 @@ class FavoritesService:
                 if not self.lastfm_user_connected
                 else "Track is missing artist/name"
             )
-            results.append(ServiceResult(
-                service="lastfm", ok=False, skipped=True, error=detail,
-            ))
+            results.append(
+                ServiceResult(
+                    service="lastfm",
+                    ok=False,
+                    skipped=True,
+                    error=detail,
+                )
+            )
 
         return WriteThroughResult(
-            track_id=track.spotify_id, action=action, results=results,
+            track_id=track.spotify_id,
+            action=action,
+            results=results,
         )
 
     # ----------------------------------------------------------- reconciliation
@@ -177,7 +199,7 @@ class FavoritesService:
         no automatic writes are performed — the user resolves them via the API.
         """
         services = ["spotify"]
-        spotify_tracks: List[dict] = []
+        spotify_tracks: list[dict] = []
         try:
             spotify_tracks = await self.spotify.get_saved_tracks(max_tracks=max_tracks)
         except Exception as e:
@@ -187,8 +209,10 @@ class FavoritesService:
                 error=f"Failed to fetch Spotify saved tracks: {e}",
             )
 
-        lastfm_pairs: List[Tuple[str, str]] = []
+        lastfm_pairs: list[tuple[str, str]] = []
         if self.lastfm_user_connected:
+            # lastfm_user_connected implies username is set.
+            assert self.lastfm_username is not None
             services.append("lastfm")
             try:
                 lastfm_pairs = await lastfm.get_loved_tracks(
@@ -203,7 +227,7 @@ class FavoritesService:
         }
         lastfm_map = {_key(a, n): (a, n) for a, n in lastfm_pairs}
 
-        conflicts: List[Conflict] = []
+        conflicts: list[Conflict] = []
         matched = 0
 
         # Tracks loved on Spotify but not on Last.fm
@@ -212,29 +236,36 @@ class FavoritesService:
                 if k in lastfm_map:
                     matched += 1
                     continue
-                conflicts.append(Conflict(
-                    track=TrackIdentity(
-                        spotify_id=t["id"],
-                        spotify_uri=t["uri"],
-                        name=t["name"],
-                        artist=t["artist"],
-                        album=t.get("album"),
-                        image_url=t.get("image_url"),
-                    ),
-                    loved_on=["spotify"],
-                    not_loved_on=["lastfm"],
-                ))
+                conflicts.append(
+                    Conflict(
+                        track=TrackIdentity(
+                            spotify_id=t["id"],
+                            spotify_uri=t["uri"],
+                            name=t["name"],
+                            artist=t["artist"],
+                            album=t.get("album"),
+                            image_url=t.get("image_url"),
+                        ),
+                        loved_on=["spotify"],
+                        not_loved_on=["lastfm"],
+                    )
+                )
             # Tracks loved on Last.fm but not on Spotify
             for k, (artist, name) in lastfm_map.items():
                 if k in spotify_map:
                     continue
-                conflicts.append(Conflict(
-                    track=TrackIdentity(
-                        name=name, artist=artist, spotify_id=None, spotify_uri=None,
-                    ),
-                    loved_on=["lastfm"],
-                    not_loved_on=["spotify"],
-                ))
+                conflicts.append(
+                    Conflict(
+                        track=TrackIdentity(
+                            name=name,
+                            artist=artist,
+                            spotify_id=None,
+                            spotify_uri=None,
+                        ),
+                        loved_on=["lastfm"],
+                        not_loved_on=["spotify"],
+                    )
+                )
 
         return SyncSummary(
             ran_at=_now_iso(),
@@ -260,8 +291,11 @@ class FavoritesService:
             return WriteThroughResult(
                 track_id=conflict.track.spotify_id,
                 action="love",
-                results=[ServiceResult(service="state", ok=True, skipped=True,
-                                       error="Kept as-is")],
+                results=[
+                    ServiceResult(
+                        service="state", ok=True, skipped=True, error="Kept as-is"
+                    )
+                ],
             )
         if choice == "love_both":
             return await self.love(conflict.track)

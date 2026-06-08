@@ -11,8 +11,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from backend.app.db.base import UserBase
-from backend.app.db.models import user  # noqa: F401  (register tables)
+from app.db.base import UserBase
+from app.db.models import user  # noqa: F401  (register tables)
 
 config = context.config
 

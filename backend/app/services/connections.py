@@ -12,15 +12,15 @@ DB (`service_connections` table) so the connection survives the
 browser session expiring. Anonymous (logged-out-from-Spotify) callers
 fall back to the "none" / "public" tiers without touching the DB.
 """
-from typing import Dict, Literal, Optional
+
+from typing import Any, Literal
 
 from fastapi import Request
 from pydantic import BaseModel
 
-from backend.app.config import settings
-from backend.app.db.repositories import service_connections as conn_repo
-from backend.app.db.session import user_session_scope
-
+from app.config import settings
+from app.db.repositories import service_connections as conn_repo
+from app.db.session import user_session_scope
 
 Tier = Literal["none", "public", "authenticated"]
 LASTFM_SERVICE = "lastfm"
@@ -30,8 +30,8 @@ class ConnectionStatus(BaseModel):
     service: str
     tier: Tier
     display_name: str
-    connected_account: Optional[str] = None
-    last_error: Optional[str] = None
+    connected_account: str | None = None
+    last_error: str | None = None
     # True when the persisted credentials are known to be invalid (e.g.
     # Last.fm session key revoked) and the user must reconnect for
     # writes (scrobble / love) to succeed again. The UI surfaces this
@@ -39,7 +39,7 @@ class ConnectionStatus(BaseModel):
     needs_reconnect: bool = False
 
 
-async def _load_lastfm_record(spotify_id: Optional[str]) -> Dict[str, Optional[str]]:
+async def _load_lastfm_record(spotify_id: str | None) -> dict[str, Any]:
     """Read the persisted Last.fm row for a user, if any.
 
     Returns a dict with `session_key`, `username`, `last_error` (any of
@@ -68,7 +68,7 @@ async def _load_lastfm_record(spotify_id: Optional[str]) -> Dict[str, Optional[s
     }
 
 
-def _spotify_id(request: Request) -> Optional[str]:
+def _spotify_id(request: Request) -> str | None:
     if request is None:
         return None
     try:
@@ -123,7 +123,7 @@ def _wikipedia_status() -> ConnectionStatus:
     )
 
 
-async def get_all_connections(request: Request) -> Dict[str, ConnectionStatus]:
+async def get_all_connections(request: Request) -> dict[str, ConnectionStatus]:
     return {
         "lastfm": await _lastfm_status(request),
         "musicbrainz": _musicbrainz_status(),
@@ -140,7 +140,8 @@ async def get_connection(request: Request, service: str) -> ConnectionStatus:
 
 # ----------------------------- Last.fm helpers ---------------------------------
 
-async def get_lastfm_credentials(spotify_id: str) -> Dict[str, Optional[str]]:
+
+async def get_lastfm_credentials(spotify_id: str) -> dict[str, str | None]:
     """Return the persisted Last.fm credentials for a user, or {}."""
     return await _load_lastfm_record(spotify_id)
 
@@ -150,7 +151,7 @@ async def save_lastfm_credentials(
     *,
     session_key: str,
     username: str,
-    subscriber: Optional[bool] = None,
+    subscriber: bool | None = None,
 ) -> None:
     """Persist a freshly minted Last.fm session for a user."""
     async with user_session_scope(spotify_id) as session:
@@ -181,19 +182,17 @@ async def clear_lastfm_credentials(spotify_id: str) -> None:
         await session.commit()
 
 
-async def record_lastfm_error(spotify_id: str, error: Optional[str]) -> None:
+async def record_lastfm_error(spotify_id: str, error: str | None) -> None:
     """Update last_error on the Last.fm connection row, if it exists."""
     async with user_session_scope(spotify_id) as session:
         row = await conn_repo.get(session, LASTFM_SERVICE)
         if row is None:
             return
-        row.last_error = (error or None)
+        row.last_error = error or None
         await session.commit()
 
 
-async def flag_lastfm_needs_reconnect(
-    session, needs_reconnect: bool
-) -> None:
+async def flag_lastfm_needs_reconnect(session, needs_reconnect: bool) -> None:
     """Set/clear the persistent-failure flag on the lastfm connection row.
 
     Lives in the existing `preferences` JSON column so we don't need a

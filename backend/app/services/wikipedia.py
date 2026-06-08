@@ -17,17 +17,16 @@ Strategy for resolving a Spotify track to a Wikipedia article:
 Wikipedia asks API consumers to identify themselves with a descriptive
 User-Agent (https://meta.wikimedia.org/wiki/User-Agent_policy). We comply.
 """
+
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
-
 
 WIKI_API = "https://en.wikipedia.org/w/api.php"
 WIKI_REST = "https://en.wikipedia.org/api/rest_v1"
 USER_AGENT = (
-    "Pigify/0.1 (https://github.com/pigify; contact: dev@pigify.local) "
-    "python-httpx"
+    "Pigify/0.1 (https://github.com/pigify; contact: dev@pigify.local) python-httpx"
 )
 
 _semaphore = asyncio.Semaphore(4)
@@ -37,11 +36,13 @@ class WikipediaError(Exception):
     pass
 
 
-async def _get_json(url: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def _get_json(url: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
-    async with _semaphore:
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            resp = await client.get(url, params=params, headers=headers)
+    async with (
+        _semaphore,
+        httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client,
+    ):
+        resp = await client.get(url, params=params, headers=headers)
     if resp.status_code == 404:
         return {}
     if resp.status_code >= 400:
@@ -49,10 +50,12 @@ async def _get_json(url: str, params: Optional[Dict[str, Any]] = None) -> Dict[s
     try:
         return resp.json()
     except ValueError as e:
-        raise WikipediaError(f"Wikipedia returned non-JSON: {e}")
+        raise WikipediaError(f"Wikipedia returned non-JSON: {e}") from e
 
 
-async def search_song(artist: str, title: str, *, limit: int = 5) -> List[Dict[str, Any]]:
+async def search_song(
+    artist: str, title: str, *, limit: int = 5
+) -> list[dict[str, Any]]:
     """Full-text search Wikipedia for a song article."""
     query = f'"{title}" "{artist}" song'
     data = await _get_json(
@@ -67,10 +70,10 @@ async def search_song(artist: str, title: str, *, limit: int = 5) -> List[Dict[s
             "formatversion": "2",
         },
     )
-    return ((data.get("query") or {}).get("search") or [])
+    return (data.get("query") or {}).get("search") or []
 
 
-async def get_summary(title: str) -> Dict[str, Any]:
+async def get_summary(title: str) -> dict[str, Any]:
     """Fetch the REST summary for a page title."""
     # The REST endpoint expects the title path-segment URL-encoded; httpx does
     # this for us when we pass it through the URL builder.
@@ -78,7 +81,7 @@ async def get_summary(title: str) -> Dict[str, Any]:
     return await _get_json(f"{WIKI_REST}/page/summary/{safe_title}")
 
 
-def _is_useful_summary(summary: Dict[str, Any]) -> bool:
+def _is_useful_summary(summary: dict[str, Any]) -> bool:
     if not summary:
         return False
     if summary.get("type") == "disambiguation":
@@ -87,9 +90,7 @@ def _is_useful_summary(summary: Dict[str, Any]) -> bool:
     return bool(extract)
 
 
-async def resolve_song_article(
-    *, artist: str, title: str
-) -> Optional[Dict[str, Any]]:
+async def resolve_song_article(*, artist: str, title: str) -> dict[str, Any] | None:
     """
     Try to find a Wikipedia article for the given song. Returns a dict with
     `title`, `extract`, `description`, `url`, `thumbnail` — or None if
@@ -114,12 +115,11 @@ async def resolve_song_article(
                 "description": summary.get("description"),
                 "extract": (summary.get("extract") or "").strip(),
                 "url": (
-                    (summary.get("content_urls") or {})
-                    .get("desktop", {})
-                    .get("page")
-                ) or f"https://en.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
+                    (summary.get("content_urls") or {}).get("desktop", {}).get("page")
+                )
+                or f"https://en.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
                 "thumbnail": (summary.get("thumbnail") or {}).get("source"),
             }
-    except (WikipediaError, httpx.HTTPError, asyncio.TimeoutError):
+    except (TimeoutError, WikipediaError, httpx.HTTPError):
         return None
     return None

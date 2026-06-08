@@ -1,12 +1,11 @@
 """Saved filtered-playlist recipes repository."""
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import SavedFilter
+from app.db.models.user import SavedFilter
 
 
 async def list_all(
@@ -18,19 +17,17 @@ async def list_all(
     return list((await session.execute(stmt)).scalars().all())
 
 
-async def get(session: AsyncSession, filter_id: int) -> Optional[SavedFilter]:
+async def get(session: AsyncSession, filter_id: int) -> SavedFilter | None:
     return await session.get(SavedFilter, filter_id)
 
 
-async def get_by_name(session: AsyncSession, name: str) -> Optional[SavedFilter]:
+async def get_by_name(session: AsyncSession, name: str) -> SavedFilter | None:
     return (
         await session.execute(select(SavedFilter).where(SavedFilter.name == name))
     ).scalar_one_or_none()
 
 
-async def get_by_recipe_id(
-    session: AsyncSession, recipe_id: str
-) -> Optional[SavedFilter]:
+async def get_by_recipe_id(session: AsyncSession, recipe_id: str) -> SavedFilter | None:
     """Look up a row by the opaque recipe id stored inside the JSON payload.
 
     Uses SQLAlchemy's portable JSON-path predicate so the database does the
@@ -50,7 +47,7 @@ async def create(
     *,
     name: str,
     definition: dict,
-    description: Optional[str] = None,
+    description: str | None = None,
     is_temporary: bool = False,
 ) -> SavedFilter:
     row = SavedFilter(
@@ -68,11 +65,11 @@ async def update(
     session: AsyncSession,
     filter_id: int,
     *,
-    name: Optional[str] = None,
-    definition: Optional[dict] = None,
-    description: Optional[str] = None,
-    is_temporary: Optional[bool] = None,
-) -> Optional[SavedFilter]:
+    name: str | None = None,
+    definition: dict | None = None,
+    description: str | None = None,
+    is_temporary: bool | None = None,
+) -> SavedFilter | None:
     row = await get(session, filter_id)
     if row is None:
         return None

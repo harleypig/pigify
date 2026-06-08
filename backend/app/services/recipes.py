@@ -11,36 +11,37 @@ Last.fm credentials it returns the ordered list of resolved tracks.
 
 Design notes:
 - Filters and sort fields share the same registry as the existing per-track
-  sort feature (`backend.app.services.sort_fields`), so users get a familiar
+  sort feature (`app.services.sort_fields`), so users get a familiar
   vocabulary.
 - Hydration (audio features / Last.fm) is fetched once per source on demand,
   driven by which fields the bucket's filters and sort actually reference.
 - The resolver intentionally never writes to Spotify; play and materialize
   endpoints in the API layer do that explicitly.
 """
+
 from __future__ import annotations
 
 import asyncio
 import random
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from backend.app.config import settings
-from backend.app.models.playlist import Track
-from backend.app.services import lastfm
-from backend.app.services.sort_fields import SORT_FIELD_KEYS, get_sort_field
-from backend.app.services.spotify import SpotifyService
-
+from app.config import settings
+from app.models.playlist import Track
+from app.services import lastfm
+from app.services.sort_fields import SORT_FIELD_KEYS, get_sort_field
+from app.services.spotify import SpotifyService
 
 # Process-wide TTL cache for `playlist_id -> display_name`. Playlist names
 # change rarely; caching them between resolves removes a per-recipe burst of
 # Spotify GETs (and overlaps nicely with the proposed recents preview cache).
 _PLAYLIST_NAME_TTL_SEC = 300  # 5 minutes
-_playlist_name_cache: Dict[str, Tuple[float, str]] = {}
+_playlist_name_cache: dict[str, tuple[float, str]] = {}
 
 
 # ============================ Recipe schema =================================
@@ -55,6 +56,7 @@ class FilterClause(BaseModel):
       - "contains": substring match (string fields)
       - "in" / "not_in": value membership in `value` (a list)
     """
+
     field: str
     op: str = Field(..., pattern="^(lt|lte|gt|gte|eq|ne|between|contains|in|not_in)$")
     value: Any = None
@@ -67,21 +69,21 @@ class SortClause(BaseModel):
 
 
 class Bucket(BaseModel):
-    name: Optional[str] = None
+    name: str | None = None
     # Source spec strings:
     #   "liked"
     #   "playlist:{spotify_playlist_id}"
     #   "playlists:{id1},{id2},..."  (multiple playlists, de-duped)
     #   "all_playlists"              (every playlist owned/followed by the user)
     source: str = Field(..., min_length=1)
-    filters: List[FilterClause] = Field(default_factory=list)
-    sort: Optional[SortClause] = None
+    filters: list[FilterClause] = Field(default_factory=list)
+    sort: SortClause | None = None
     count: int = Field(50, ge=1, le=500)
 
 
 class Recipe(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
-    buckets: List[Bucket] = Field(..., min_length=1)
+    buckets: list[Bucket] = Field(..., min_length=1)
     combine: str = Field("in_order", pattern="^(in_order|interleave|shuffled)$")
 
 
@@ -94,9 +96,9 @@ class StoredRecipe(Recipe):
 # ============================ Source loading ================================
 
 
-async def _load_liked_tracks(spotify: SpotifyService, max_tracks: int) -> List[Track]:
+async def _load_liked_tracks(spotify: SpotifyService, max_tracks: int) -> list[Track]:
     raw = await spotify.get_saved_tracks(max_tracks=max_tracks)
-    out: List[Track] = []
+    out: list[Track] = []
     for t in raw:
         if not t.get("id"):
             continue
@@ -115,9 +117,9 @@ async def _load_liked_tracks(spotify: SpotifyService, max_tracks: int) -> List[T
     return out
 
 
-async def _list_all_user_playlist_ids(spotify: SpotifyService) -> List[str]:
+async def _list_all_user_playlist_ids(spotify: SpotifyService) -> list[str]:
     """Page through every playlist the user owns or follows, returning IDs."""
-    ids: List[str] = []
+    ids: list[str] = []
     offset = 0
     page_size = 50
     while True:
@@ -136,7 +138,7 @@ async def _list_all_user_playlist_ids(spotify: SpotifyService) -> List[str]:
 
 async def _load_source_tracks(
     spotify: SpotifyService, source: str, max_tracks: int = 1000
-) -> Tuple[List[Track], Dict[str, List[str]]]:
+) -> tuple[list[Track], dict[str, list[str]]]:
     """Resolve a source spec into a flat list of Track objects plus an
     origin map (track_id -> list of source identifiers, in first-seen order).
 
@@ -163,17 +165,13 @@ async def _load_source_tracks(
         if source == "all_playlists":
             pids = await _list_all_user_playlist_ids(spotify)
         else:
-            pids = [
-                p.strip()
-                for p in source.split(":", 1)[1].split(",")
-                if p.strip()
-            ]
+            pids = [p.strip() for p in source.split(":", 1)[1].split(",") if p.strip()]
         if not pids:
             return [], {}
         # Fetch concurrently, but cap parallelism to avoid hammering Spotify.
         sem = asyncio.Semaphore(max(1, settings.PLAYLIST_FETCH_CONCURRENCY))
 
-        async def fetch(pid: str) -> Tuple[str, List[Track]]:
+        async def fetch(pid: str) -> tuple[str, list[Track]]:
             async with sem:
                 try:
                     return pid, await spotify.get_all_playlist_tracks(pid)
@@ -182,8 +180,8 @@ async def _load_source_tracks(
 
         results = await asyncio.gather(*(fetch(p) for p in pids))
         seen: set[str] = set()
-        merged: List[Track] = []
-        origins: Dict[str, List[str]] = {}
+        merged: list[Track] = []
+        origins: dict[str, list[str]] = {}
         for pid, tracks in results:
             for t in tracks:
                 if not t.id:
@@ -202,8 +200,8 @@ async def _load_source_tracks(
 # ============================ Hydration =====================================
 
 
-def _fields_used(bucket: Bucket) -> List[str]:
-    keys: List[str] = []
+def _fields_used(bucket: Bucket) -> list[str]:
+    keys: list[str] = []
     for f in bucket.filters:
         keys.append(f.field)
     if bucket.sort:
@@ -211,7 +209,7 @@ def _fields_used(bucket: Bucket) -> List[str]:
     return keys
 
 
-def _required_sources(field_keys: Iterable[str]) -> List[str]:
+def _required_sources(field_keys: Iterable[str]) -> list[str]:
     out: set[str] = set()
     for k in field_keys:
         info = get_sort_field(k)
@@ -225,15 +223,15 @@ def _required_sources(field_keys: Iterable[str]) -> List[str]:
 
 async def _hydrate(
     spotify: SpotifyService,
-    tracks: List[Track],
-    sources: List[str],
-    lastfm_username: Optional[str],
-) -> Dict[str, Dict[str, Any]]:
+    tracks: list[Track],
+    sources: list[str],
+    lastfm_username: str | None,
+) -> dict[str, dict[str, Any]]:
     """Fetch audio features / Last.fm payloads for the given tracks.
 
     Returns a mapping like {"audio_features": {tid: {...}}, "lastfm": {tid: {...}}}.
     """
-    out: Dict[str, Dict[str, Any]] = {"audio_features": {}, "lastfm": {}}
+    out: dict[str, dict[str, Any]] = {"audio_features": {}, "lastfm": {}}
     track_ids = [t.id for t in tracks if t.id]
     if not track_ids:
         return out
@@ -247,16 +245,23 @@ async def _hydrate(
             if not f:
                 continue
             out["audio_features"][tid] = {
-                k: f.get(k) for k in (
-                    "tempo", "energy", "danceability", "valence",
-                    "acousticness", "instrumentalness", "loudness", "speechiness",
+                k: f.get(k)
+                for k in (
+                    "tempo",
+                    "energy",
+                    "danceability",
+                    "valence",
+                    "acousticness",
+                    "instrumentalness",
+                    "loudness",
+                    "speechiness",
                 )
             }
 
     if "lastfm" in sources:
         sem = asyncio.Semaphore(max(1, settings.LASTFM_HYDRATE_CONCURRENCY))
 
-        async def fetch(t: Track) -> Tuple[str, Optional[Dict]]:
+        async def fetch(t: Track) -> tuple[str, dict | None]:
             artist = (t.artists[0] if t.artists else "").strip()
             title = (t.name or "").strip()
             if not artist or not title:
@@ -278,9 +283,11 @@ async def _hydrate(
                 ),
             }
 
-        results = await asyncio.gather(*(fetch(t) for t in tracks), return_exceptions=True)
+        results = await asyncio.gather(
+            *(fetch(t) for t in tracks), return_exceptions=True
+        )
         for r in results:
-            if isinstance(r, Exception):
+            if isinstance(r, BaseException):
                 continue
             tid, payload = r
             if payload is not None:
@@ -292,7 +299,7 @@ async def _hydrate(
 # ============================ Field value lookup ============================
 
 
-def _get_value(field_key: str, track: Track, hyd: Dict[str, Dict[str, Any]]) -> Any:
+def _get_value(field_key: str, track: Track, hyd: dict[str, dict[str, Any]]) -> Any:
     info = get_sort_field(field_key)
     if not info:
         return None
@@ -300,22 +307,30 @@ def _get_value(field_key: str, track: Track, hyd: Dict[str, Dict[str, Any]]) -> 
     if src == "spotify_track":
         if field_key == "artist":
             return track.artists[0] if track.artists else None
-        if field_key in ("name", "album", "duration_ms", "added_at",
-                         "release_date", "popularity", "explicit",
-                         "track_number", "disc_number"):
+        if field_key in (
+            "name",
+            "album",
+            "duration_ms",
+            "added_at",
+            "release_date",
+            "popularity",
+            "explicit",
+            "track_number",
+            "disc_number",
+        ):
             return getattr(track, field_key, None)
         return None
     if src == "audio_features":
         f = hyd["audio_features"].get(track.id) or {}
         return f.get(field_key)
     if src == "lastfm":
-        l = hyd["lastfm"].get(track.id) or {}
+        lf = hyd["lastfm"].get(track.id) or {}
         if field_key == "lastfm_playcount":
-            return l.get("playcount")
+            return lf.get("playcount")
         if field_key == "lastfm_listeners":
-            return l.get("listeners")
+            return lf.get("listeners")
         if field_key == "lastfm_user_playcount":
-            return l.get("user_playcount")
+            return lf.get("user_playcount")
     return None
 
 
@@ -348,7 +363,9 @@ def _coerce(value: Any, ftype: str) -> Any:
     return value
 
 
-def _matches(track: Track, clause: FilterClause, hyd: Dict[str, Dict[str, Any]]) -> bool:
+def _matches(
+    track: Track, clause: FilterClause, hyd: dict[str, dict[str, Any]]
+) -> bool:
     info = get_sort_field(clause.field)
     if not info:
         return True
@@ -366,12 +383,18 @@ def _matches(track: Track, clause: FilterClause, hyd: Dict[str, Dict[str, Any]])
         rhs = _coerce(clause.value, ftype)
         if rhs is None and op != "ne":
             return False
-        if op == "lt":  return lhs < rhs
-        if op == "lte": return lhs <= rhs
-        if op == "gt":  return lhs > rhs
-        if op == "gte": return lhs >= rhs
-        if op == "eq":  return lhs == rhs
-        if op == "ne":  return lhs != rhs
+        if op == "lt":
+            return lhs < rhs
+        if op == "lte":
+            return lhs <= rhs
+        if op == "gt":
+            return lhs > rhs
+        if op == "gte":
+            return lhs >= rhs
+        if op == "eq":
+            return lhs == rhs
+        if op == "ne":
+            return lhs != rhs
     if op == "between":
         a = _coerce(clause.value, ftype)
         b = _coerce(clause.value2, ftype)
@@ -392,10 +415,10 @@ def _matches(track: Track, clause: FilterClause, hyd: Dict[str, Dict[str, Any]])
 
 
 def _sort_tracks(
-    tracks: List[Track],
+    tracks: list[Track],
     clause: SortClause,
-    hyd: Dict[str, Dict[str, Any]],
-) -> List[Track]:
+    hyd: dict[str, dict[str, Any]],
+) -> list[Track]:
     info = get_sort_field(clause.field)
     if not info:
         return tracks
@@ -429,9 +452,9 @@ def _sort_tracks(
 # ============================ Combine strategies ============================
 
 
-def _combine(buckets: List[List[Track]], strategy: str) -> List[Track]:
+def _combine(buckets: list[list[Track]], strategy: str) -> list[Track]:
     seen: set[str] = set()
-    out: List[Track] = []
+    out: list[Track] = []
 
     if strategy == "in_order":
         for b in buckets:
@@ -476,16 +499,16 @@ def _combine(buckets: List[List[Track]], strategy: str) -> List[Track]:
 
 @dataclass
 class ResolveResult:
-    tracks: List[Track]
-    warnings: List[str] = field(default_factory=list)
-    bucket_counts: List[int] = field(default_factory=list)
+    tracks: list[Track]
+    warnings: list[str] = field(default_factory=list)
+    bucket_counts: list[int] = field(default_factory=list)
     # track_id -> list of {"id": <playlist id or "liked">, "name": <display name>}
-    track_sources: Dict[str, List[Dict[str, str]]] = field(default_factory=dict)
+    track_sources: dict[str, list[dict[str, str]]] = field(default_factory=dict)
 
 
 async def _resolve_playlist_names(
     spotify: SpotifyService, playlist_ids: Iterable[str]
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Resolve `{playlist_id: display_name}` with a small process-wide cache.
 
     Dedup is implicit (the input is iterated once into a set) and we serve
@@ -497,8 +520,8 @@ async def _resolve_playlist_names(
         return {}
 
     now = time.time()
-    out: Dict[str, str] = {}
-    misses: List[str] = []
+    out: dict[str, str] = {}
+    misses: list[str] = []
     for pid in pids:
         hit = _playlist_name_cache.get(pid)
         if hit is not None and now - hit[0] < _PLAYLIST_NAME_TTL_SEC:
@@ -511,7 +534,7 @@ async def _resolve_playlist_names(
 
     sem = asyncio.Semaphore(max(1, settings.PLAYLIST_FETCH_CONCURRENCY))
 
-    async def fetch(pid: str) -> Tuple[str, str]:
+    async def fetch(pid: str) -> tuple[str, str]:
         async with sem:
             try:
                 pl = await spotify.get_playlist(pid)
@@ -530,22 +553,26 @@ async def _resolve_playlist_names(
 async def resolve_recipe(
     recipe: Recipe,
     spotify: SpotifyService,
-    lastfm_username: Optional[str] = None,
+    lastfm_username: str | None = None,
 ) -> ResolveResult:
-    warnings: List[str] = []
-    bucket_results: List[List[Track]] = []
-    bucket_counts: List[int] = []
+    warnings: list[str] = []
+    bucket_results: list[list[Track]] = []
+    bucket_counts: list[int] = []
     # Aggregated origin map across all buckets, restricted to tracks that
     # survived filtering/limits in at least one bucket.
-    aggregated_origins: Dict[str, List[str]] = {}
+    aggregated_origins: dict[str, list[str]] = {}
 
     for idx, bucket in enumerate(recipe.buckets):
         # Validate field references early.
         for clause in bucket.filters:
             if clause.field not in SORT_FIELD_KEYS:
-                warnings.append(f"Bucket {idx + 1}: unknown filter field '{clause.field}' skipped")
+                warnings.append(
+                    f"Bucket {idx + 1}: unknown filter field '{clause.field}' skipped"
+                )
         if bucket.sort and bucket.sort.field not in SORT_FIELD_KEYS:
-            warnings.append(f"Bucket {idx + 1}: unknown sort field '{bucket.sort.field}'")
+            warnings.append(
+                f"Bucket {idx + 1}: unknown sort field '{bucket.sort.field}'"
+            )
 
         try:
             tracks, bucket_origins = await _load_source_tracks(spotify, bucket.source)
@@ -560,9 +587,11 @@ async def resolve_recipe(
 
         # Apply filters
         filtered = [
-            t for t in tracks
+            t
+            for t in tracks
             if all(
-                _matches(t, c, hyd) for c in bucket.filters
+                _matches(t, c, hyd)
+                for c in bucket.filters
                 if c.field in SORT_FIELD_KEYS
             )
         ]
@@ -587,9 +616,9 @@ async def resolve_recipe(
     referenced = {pid for srcs in aggregated_origins.values() for pid in srcs}
     names = await _resolve_playlist_names(spotify, referenced)
 
-    track_sources: Dict[str, List[Dict[str, str]]] = {}
+    track_sources: dict[str, list[dict[str, str]]] = {}
     for tid, srcs in aggregated_origins.items():
-        entries: List[Dict[str, str]] = []
+        entries: list[dict[str, str]] = []
         for s in srcs:
             if s == "liked":
                 entries.append({"id": "liked", "name": "Liked Songs"})

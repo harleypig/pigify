@@ -1,18 +1,17 @@
 """Enrichment cache (lastfm/musicbrainz/wikipedia) with TTL."""
+
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
+from typing import cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import EnrichmentCache
+from app.db.models.user import EnrichmentCache
 
 
-async def get(
-    session: AsyncSession, provider: str, kind: str, key: str
-) -> Optional[dict]:
+async def get(session: AsyncSession, provider: str, kind: str, key: str) -> dict | None:
     row = await session.get(EnrichmentCache, (provider, kind, key))
     if row is None:
         return None
@@ -20,8 +19,8 @@ async def get(
         # SQLite returns naive datetimes; treat them as UTC.
         expires = row.expires_at
         if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        if expires < datetime.now(timezone.utc):
+            expires = expires.replace(tzinfo=UTC)
+        if expires < datetime.now(UTC):
             return None
     return row.payload
 
@@ -33,11 +32,9 @@ async def put(
     key: str,
     payload: dict,
     *,
-    ttl: Optional[timedelta] = None,
+    ttl: timedelta | None = None,
 ) -> None:
-    expires_at = (
-        datetime.now(timezone.utc) + ttl if ttl is not None else None
-    )
+    expires_at = datetime.now(UTC) + ttl if ttl is not None else None
     row = await session.get(EnrichmentCache, (provider, kind, key))
     if row is None:
         session.add(
@@ -55,9 +52,7 @@ async def put(
     await session.flush()
 
 
-async def delete_one(
-    session: AsyncSession, provider: str, kind: str, key: str
-) -> bool:
+async def delete_one(session: AsyncSession, provider: str, kind: str, key: str) -> bool:
     """Delete a single cached row. Returns True if a row was removed."""
     result = await session.execute(
         delete(EnrichmentCache).where(
@@ -67,18 +62,18 @@ async def delete_one(
         )
     )
     await session.flush()
-    return bool(result.rowcount or 0)
+    return bool(cast(CursorResult, result).rowcount or 0)
 
 
 async def clear_all(session: AsyncSession) -> int:
     """Delete every cached row for this user database."""
     result = await session.execute(delete(EnrichmentCache))
     await session.flush()
-    return int(result.rowcount or 0)
+    return int(cast(CursorResult, result).rowcount or 0)
 
 
 async def purge_expired(session: AsyncSession) -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await session.execute(
         delete(EnrichmentCache).where(
             EnrichmentCache.expires_at.is_not(None),
@@ -86,7 +81,7 @@ async def purge_expired(session: AsyncSession) -> int:
         )
     )
     await session.flush()
-    return int(result.rowcount or 0)
+    return int(cast(CursorResult, result).rowcount or 0)
 
 
 async def list_for_provider(

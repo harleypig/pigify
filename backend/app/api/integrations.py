@@ -8,24 +8,25 @@ Per the graceful degradation policy:
 - Wikipedia replaces the previously-deferred Songfacts integration as the
   trivia/context provider (Songfacts has no public API).
 """
+
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, cast
 
 from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
-from backend.app.config import settings
-from backend.app.db.repositories import enrichment_cache
-from backend.app.db.session import user_session_scope
-from backend.app.services import lastfm, musicbrainz, scrobbler, wikipedia
-from backend.app.services.connections import (
+from app.config import settings
+from app.db.repositories import enrichment_cache
+from app.db.session import user_session_scope
+from app.services import lastfm, musicbrainz, scrobbler, wikipedia
+from app.services.connections import (
     clear_lastfm_credentials,
     get_all_connections,
     get_connection,
     save_lastfm_credentials,
 )
-from backend.app.services.spotify import SpotifyService
+from app.services.spotify import SpotifyService
 
 # Cache TTLs per provider. Wikipedia/MusicBrainz change rarely so we keep
 # them for a week; Last.fm playcount/listeners drift more so 1 day.
@@ -38,15 +39,15 @@ router = APIRouter()
 
 # ----------------------------- Connection registry -----------------------------
 
+
 @router.get("/connections")
-async def list_connections(request: Request) -> Dict[str, Any]:
+async def list_connections(request: Request) -> dict[str, Any]:
     """Return tier + status for every known external integration."""
-    return {
-        k: v.model_dump() for k, v in (await get_all_connections(request)).items()
-    }
+    return {k: v.model_dump() for k, v in (await get_all_connections(request)).items()}
 
 
 # --------------------------------- Last.fm auth --------------------------------
+
 
 @router.get("/lastfm/login")
 async def lastfm_login(request: Request):
@@ -57,7 +58,7 @@ async def lastfm_login(request: Request):
 
 
 @router.get("/lastfm/callback")
-async def lastfm_callback(request: Request, token: Optional[str] = None):
+async def lastfm_callback(request: Request, token: str | None = None):
     if not token:
         raise HTTPException(400, "Missing token from Last.fm")
     spotify_id = request.session.get("spotify_user_id")
@@ -68,13 +69,13 @@ async def lastfm_callback(request: Request, token: Optional[str] = None):
     try:
         session = await lastfm.get_session(token)
     except lastfm.LastFMError as e:
-        raise HTTPException(502, f"Last.fm auth failed: {e}")
+        raise HTTPException(502, f"Last.fm auth failed: {e}") from e
 
     await save_lastfm_credentials(
         spotify_id,
         session_key=session["session_key"],
         username=session["username"],
-        subscriber=session.get("subscriber"),
+        subscriber=cast("bool | None", session.get("subscriber")),
     )
     return RedirectResponse(url=f"{settings.FRONTEND_URL}/?lastfm=connected")
 
@@ -101,6 +102,7 @@ async def lastfm_status(request: Request):
 
 # ----------------------------- Last.fm queue -----------------------------------
 
+
 def _require_spotify_id(request: Request) -> str:
     spotify_id = request.session.get("spotify_user_id")
     if not spotify_id:
@@ -109,7 +111,7 @@ def _require_spotify_id(request: Request) -> str:
 
 
 @router.get("/lastfm/queue")
-async def lastfm_queue(request: Request) -> Dict[str, Any]:
+async def lastfm_queue(request: Request) -> dict[str, Any]:
     """List pending Last.fm scrobbles for the signed-in user."""
     spotify_id = _require_spotify_id(request)
     entries = await scrobbler.list_pending(spotify_id)
@@ -117,7 +119,7 @@ async def lastfm_queue(request: Request) -> Dict[str, Any]:
 
 
 @router.post("/lastfm/queue/flush")
-async def lastfm_queue_flush(request: Request) -> Dict[str, Any]:
+async def lastfm_queue_flush(request: Request) -> dict[str, Any]:
     """Force a retry of every queued scrobble, ignoring backoff windows."""
     spotify_id = _require_spotify_id(request)
     return await scrobbler.flush_now(spotify_id)
@@ -126,7 +128,7 @@ async def lastfm_queue_flush(request: Request) -> Dict[str, Any]:
 class LastfmQueueClearRequest(BaseModel):
     """Body for `DELETE /lastfm/queue`. Omitted entirely → clear all."""
 
-    ids: Optional[List[int]] = Field(
+    ids: list[int] | None = Field(
         default=None,
         description="Specific queue entry ids to delete. Omit to clear all.",
     )
@@ -135,8 +137,8 @@ class LastfmQueueClearRequest(BaseModel):
 @router.delete("/lastfm/queue")
 async def lastfm_queue_clear(
     request: Request,
-    payload: Optional[LastfmQueueClearRequest] = Body(default=None),
-) -> Dict[str, Any]:
+    payload: LastfmQueueClearRequest | None = Body(default=None),
+) -> dict[str, Any]:
     """Bulk-delete queued scrobbles.
 
     With no body (or `{}`), clears the entire queue. Pass
@@ -152,7 +154,7 @@ async def lastfm_queue_clear(
 @router.delete("/lastfm/queue/{entry_id}")
 async def lastfm_queue_delete(
     request: Request, entry_id: int = Path(..., ge=1)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Delete a single queued scrobble (e.g. a poison entry)."""
     spotify_id = _require_spotify_id(request)
     deleted = await scrobbler.delete_entry(spotify_id, entry_id)
@@ -162,6 +164,7 @@ async def lastfm_queue_delete(
 
 
 # ----------------------------- Last.fm enrichment ------------------------------
+
 
 @router.get("/lastfm/track-info")
 async def lastfm_track_info(
@@ -176,7 +179,7 @@ async def lastfm_track_info(
     try:
         data = await lastfm.get_track_info(artist, track, username=username)
     except lastfm.LastFMError as e:
-        raise HTTPException(502, str(e))
+        raise HTTPException(502, str(e)) from e
 
     info = data.get("track", {})
     tags = info.get("toptags", {}).get("tag", [])
@@ -196,7 +199,9 @@ async def lastfm_track_info(
         ),
         "user_loved": bool(int(info.get("userloved") or 0)) if username else None,
         "tags": [{"name": t.get("name"), "url": t.get("url")} for t in tags[:10]],
-        "summary": ((info.get("wiki") or {}).get("summary") or "").split("<a")[0].strip()
+        "summary": ((info.get("wiki") or {}).get("summary") or "")
+        .split("<a")[0]
+        .strip()
         or None,
     }
 
@@ -213,7 +218,7 @@ async def lastfm_similar(
     try:
         sim = await lastfm.get_similar_tracks(artist, track, limit)
     except lastfm.LastFMError as e:
-        raise HTTPException(502, str(e))
+        raise HTTPException(502, str(e)) from e
     return [
         {
             "name": t.get("name"),
@@ -226,6 +231,7 @@ async def lastfm_similar(
 
 
 # --------------------------------- MusicBrainz ---------------------------------
+
 
 @router.get("/musicbrainz/track/{spotify_track_id}")
 async def musicbrainz_track(spotify_track_id: str, request: Request):
@@ -257,6 +263,7 @@ async def musicbrainz_track(spotify_track_id: str, request: Request):
 
 # ---------------------------------- Wikipedia ---------------------------------
 
+
 @router.get("/wikipedia/track/{spotify_track_id}")
 async def wikipedia_track(spotify_track_id: str, request: Request):
     """
@@ -279,9 +286,7 @@ async def wikipedia_track(spotify_track_id: str, request: Request):
     primary_artist = artists[0] if artists else ""
     title = track.get("name", "")
 
-    article = await wikipedia.resolve_song_article(
-        artist=primary_artist, title=title
-    )
+    article = await wikipedia.resolve_song_article(artist=primary_artist, title=title)
     if not article:
         raise HTTPException(404, "No Wikipedia article found for this track")
     return {"tier": "public", **article}
@@ -289,13 +294,14 @@ async def wikipedia_track(spotify_track_id: str, request: Request):
 
 # ------------------------------- Combined detail -------------------------------
 
+
 @router.delete("/enrichment-cache")
 async def clear_enrichment_cache(
     request: Request,
-    provider: Optional[str] = Query(None),
-    kind: Optional[str] = Query(None),
-    key: Optional[str] = Query(None),
-) -> Dict[str, Any]:
+    provider: str | None = Query(None),
+    kind: str | None = Query(None),
+    key: str | None = Query(None),
+) -> dict[str, Any]:
     """
     Clear cached enrichment rows for the signed-in user.
 
@@ -314,8 +320,13 @@ async def clear_enrichment_cache(
         )
     async with user_session_scope(spotify_id) as db:
         if given == 3:
+            # given == 3 means all three were supplied (non-empty).
+            assert provider is not None and kind is not None and key is not None
             removed = await enrichment_cache.delete_one(
-                db, provider, kind, key  # type: ignore[arg-type]
+                db,
+                provider,
+                kind,
+                key,
             )
             await db.commit()
             return {"deleted": int(removed), "scope": "row"}
@@ -358,7 +369,7 @@ async def combined_track_detail(
     primary_artist = artists[0] if artists else ""
     isrc = (track.get("external_ids") or {}).get("isrc")
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "spotify": {
             "id": track.get("id"),
             "name": title,
@@ -371,8 +382,7 @@ async def combined_track_detail(
             "external_url": (track.get("external_urls") or {}).get("spotify"),
         },
         "connections": {
-            k: v.model_dump()
-            for k, v in (await get_all_connections(request)).items()
+            k: v.model_dump() for k, v in (await get_all_connections(request)).items()
         },
     }
 
@@ -382,9 +392,7 @@ async def combined_track_detail(
     async with user_session_scope(spotify_user_id) as db:
         if lfm_conn.tier != "none" and primary_artist and title:
             username = (
-                lfm_conn.connected_account
-                if lfm_conn.tier == "authenticated"
-                else None
+                lfm_conn.connected_account if lfm_conn.tier == "authenticated" else None
             )
             # Per-user DB already scopes the cache, but include the auth
             # tier in the key so we never serve an unauthenticated payload
@@ -393,17 +401,13 @@ async def combined_track_detail(
             cached_info = (
                 None
                 if refresh
-                else await enrichment_cache.get(
-                    db, "lastfm", "track-info", info_key
-                )
+                else await enrichment_cache.get(db, "lastfm", "track-info", info_key)
             )
             if cached_info is not None:
                 info, err = cached_info.get("info"), cached_info.get("err")
             else:
                 info, err = await lastfm.safe_call(
-                    lastfm.get_track_info(
-                        primary_artist, title, username=username
-                    )
+                    lastfm.get_track_info(primary_artist, title, username=username)
                 )
                 # Only cache successful responses; transient errors should
                 # be retried on the next open.
@@ -446,9 +450,7 @@ async def combined_track_detail(
             cached_sim = (
                 None
                 if refresh
-                else await enrichment_cache.get(
-                    db, "lastfm", "similar", pa_key
-                )
+                else await enrichment_cache.get(db, "lastfm", "similar", pa_key)
             )
             if cached_sim is not None:
                 sim = cached_sim.get("similar")
@@ -483,9 +485,7 @@ async def combined_track_detail(
             cached_mb = (
                 None
                 if refresh
-                else await enrichment_cache.get(
-                    db, "musicbrainz", "recording", mb_key
-                )
+                else await enrichment_cache.get(db, "musicbrainz", "recording", mb_key)
             )
             if cached_mb is not None:
                 mb = cached_mb.get("data")
@@ -510,9 +510,7 @@ async def combined_track_detail(
             cached_wiki = (
                 None
                 if refresh
-                else await enrichment_cache.get(
-                    db, "wikipedia", "article", pa_key
-                )
+                else await enrichment_cache.get(db, "wikipedia", "article", pa_key)
             )
             if cached_wiki is not None:
                 article = cached_wiki.get("article")
