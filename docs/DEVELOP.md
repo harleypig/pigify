@@ -16,6 +16,7 @@ Run the automated setup script:
 ```
 
 This script will:
+
 - Check if mkcert is installed (install if needed)
 - Create a local Certificate Authority
 - Generate SSL certificates for localhost
@@ -29,6 +30,7 @@ This script will:
 without security warnings:
 
 1. Install mkcert:
+
    ```bash
    # On Ubuntu/Debian
    sudo apt install mkcert libnss3-tools
@@ -41,15 +43,18 @@ without security warnings:
    ```
 
 2. Create a local CA (Certificate Authority):
+
    ```bash
    mkcert -install
    ```
 
 3. Generate certificates for localhost:
+
    ```bash
    mkdir -p certs
    mkcert -cert-file certs/localhost+2.pem -key-file certs/localhost+2-key.pem localhost 127.0.0.1 ::1
    ```
+
    This creates `certs/localhost+2.pem` (certificate) and
    `certs/localhost+2-key.pem` (private key).
 
@@ -59,6 +64,7 @@ without security warnings:
    unprivileged nginx user can read it.
 
 5. Update your `.env` file to use HTTPS URLs:
+
    ```bash
    SPOTIFY_REDIRECT_URI=https://localhost:8080/api/auth/spotify/callback
    BACKEND_URL=https://localhost:8080
@@ -72,7 +78,7 @@ without security warnings:
 
 `ngrok` creates an HTTPS tunnel to your local server:
 
-1. Install ngrok: https://ngrok.com/download
+1. Install ngrok: <https://ngrok.com/download>
 2. Start your app on port 8000
 3. Run: `ngrok http 8000`
 4. Use the HTTPS URL provided (e.g., `https://abc123.ngrok.io`) as your
@@ -155,4 +161,3 @@ Default is `unless-stopped`. Override for development:
 ```bash
 RESTART_POLICY=no docker compose up
 ```
-

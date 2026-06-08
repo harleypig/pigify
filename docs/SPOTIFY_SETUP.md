@@ -38,7 +38,7 @@ When a user clicks "Login with Spotify" in Pigify:
    an authorization code)
 4. Your backend receives this code and exchanges it for access tokens
 
-**The Path is Not Arbitrary**
+#### The Path is Not Arbitrary
 
 The redirect URI path `/api/auth/spotify/callback` is defined by the FastAPI
 route structure in the backend code:
@@ -69,6 +69,7 @@ If you change the `PORT` environment variable in your `.env` file (e.g., to
    port:
    - Example: `http://localhost:8080/api/auth/spotify/callback`
 2. **Your `.env` file**: Update `SPOTIFY_REDIRECT_URI` to match:
+
    ```bash
    PORT=8080
    SPOTIFY_REDIRECT_URI=http://localhost:8080/api/auth/spotify/callback
@@ -147,4 +148,3 @@ additional scopes:
 
 These can be added to the `scopes` list in `backend/app/api/auth.py` when
 needed.
-

@@ -25,6 +25,13 @@ repos:
     hooks:
       - id: gitleaks
 
+  # Markdown lint (uses the repo-local .markdownlint.json). The fixing
+  # counterpart (markdownlint-fix) lives in .pre-commit-config-fix.yaml.
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.48.0
+    hooks:
+      - id: markdownlint
+
   - repo: local
     hooks:
       # Dockerfile lint. Runs hadolint in its own container (pinned by

@@ -12,12 +12,6 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
       external forward-auth proxy. Keep it auth-agnostic so anyone can fit
       it into their own setup. See `docs/DEPLOYMENT.md`.
 
-## Quality / tech-debt
-
-- [ ] **markdownlint in pre-commit** — add the check hook to
-      `.pre-commit-config.yaml` plus a `--fix` counterpart in
-      `.pre-commit-config-fix.yaml`, then fix the docs to pass.
-
 ## Tests
 
 - [ ] Component tests for the large components not yet covered:

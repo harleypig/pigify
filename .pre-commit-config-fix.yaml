@@ -11,6 +11,12 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
 
+  # Markdown auto-fix (the check counterpart is in .pre-commit-config.yaml).
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.48.0
+    hooks:
+      - id: markdownlint-fix
+
   - repo: local
     hooks:
       - id: ruff-fix
