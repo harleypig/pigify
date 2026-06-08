@@ -7,26 +7,27 @@ expired ``EnrichmentCache`` rows. These tests prove:
   * Live rows (no expiry, or future expiry) survive
   * A failure on one user's DB doesn't prevent the others from being swept
 """
+
 from __future__ import annotations
 
 import asyncio
 import shutil
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import create_engine, select
 
-from backend.app.config import settings
-from backend.app.db import engines as db_engines
-from backend.app.db import paths as db_paths
-from backend.app.db.base import SystemBase, UserBase
-from backend.app.db.models import system as _system_models  # noqa: F401
-from backend.app.db.models import user as _user_models  # noqa: F401
-from backend.app.db.models.system import User
-from backend.app.db.models.user import EnrichmentCache
-from backend.app.db.session import system_session_scope, user_session_scope
-from backend.app.services import cache_cleanup
+from app.config import settings
+from app.db import engines as db_engines
+from app.db import paths as db_paths
+from app.db.base import SystemBase, UserBase
+from app.db.models import system as _system_models  # noqa: F401
+from app.db.models import user as _user_models  # noqa: F401
+from app.db.models.system import User
+from app.db.models.user import EnrichmentCache
+from app.db.session import user_session_scope
+from app.services import cache_cleanup
 
 
 def _run(coro):
@@ -41,7 +42,8 @@ class CacheCleanupTests(unittest.TestCase):
         db_engines._user_engines.clear()
         db_engines._system_engine = None
         # Reset session factory cache so it uses the fresh engine.
-        from backend.app.db import session as db_session
+        from app.db import session as db_session
+
         db_session._system_factory = None
 
         # Synchronously create system + per-user schemas. We do this with
@@ -75,33 +77,47 @@ class CacheCleanupTests(unittest.TestCase):
     def tearDown(self) -> None:
         db_engines._user_engines.clear()
         db_engines._system_engine = None
-        from backend.app.db import session as db_session
+        from app.db import session as db_session
+
         db_session._system_factory = None
         settings.DATA_DIR = self._old_data_dir
         shutil.rmtree(self._tmp_dir, ignore_errors=True)
 
     async def _seed(self, sid: str) -> None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with user_session_scope(sid) as s:
-            s.add(EnrichmentCache(
-                provider="lastfm", kind="track", key="expired",
-                payload={"x": 1}, expires_at=now - timedelta(hours=1),
-            ))
-            s.add(EnrichmentCache(
-                provider="lastfm", kind="track", key="fresh",
-                payload={"x": 2}, expires_at=now + timedelta(hours=1),
-            ))
-            s.add(EnrichmentCache(
-                provider="mb", kind="artist", key="forever",
-                payload={"x": 3}, expires_at=None,
-            ))
+            s.add(
+                EnrichmentCache(
+                    provider="lastfm",
+                    kind="track",
+                    key="expired",
+                    payload={"x": 1},
+                    expires_at=now - timedelta(hours=1),
+                )
+            )
+            s.add(
+                EnrichmentCache(
+                    provider="lastfm",
+                    kind="track",
+                    key="fresh",
+                    payload={"x": 2},
+                    expires_at=now + timedelta(hours=1),
+                )
+            )
+            s.add(
+                EnrichmentCache(
+                    provider="mb",
+                    kind="artist",
+                    key="forever",
+                    payload={"x": 3},
+                    expires_at=None,
+                )
+            )
             await s.commit()
 
     async def _remaining_keys(self, sid: str) -> set[str]:
         async with user_session_scope(sid) as s:
-            rows = (
-                await s.execute(select(EnrichmentCache.key))
-            ).scalars().all()
+            rows = (await s.execute(select(EnrichmentCache.key))).scalars().all()
         return set(rows)
 
     def test_purge_all_users_removes_expired_keeps_live(self) -> None:
@@ -110,12 +126,8 @@ class CacheCleanupTests(unittest.TestCase):
             await self._seed("bob")
             total = await cache_cleanup.purge_all_users()
             self.assertEqual(total, 2)  # one expired per user
-            self.assertEqual(
-                await self._remaining_keys("alice"), {"fresh", "forever"}
-            )
-            self.assertEqual(
-                await self._remaining_keys("bob"), {"fresh", "forever"}
-            )
+            self.assertEqual(await self._remaining_keys("alice"), {"fresh", "forever"})
+            self.assertEqual(await self._remaining_keys("bob"), {"fresh", "forever"})
 
         _run(go())
 
@@ -138,9 +150,7 @@ class CacheCleanupTests(unittest.TestCase):
                 cache_cleanup.purge_user = real_purge_user  # type: ignore[assignment]
             # alice failed, bob purged 1.
             self.assertEqual(total, 1)
-            self.assertEqual(
-                await self._remaining_keys("bob"), {"fresh", "forever"}
-            )
+            self.assertEqual(await self._remaining_keys("bob"), {"fresh", "forever"})
             # alice untouched.
             self.assertEqual(
                 await self._remaining_keys("alice"),
