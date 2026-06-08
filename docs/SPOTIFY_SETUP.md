@@ -13,7 +13,7 @@ Dashboard for Pigify.
    - **App name**: Pigify
    - **App description**: (Use the description from README.md)
    - **Website**: (Your deployment URL or localhost for development)
-   - **Redirect URI**: `https://localhost:8000/api/auth/spotify/callback`
+   - **Redirect URI**: `https://localhost:8080/api/auth/spotify/callback`
      (See "Understanding Redirect URI" below)
    - **App or Website**: Select "Website"
 
@@ -78,7 +78,7 @@ If you change the `PORT` environment variable in your `.env` file (e.g., to
 **Default Configuration:**
 
 - Default port: `8000`
-- Default Redirect URI: `http://localhost:8000/api/auth/spotify/callback`
+- Default Redirect URI: `https://localhost:8080/api/auth/spotify/callback`
 
 If you're using the default port, you don't need to change anything. Only
 modify these values if you need to use a different port.
@@ -88,7 +88,7 @@ modify these values if you need to use a different port.
 In production, use your actual domain name instead of `localhost`. For
 example:
 
-- **Development**: `http://localhost:8000/api/auth/spotify/callback`
+- **Development**: `https://localhost:8080/api/auth/spotify/callback`
 - **Production**: `https://your-domain.com:PORT/api/auth/spotify/callback`
   (replace `your-domain.com` with your actual domain and `PORT` with your
   port, or use `https://your-domain.com/api/auth/spotify/callback` if using
