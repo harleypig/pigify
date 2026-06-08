@@ -66,9 +66,9 @@ the branch ruleset's required checks):
 - [x] **OSV-Scanner / starlette**: bumped to 1.2.x (FastAPI 0.136 is
       compatible; the 362-test suite passed on it) — CVE resolved, its
       allowlist entries removed from `osv-scanner.toml`.
-- [ ] **OSV-Scanner / dev tooling**: bump `vite`/`vitest`/`esbuild` (the
-      Dependabot PRs that break the build today) when the frontend
-      toolchain is upgraded, then trim `osv-scanner.toml`.
+- [x] **OSV-Scanner / dev tooling**: upgraded Vite 5→8 + Vitest 2→4 (+
+      @vitejs/plugin-react 6) — esbuild/vite/vitest CVEs resolved,
+      `osv-scanner.toml` now empty. (Dependabot #6/#8 superseded.)
 - [ ] **DAST (ZAP)**: add the baseline WARNs to `.zap/baseline-rules.tsv`
       with reasons (CSP `style-src 'unsafe-inline'`, COEP, cache-control)
       and add an HSTS header (or accept it as proxy-provided), then make
