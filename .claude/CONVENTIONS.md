@@ -65,6 +65,12 @@ secrets/        Docker secret files (gitignored)
 - **Error posture:** the service is an executable boundary — raise
   `HTTPException` at the API edge; keep library/service code raising plain
   exceptions.
+- **Auth seam:** all session access goes through `app/auth/session.py` — one
+  `SessionGrant`, one expiry check, and `require_token` / `require_spotify_id`
+  dependencies (no scattered `request.session.get(...)`). A development-only,
+  fail-closed `DEV_AUTH_BYPASS` seeds a session without the OAuth round-trip
+  (see `WORKFLOW.md`); a built-in production access gate and demo invites are
+  in progress (see `TODO.md`).
 
 ## Frontend
 

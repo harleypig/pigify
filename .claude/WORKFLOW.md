@@ -24,6 +24,26 @@ Set `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` (and optionally
 Spotify OAuth needs HTTPS, so for the real OAuth flow use the Docker
 stack below (or front the dev server with your own TLS).
 
+### Skipping login while iterating (dev auth bypass)
+
+Logging in every time you want to check something locally gets old. Set
+`DEV_AUTH_BYPASS=true` in `backend/.env` to land logged-in automatically —
+the frontend's mount-time auth check seeds the session with no OAuth
+round-trip. Two modes:
+
+- **Placeholder (default):** a UI-only synthetic user (`DEV_SPOTIFY_ID`).
+  The app chrome loads; Spotify-backed panels are empty — good for layout
+  and component work.
+- **Real data:** also set `DEV_SPOTIFY_REFRESH_TOKEN` (grab it by logging in
+  once normally). The bypass mints a fresh access token from it on each
+  load, so you see your real playlists. Treat the refresh token like a
+  password; never commit it.
+
+This is **development-only and fail-closed**: the backend refuses to boot if
+`DEV_AUTH_BYPASS` is true with `ENVIRONMENT` set to anything but
+`development`, so it can never weaken a real deployment. To go back to the
+normal login flow, set `DEV_AUTH_BYPASS=false`.
+
 ## Full stack in Docker (HTTPS)
 
 ```bash

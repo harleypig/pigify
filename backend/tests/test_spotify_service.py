@@ -55,6 +55,20 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user.email, "alice@example.com")
 
     @respx.mock
+    async def test_refresh_access_token(self) -> None:
+        route = respx.post(SpotifyService.TOKEN_URL).mock(
+            return_value=httpx.Response(
+                200, json={"access_token": "fresh-token", "expires_in": 3600}
+            )
+        )
+        data = await SpotifyService.refresh_access_token("rt-123")
+        self.assertEqual(data["access_token"], "fresh-token")
+        self.assertTrue(route.called)
+        body = route.calls.last.request.content
+        self.assertIn(b"grant_type=refresh_token", body)
+        self.assertIn(b"refresh_token=rt-123", body)
+
+    @respx.mock
     async def test_get_user_playlists(self) -> None:
         respx.get(f"{BASE}/me/playlists").mock(
             return_value=httpx.Response(

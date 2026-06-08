@@ -143,7 +143,7 @@ class AuthApiTest(unittest.TestCase):
 
         with (
             patch.object(auth_mod, "SpotifyService", cls),
-            patch.object(auth_mod, "apply_user_migrations", AsyncMock()),
+            patch("app.auth.provisioning.apply_user_migrations", AsyncMock()),
         ):
             resp = client.get(
                 "/api/auth/spotify/callback?code=abc&state=s1",

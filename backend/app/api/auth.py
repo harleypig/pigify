@@ -10,17 +10,19 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
+from app.auth.dev_bypass import maybe_establish_dev_session
+from app.auth.provisioning import provision_user
 from app.auth.session import (
     clear_session,
     establish_session,
+    require_grant,
     require_spotify_id,
     require_token,
 )
 from app.config import settings
-from app.db.bootstrap import apply_user_migrations
-from app.db.paths import user_db_path, user_db_url
 from app.db.repositories import users as users_repo
 from app.db.session import system_session_scope
+from app.models.playlist import User
 from app.services.spotify import SpotifyService
 
 router = APIRouter()
@@ -152,20 +154,11 @@ async def spotify_callback(
         user = await spotify.get_current_user()
         spotify_id = user.id
 
-        await apply_user_migrations(spotify_id)
-        url = user_db_url(spotify_id)
-        async with system_session_scope() as session:
-            db_user = await users_repo.upsert(
-                session,
-                spotify_id=spotify_id,
-                db_path=str(user_db_path(spotify_id))
-                if url.startswith("sqlite")
-                else url,
-                display_name=user.display_name,
-                email=user.email,
-            )
-            await session.commit()
-            internal_id = db_user.id
+        internal_id = await provision_user(
+            spotify_id=spotify_id,
+            display_name=user.display_name,
+            email=user.email,
+        )
     except HTTPException:
         raise
     except Exception as init_err:
@@ -192,11 +185,22 @@ async def spotify_callback(
 async def get_current_user(request: Request):
     """
     Get current authenticated user information.
+
+    When the dev bypass is active this is the entry point that establishes
+    (or refreshes) the dev session, so the frontend's mount-time auth check
+    lands logged-in without an OAuth round-trip.
     """
-    access_token = require_token(request)
+    seeded = await maybe_establish_dev_session(request)
+    if seeded is not None:
+        return seeded
+
+    grant = require_grant(request)
+    if grant.placeholder:
+        # A UI-only session has no real Spotify user to fetch.
+        return User(id=grant.spotify_id or settings.DEV_SPOTIFY_ID, display_name="Dev")
 
     try:
-        spotify = SpotifyService(access_token)
+        spotify = SpotifyService(require_token(request))
         user = await spotify.get_current_user()
         return user
     except Exception as e:
