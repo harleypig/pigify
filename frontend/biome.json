@@ -19,18 +19,20 @@
       "recommended": true,
       "correctness": {
         "useExhaustiveDependencies": "off"
-      },
-      "suspicious": {
-        "noArrayIndexKey": "off",
-        "noExplicitAny": "off"
       }
     }
   },
   "javascript": {
-    "formatter": { "quoteStyle": "double" }
+    "formatter": {
+      "quoteStyle": "double"
+    }
   },
   "assist": {
     "enabled": true,
-    "actions": { "source": { "organizeImports": "on" } }
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
   }
 }

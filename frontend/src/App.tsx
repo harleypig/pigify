@@ -7,7 +7,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import TrackInfoPanel from "./components/TrackInfoPanel";
 import TrackList from "./components/TrackList";
 import UserMenu from "./components/UserMenu";
-import { apiService, type Profile } from "./services/api";
+import { apiService, type Profile, type User } from "./services/api";
 import "./App.css";
 
 const PANEL_COLLAPSED_KEY = "pigify.trackInfoPanel.collapsed";
@@ -56,7 +56,7 @@ function pickAvatarUrl(
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState<string | null>(null);

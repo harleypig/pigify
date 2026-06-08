@@ -14,16 +14,14 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Quality / tech-debt
 
-- [ ] **biome — re-enable the deferred rules** (disabled in
-      `frontend/biome.json` because existing components violate them):
-      - `correctness/useExhaustiveDependencies` (11) — audit each
-        `useEffect` dependency list; behaviour-affecting, do carefully.
-        Concrete case: `TrackList.tsx`'s load effect lists non-memoized
-        callbacks and sets state synchronously, so it re-fetches every
-        render (throttled only by the network in the app). Fixing it
-        unblocks `TrackList` component tests (see Tests).
-      - `suspicious/noArrayIndexKey` (13) — give list items stable keys.
-      - `suspicious/noExplicitAny` (22) — replace `any` with real types.
+- [ ] **biome — re-enable `correctness/useExhaustiveDependencies`** (the
+      last rule still disabled in `frontend/biome.json`). Audit each
+      `useEffect` dependency list; behaviour-affecting, do carefully.
+      Concrete case: `TrackList.tsx`'s load effect lists non-memoized
+      callbacks and sets state synchronously, so it re-fetches every render
+      (throttled only by the network in the app). Fixing it unblocks
+      `TrackList` component tests (see Tests). (`noArrayIndexKey` and
+      `noExplicitAny` are now re-enabled and clean.)
 - [ ] **markdownlint in pre-commit** — add the check hook to
       `.pre-commit-config.yaml` plus a `--fix` counterpart in
       `.pre-commit-config-fix.yaml`, then fix the docs to pass.
