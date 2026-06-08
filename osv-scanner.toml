@@ -2,16 +2,9 @@
 # See the global rules/osv-scanner.md. Re-evaluate when the deferred bumps
 # are possible (tracked in TODO.md).
 
-# Runtime: starlette DoS (medium). The fix is starlette 1.0, a major bump
-# FastAPI 0.136 does not yet support. The app runs behind Authelia SSO, so
-# the exposure is low. Re-bump once FastAPI supports starlette 1.x.
-[[IgnoredVulns]]
-id = "PYSEC-2026-161"
-reason = "starlette 1.0 (fix) not yet supported by FastAPI; app is behind SSO; tracked in TODO.md"
-
-[[IgnoredVulns]]
-id = "GHSA-86qp-5c8j-p5mr"
-reason = "Alias of PYSEC-2026-161 (starlette); see above"
+# (The starlette runtime CVE was resolved by bumping to 1.2.x — FastAPI
+# 0.136 turned out to be compatible — so its allowlist entries were
+# removed.)
 
 # Dev-only build tooling. These are NOT present in the shipped image (the
 # frontend is multi-stage; the final nginx stage carries no node_modules),
