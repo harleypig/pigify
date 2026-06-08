@@ -1,0 +1,58 @@
+# Dependabot config. See the global rules/dependabot.md.
+# Weekly, minor/patch grouped per ecosystem (majors come as individual PRs
+# for individual review). Covers every shipped manifest, including the
+# Dockerfile base images (docker) and workflow action pins (github-actions).
+---
+version: 2
+updates:
+  # Backend Python deps (Poetry — handled by the pip ecosystem).
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    groups:
+      backend:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Frontend npm deps.
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    groups:
+      frontend:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # Base images in each Dockerfile — the durable fix for base-image CVEs.
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # GitHub Actions pins in workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: "ci"
+      include: "scope"

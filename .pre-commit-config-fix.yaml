@@ -1,0 +1,35 @@
+# Auto-fixing hooks (modifying). Not installed on commit; run explicitly
+# as the final step before committing:
+#   pre-commit run --all-files --config .pre-commit-config-fix.yaml
+# Then run the check-only config to confirm a clean pass.
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+
+  - repo: local
+    hooks:
+      - id: ruff-fix
+        name: ruff (lint --fix)
+        entry: bash -c 'cd backend && poetry run ruff check --fix app tests'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: ruff-format
+        name: ruff (format)
+        entry: bash -c 'cd backend && poetry run ruff format app tests'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: frontend-format
+        name: biome (frontend format/fix)
+        entry: bash -c 'cd frontend && npm run format'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|json|css)$
+        pass_filenames: false

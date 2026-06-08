@@ -1,0 +1,73 @@
+# Check-only hooks (non-modifying). Installed on `git commit`.
+# Auto-fixing hooks live in .pre-commit-config-fix.yaml; run that as a
+# final step before committing (see .claude/WORKFLOW.md).
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  - repo: local
+    hooks:
+      # Dockerfile lint. Runs hadolint in its own container (pinned by
+      # digest) so it needs no local install and is identical in CI. Uses
+      # the repo-local .hadolint.yaml. Check-only (hadolint has no
+      # auto-fix), so there is no counterpart in the fix config.
+      - id: hadolint
+        name: hadolint (Dockerfile lint)
+        language: docker_image
+        entry: hadolint/hadolint:v2.14.0-alpine@sha256:7aba693c1442eb31c0b015c129697cb3b6cb7da589d85c7562f9deb435a6657c hadolint
+        files: (^|/)Dockerfile(\..+)?$
+
+      - id: ruff-check
+        name: ruff (lint)
+        entry: bash -c 'cd backend && poetry run ruff check app tests'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: ruff-format-check
+        name: ruff (format check)
+        entry: bash -c 'cd backend && poetry run ruff format --check app tests'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: pyright
+        name: pyright
+        entry: bash -c 'cd backend && poetry run pyright app'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: pytest
+        name: pytest
+        entry: bash -c 'cd backend && poetry run pytest'
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: frontend-check
+        name: biome (frontend lint/format check)
+        entry: bash -c 'cd frontend && npm run check'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|json|css)$
+        pass_filenames: false
+
+      - id: frontend-typecheck
+        name: tsc (frontend typecheck)
+        entry: bash -c 'cd frontend && npm run typecheck'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: frontend-test
+        name: vitest (frontend unit tests)
+        entry: bash -c 'cd frontend && npm test'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
