@@ -62,6 +62,10 @@ jobs:
         run: pipx install pre-commit
 
       - name: Run check hooks
+        # no-commit-to-branch is a local developer guard; in CI the checkout
+        # legitimately sits on master (on push-to-master runs), so skip it.
+        env:
+          SKIP: no-commit-to-branch
         run: >-
           pre-commit run --all-files
           --config .pre-commit-config.yaml
