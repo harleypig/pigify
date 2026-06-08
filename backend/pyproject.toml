@@ -33,6 +33,7 @@ pytest = "^9.0"
 pytest-mock = "^3.14"
 pytest-cov = "^6.0"
 pytest-asyncio = "^1.0"
+respx = "^0.23.1"
 
 [build-system]
 requires = ["poetry-core>=2.0"]
