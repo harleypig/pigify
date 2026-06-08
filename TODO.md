@@ -14,12 +14,6 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Quality / tech-debt
 
-- [ ] **pyright — `spotify.py` None-guards.** `_get()` returns
-      `dict | None`, but `get_current_user`, `get_user_playlists`,
-      `get_playlist`, and neighbours index it assuming success. Guard each
-      against a `None` payload, then remove the
-      `# pyright: reportOptionalMemberAccess=false,
-      reportOptionalSubscript=false` pragma at the top of the file.
 - [ ] **biome — re-enable the deferred rules** (disabled in
       `frontend/biome.json` because existing components violate them):
       - `correctness/useExhaustiveDependencies` (11) — audit each
