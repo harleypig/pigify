@@ -1,34 +1,37 @@
-import { useState, useEffect } from 'react'
-import { apiService, Playlist } from '../services/api'
-import './PlaylistSelector.css'
+import { useEffect, useState } from "react";
+import { apiService, type Playlist } from "../services/api";
+import "./PlaylistSelector.css";
 
 interface PlaylistSelectorProps {
-  onSelectPlaylist: (playlistId: string) => void
-  selectedPlaylist: string | null
+  onSelectPlaylist: (playlistId: string) => void;
+  selectedPlaylist: string | null;
 }
 
-function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelectorProps) {
-  const [playlists, setPlaylists] = useState<Playlist[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    loadPlaylists()
-  }, [])
+function PlaylistSelector({
+  onSelectPlaylist,
+  selectedPlaylist,
+}: PlaylistSelectorProps) {
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadPlaylists = async () => {
     try {
-      setLoading(true)
-      const data = await apiService.getPlaylists()
-      setPlaylists(data)
-      setError(null)
+      setLoading(true);
+      const data = await apiService.getPlaylists();
+      setPlaylists(data);
+      setError(null);
     } catch (err) {
-      setError('Failed to load playlists')
-      console.error('Error loading playlists:', err)
+      setError("Failed to load playlists");
+      console.error("Error loading playlists:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    loadPlaylists();
+  }, [loadPlaylists]);
 
   if (loading) {
     return (
@@ -38,7 +41,7 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
         </div>
         <div className="loading">Loading playlists…</div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -49,7 +52,7 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
         </div>
         <div className="error">{error}</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -63,7 +66,7 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
             type="button"
             key={playlist.id}
             className={`playlist-item ${
-              selectedPlaylist === playlist.id ? 'selected' : ''
+              selectedPlaylist === playlist.id ? "selected" : ""
             }`}
             onClick={() => onSelectPlaylist(playlist.id)}
             aria-pressed={selectedPlaylist === playlist.id}
@@ -81,21 +84,20 @@ function PlaylistSelector({ onSelectPlaylist, selectedPlaylist }: PlaylistSelect
                   decoding="async"
                 />
               ) : (
-                <div className="playlist-placeholder" aria-hidden="true">♪</div>
+                <div className="playlist-placeholder" aria-hidden="true">
+                  ♪
+                </div>
               )}
             </div>
             <div className="playlist-info">
               <div className="playlist-name">{playlist.name}</div>
-              <div className="playlist-meta">
-                {playlist.track_count} tracks
-              </div>
+              <div className="playlist-meta">{playlist.track_count} tracks</div>
             </div>
           </button>
         ))}
       </div>
     </div>
-  )
+  );
 }
 
-export default PlaylistSelector
-
+export default PlaylistSelector;

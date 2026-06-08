@@ -1,231 +1,249 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiService,
-  Track,
-  SortField,
-  SortPreset,
-} from '../services/api'
+  type SortField,
+  type SortPreset,
+  type Track,
+} from "../services/api";
 import {
-  sortTracks,
   requiredSources,
-  SortableHydration,
-} from '../services/sortEngine'
-import SortMenu, { SortSpec } from './SortMenu'
-import HeartButton from './HeartButton'
-import './TrackList.css'
+  type SortableHydration,
+  sortTracks,
+} from "../services/sortEngine";
+import HeartButton from "./HeartButton";
+import SortMenu, { type SortSpec } from "./SortMenu";
+import "./TrackList.css";
 
 interface TrackListProps {
-  playlistId: string
-  onTrackSelect: (trackUri: string) => void
-  onTrackFocus?: (trackId: string) => void
+  playlistId: string;
+  onTrackSelect: (trackUri: string) => void;
+  onTrackFocus?: (trackId: string) => void;
 }
 
 const DEFAULT_SORT: SortSpec = {
-  keys: [{ field: 'added_at', direction: 'desc' }],
-}
+  keys: [{ field: "added_at", direction: "desc" }],
+};
 
-function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) {
-  const [tracks, setTracks] = useState<Track[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+function TrackList({
+  playlistId,
+  onTrackSelect,
+  onTrackFocus,
+}: TrackListProps) {
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lovedMap, setLovedMap] = useState<
     Record<string, { spotify: boolean | null; lastfm: boolean | null }>
-  >({})
+  >({});
 
   // Sort state
-  const [fields, setFields] = useState<SortField[]>([])
-  const [presets, setPresets] = useState<SortPreset[]>([])
-  const [sortSpec, setSortSpec] = useState<SortSpec>(DEFAULT_SORT)
+  const [fields, setFields] = useState<SortField[]>([]);
+  const [presets, setPresets] = useState<SortPreset[]>([]);
+  const [sortSpec, setSortSpec] = useState<SortSpec>(DEFAULT_SORT);
   const [hydration, setHydration] = useState<SortableHydration>({
     audio_features: {},
     lastfm: {},
-  })
-  const [warnings, setWarnings] = useState<string[]>([])
-  const [hydrating, setHydrating] = useState(false)
-  const [applying, setApplying] = useState(false)
-  const [undoAvailable, setUndoAvailable] = useState(false)
+  });
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [hydrating, setHydrating] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [undoAvailable, setUndoAvailable] = useState(false);
 
   // Load fields/presets once.
   useEffect(() => {
-    apiService.getSortFields().then((r) => setFields(r.fields)).catch(() => {})
-    apiService.listSortPresets().then(setPresets).catch(() => {})
-  }, [])
-
-  // Load tracks + undo status when playlist changes.
-  useEffect(() => {
-    loadTracks()
-    refreshUndoStatus()
-    setHydration({ audio_features: {}, lastfm: {} })
-    setWarnings([])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playlistId])
+    apiService
+      .getSortFields()
+      .then((r) => setFields(r.fields))
+      .catch(() => {});
+    apiService
+      .listSortPresets()
+      .then(setPresets)
+      .catch(() => {});
+  }, []);
 
   const loadTracks = async () => {
     try {
-      setLoading(true)
-      const data = await apiService.getAllPlaylistTracks(playlistId)
-      setTracks(data)
-      setError(null)
+      setLoading(true);
+      const data = await apiService.getAllPlaylistTracks(playlistId);
+      setTracks(data);
+      setError(null);
       // Bulk-fetch loved state in one round trip
       try {
         const favs = await apiService.checkFavorites(
           data.map((t) => ({
             track_id: t.id,
             name: t.name,
-            artist: t.artists[0] ?? '',
-          }))
-        )
-        const map: Record<string, { spotify: boolean | null; lastfm: boolean | null }> = {}
+            artist: t.artists[0] ?? "",
+          })),
+        );
+        const map: Record<
+          string,
+          { spotify: boolean | null; lastfm: boolean | null }
+        > = {};
         favs.forEach((f, i) => {
-          const id = data[i]?.id
+          const id = data[i]?.id;
           if (id) {
             map[id] = {
               spotify: (f.sources.spotify ?? null) as boolean | null,
               lastfm: (f.sources.lastfm ?? null) as boolean | null,
-            }
+            };
           }
-        })
-        setLovedMap(map)
+        });
+        setLovedMap(map);
       } catch {
         /* non-fatal */
       }
     } catch (err) {
-      setError('Failed to load tracks')
-      console.error('Error loading tracks:', err)
+      setError("Failed to load tracks");
+      console.error("Error loading tracks:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const refreshUndoStatus = async () => {
     try {
-      const r = await apiService.getUndoStatus(playlistId)
-      setUndoAvailable(r.available)
+      const r = await apiService.getUndoStatus(playlistId);
+      setUndoAvailable(r.available);
     } catch {
-      setUndoAvailable(false)
+      setUndoAvailable(false);
     }
-  }
+  };
+
+  // Load tracks + undo status when playlist changes.
+  useEffect(() => {
+    loadTracks();
+    refreshUndoStatus();
+    setHydration({ audio_features: {}, lastfm: {} });
+    setWarnings([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshUndoStatus, loadTracks]);
 
   // Hydrate when sort spec needs data we don't have.
   const ensureHydration = useCallback(
     async (spec: SortSpec) => {
-      if (fields.length === 0 || tracks.length === 0) return
-      const sources = requiredSources(fields, spec.keys)
-      if (sources.length === 0) return
+      if (fields.length === 0 || tracks.length === 0) return;
+      const sources = requiredSources(fields, spec.keys);
+      if (sources.length === 0) return;
 
-      const missing: typeof sources = []
+      const missing: typeof sources = [];
       for (const src of sources) {
-        const map = hydration[src]
-        const need = tracks.some((t) => !(t.id in map))
-        if (need) missing.push(src)
+        const map = hydration[src];
+        const need = tracks.some((t) => !(t.id in map));
+        if (need) missing.push(src);
       }
-      if (missing.length === 0) return
+      if (missing.length === 0) return;
 
       try {
-        setHydrating(true)
+        setHydrating(true);
         const meta = tracks.map((t) => ({
           id: t.id,
           name: t.name,
-          artist: t.artists[0] ?? '',
-        }))
-        const ids = tracks.map((t) => t.id).filter(Boolean)
-        const r = await apiService.hydrateTracks(playlistId, ids, missing, meta)
+          artist: t.artists[0] ?? "",
+        }));
+        const ids = tracks.map((t) => t.id).filter(Boolean);
+        const r = await apiService.hydrateTracks(
+          playlistId,
+          ids,
+          missing,
+          meta,
+        );
         setHydration((prev) => ({
           audio_features: { ...prev.audio_features, ...r.audio_features },
           lastfm: { ...prev.lastfm, ...r.lastfm },
-        }))
-        setWarnings(r.warnings || [])
+        }));
+        setWarnings(r.warnings || []);
       } catch (e) {
-        console.error('Hydration failed:', e)
-        setWarnings(['Failed to fetch extra data for sort'])
+        console.error("Hydration failed:", e);
+        setWarnings(["Failed to fetch extra data for sort"]);
       } finally {
-        setHydrating(false)
+        setHydrating(false);
       }
     },
-    [fields, tracks, hydration, playlistId]
-  )
+    [fields, tracks, hydration, playlistId],
+  );
 
   useEffect(() => {
-    ensureHydration(sortSpec)
+    ensureHydration(sortSpec);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortSpec, fields, tracks])
+  }, [sortSpec, ensureHydration]);
 
   const sortedTracks = useMemo(() => {
-    if (fields.length === 0) return tracks
-    return sortTracks(tracks, fields, sortSpec.keys, hydration)
-  }, [tracks, fields, sortSpec, hydration])
+    if (fields.length === 0) return tracks;
+    return sortTracks(tracks, fields, sortSpec.keys, hydration);
+  }, [tracks, fields, sortSpec, hydration]);
 
   const handleSavePreset = async (preset: SortPreset) => {
     try {
-      const updated = await apiService.saveSortPreset(preset)
-      setPresets(updated)
+      const updated = await apiService.saveSortPreset(preset);
+      setPresets(updated);
     } catch (e) {
-      console.error('Save preset failed:', e)
+      console.error("Save preset failed:", e);
     }
-  }
+  };
 
   const handleDeletePreset = async (name: string) => {
     try {
-      const updated = await apiService.deleteSortPreset(name)
-      setPresets(updated)
+      const updated = await apiService.deleteSortPreset(name);
+      setPresets(updated);
     } catch (e) {
-      console.error('Delete preset failed:', e)
+      console.error("Delete preset failed:", e);
     }
-  }
+  };
 
   const handleApplyView = () => {
     /* sorted view is already shown */
-  }
+  };
 
   const handleApplyToPlaylist = async () => {
-    if (!sortedTracks.length) return
+    if (!sortedTracks.length) return;
     if (
       !window.confirm(
-        `This will rewrite the playlist on Spotify in the new order (${sortedTracks.length} tracks). You can undo it once. Continue?`
+        `This will rewrite the playlist on Spotify in the new order (${sortedTracks.length} tracks). You can undo it once. Continue?`,
       )
     )
-      return
+      return;
     try {
-      setApplying(true)
-      const targetUris = sortedTracks.map((t) => t.uri)
-      const result = await apiService.reorderPlaylist(playlistId, targetUris)
-      setUndoAvailable(result.undo_available)
-      await loadTracks()
+      setApplying(true);
+      const targetUris = sortedTracks.map((t) => t.uri);
+      const result = await apiService.reorderPlaylist(playlistId, targetUris);
+      setUndoAvailable(result.undo_available);
+      await loadTracks();
     } catch (e) {
-      console.error('Apply to playlist failed:', e)
-      alert('Failed to reorder playlist on Spotify.')
+      console.error("Apply to playlist failed:", e);
+      alert("Failed to reorder playlist on Spotify.");
     } finally {
-      setApplying(false)
+      setApplying(false);
     }
-  }
+  };
 
   const handleUndo = async () => {
     try {
-      setApplying(true)
-      await apiService.undoReorder(playlistId)
-      setUndoAvailable(false)
-      await loadTracks()
+      setApplying(true);
+      await apiService.undoReorder(playlistId);
+      setUndoAvailable(false);
+      await loadTracks();
     } catch (e) {
-      console.error('Undo failed:', e)
-      alert('Undo failed.')
+      console.error("Undo failed:", e);
+      alert("Undo failed.");
     } finally {
-      setApplying(false)
+      setApplying(false);
     }
-  }
+  };
 
   const formatDuration = (ms: number): string => {
-    const seconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
 
   if (loading) {
-    return <div className="track-list-loading">Loading tracks…</div>
+    return <div className="track-list-loading">Loading tracks…</div>;
   }
 
   if (error) {
-    return <div className="track-list-error">{error}</div>
+    return <div className="track-list-error">{error}</div>;
   }
 
   return (
@@ -235,7 +253,9 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
           <h2>Tracks</h2>
           <span className="track-count">
             {sortedTracks.length} tracks
-            {hydrating && <span className="hydrating-tag"> · loading sort data…</span>}
+            {hydrating && (
+              <span className="hydrating-tag"> · loading sort data…</span>
+            )}
           </span>
         </div>
         <SortMenu
@@ -261,26 +281,27 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
              (Enter / Space) and an aria-label so this is still operable.
              Long playlists are not virtualized — the typical Pigify use case is
              a few hundred rows, well within what the DOM handles smoothly. */
+          // biome-ignore lint/a11y/useSemanticElements: row cannot be a real <button> because it nests an interactive HeartButton (invalid HTML); keyboard equivalents and aria-label are provided
           <div
             key={`${track.id}-${index}`}
             className="track-item"
             role="button"
             tabIndex={0}
-            aria-label={`Play ${track.name} by ${track.artists.join(', ')}`}
+            aria-label={`Play ${track.name} by ${track.artists.join(", ")}`}
             onClick={() => {
-              onTrackSelect(track.uri)
-              onTrackFocus?.(track.id)
+              onTrackSelect(track.uri);
+              onTrackFocus?.(track.id);
             }}
             onKeyDown={(e) => {
               // Only act when the row itself is focused — ignore Enter/Space
               // forwarded from the nested HeartButton or any other inner
               // control, otherwise toggling the heart would also trigger
               // playback of the track.
-              if (e.target !== e.currentTarget) return
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                onTrackSelect(track.uri)
-                onTrackFocus?.(track.id)
+              if (e.target !== e.currentTarget) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onTrackSelect(track.uri);
+                onTrackFocus?.(track.id);
               }
             }}
           >
@@ -298,25 +319,32 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
                   decoding="async"
                 />
               ) : (
-                <div className="track-placeholder" aria-hidden="true">♪</div>
+                <div className="track-placeholder" aria-hidden="true">
+                  ♪
+                </div>
               )}
             </div>
             <div className="track-info">
               <div className="track-name">{track.name}</div>
-              <div className="track-artists">
-                {track.artists.join(', ')}
-              </div>
+              <div className="track-artists">{track.artists.join(", ")}</div>
             </div>
             <div className="track-album">{track.album}</div>
             {/* stopPropagation prevents heart clicks from triggering the
-                row-level "play this track" handler. */}
-            <div className="track-heart" onClick={(e) => e.stopPropagation()}>
+                row-level "play this track" handler. The wrapper is a passive
+                event boundary, not an interactive control of its own — the
+                interactive HeartButton lives inside it. */}
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: passive boundary that only stops click propagation; the actual control is the nested HeartButton */}
+            <div
+              className="track-heart"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
               <HeartButton
                 track={{
                   spotify_id: track.id,
                   spotify_uri: track.uri,
                   name: track.name,
-                  artist: track.artists[0] ?? '',
+                  artist: track.artists[0] ?? "",
                   album: track.album,
                   image_url: track.image_url,
                 }}
@@ -334,12 +362,14 @@ function TrackList({ playlistId, onTrackSelect, onTrackFocus }: TrackListProps) 
                 }
               />
             </div>
-            <div className="track-duration">{formatDuration(track.duration_ms)}</div>
+            <div className="track-duration">
+              {formatDuration(track.duration_ms)}
+            </div>
           </div>
         ))}
       </div>
     </div>
-  )
+  );
 }
 
-export default TrackList
+export default TrackList;

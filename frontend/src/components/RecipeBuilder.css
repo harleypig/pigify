@@ -36,8 +36,14 @@
 /* Recipe-name is a borderless inline-edit field; the green underline is the
    focus indicator for mouse use, and :focus-visible keeps a real ring for
    keyboard navigation. */
-.recipe-name:focus { outline: none; border-bottom-color: #1db954; }
-.recipe-name:focus-visible { outline: 2px solid #1db954; outline-offset: 2px; }
+.recipe-name:focus {
+  outline: none;
+  border-bottom-color: #1db954;
+}
+.recipe-name:focus-visible {
+  outline: 2px solid #1db954;
+  outline-offset: 2px;
+}
 .bucket {
   border: 1px solid #2a2a2a;
   border-radius: 8px;
@@ -71,16 +77,25 @@
   color: #aaa;
   font-size: 13px;
 }
-.bucket-filters { margin: 8px 0; }
-.bucket-filters > label { display: block; color: #aaa; font-size: 13px; margin-bottom: 4px; }
+.bucket-filters {
+  margin: 8px 0;
+}
+.bucket-filters > .bucket-filters-label {
+  display: block;
+  color: #aaa;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
 .filter-row {
   display: flex;
   gap: 6px;
   margin-bottom: 4px;
   align-items: center;
 }
-.filter-row select, .filter-row input,
-.bucket-row select, .bucket-row input {
+.filter-row select,
+.filter-row input,
+.bucket-row select,
+.bucket-row input {
   background: #222;
   color: #eee;
   border: 1px solid #333;
@@ -88,8 +103,11 @@
   border-radius: 4px;
   font-size: 13px;
 }
-.filter-row input { width: 120px; }
-.add-filter, .add-bucket {
+.filter-row input {
+  width: 120px;
+}
+.add-filter,
+.add-bucket {
   background: transparent;
   color: #1db954;
   border: 1px dashed #2a6c45;
@@ -104,7 +122,10 @@
   gap: 10px;
   margin: 12px 0;
 }
-.recipe-combine label { color: #aaa; font-size: 13px; }
+.recipe-combine label {
+  color: #aaa;
+  font-size: 13px;
+}
 .recipe-combine select {
   background: #222;
   color: #eee;
@@ -131,7 +152,10 @@
   border-color: #1db954;
   font-weight: 600;
 }
-.recipe-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+.recipe-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .ghost {
   background: transparent;
   border: none;
@@ -139,7 +163,9 @@
   cursor: pointer;
   font-size: 18px;
 }
-.ghost:hover { color: #fff; }
+.ghost:hover {
+  color: #fff;
+}
 .recipe-error {
   color: #ff6464;
   margin: 8px 0;
@@ -150,14 +176,27 @@
   border-top: 1px solid #2a2a2a;
   padding-top: 10px;
 }
-.preview-header { color: #ccc; margin-bottom: 6px; }
-.preview-counts { color: #888; margin-left: 8px; font-size: 12px; }
+.preview-header {
+  color: #ccc;
+  margin-bottom: 6px;
+}
+.preview-counts {
+  color: #888;
+  margin-left: 8px;
+  font-size: 12px;
+}
 .preview-warnings {
-  color: #c39; font-size: 12px; padding-left: 18px; margin: 4px 0;
+  color: #c39;
+  font-size: 12px;
+  padding-left: 18px;
+  margin: 4px 0;
 }
 .preview-list {
-  max-height: 280px; overflow-y: auto;
-  background: #0e0e0e; border-radius: 6px; padding: 6px 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #0e0e0e;
+  border-radius: 6px;
+  padding: 6px 8px;
 }
 .preview-row {
   display: grid;
@@ -167,8 +206,12 @@
   font-size: 13px;
   color: #ccc;
 }
-.preview-num { color: #666; }
-.preview-artist { color: #888; }
+.preview-num {
+  color: #666;
+}
+.preview-artist {
+  color: #888;
+}
 .preview-source {
   color: #6aa9ff;
   font-size: 12px;
@@ -195,10 +238,19 @@
   outline: 2px solid #9cc4ff;
   outline-offset: 2px;
 }
-.preview-more { color: #666; padding: 4px 0; font-size: 12px; }
-.hint { color: #666; font-size: 12px; }
+.preview-more {
+  color: #666;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.hint {
+  color: #666;
+  font-size: 12px;
+}
 
-.bucket-source { margin-bottom: 8px; }
+.bucket-source {
+  margin-bottom: 8px;
+}
 .bucket-source-list {
   margin: 4px 0 6px 96px;
   max-height: 160px;
@@ -217,7 +269,9 @@
   padding: 2px 0;
   cursor: pointer;
 }
-.source-check input { accent-color: #1db954; }
+.source-check input {
+  accent-color: #1db954;
+}
 .source-cover {
   width: 28px;
   height: 28px;
@@ -234,13 +288,17 @@
   font-size: 14px;
   line-height: 1;
 }
-.source-name { flex: 1; }
+.source-name {
+  flex: 1;
+}
 .source-owner {
   color: #777;
   font-size: 11px;
   margin-left: 8px;
 }
-.bucket-source > .hint { margin-left: 96px; }
+.bucket-source > .hint {
+  margin-left: 96px;
+}
 
 .source-controls {
   display: flex;

@@ -1,7 +1,7 @@
-import './Login.css'
+import "./Login.css";
 
 interface LoginProps {
-  onLogin: () => void
+  onLogin: () => void;
 }
 
 function Login({ onLogin }: LoginProps) {
@@ -10,13 +10,12 @@ function Login({ onLogin }: LoginProps) {
       <div className="login-card">
         <h1>Pigify</h1>
         <p>Connect your Spotify account to get started</p>
-        <button className="login-button" onClick={onLogin}>
+        <button type="button" className="login-button" onClick={onLogin}>
           Login with Spotify
         </button>
       </div>
     </div>
-  )
+  );
 }
 
-export default Login
-
+export default Login;

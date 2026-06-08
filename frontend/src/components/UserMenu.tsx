@@ -1,23 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
-import './UserMenu.css'
+import { useEffect, useRef, useState } from "react";
+import "./UserMenu.css";
 
 interface Props {
-  label: string
-  imageUrl?: string | null
-  onOpenSettings: () => void
-  onLogout: () => void
-  badgeCount?: number
-  badgeTitle?: string
+  label: string;
+  imageUrl?: string | null;
+  onOpenSettings: () => void;
+  onLogout: () => void;
+  badgeCount?: number;
+  badgeTitle?: string;
 }
 
 function getInitials(label: string): string {
-  const trimmed = label.trim()
-  if (!trimmed) return '?'
-  const parts = trimmed.split(/\s+/).filter(Boolean)
+  const trimmed = label.trim();
+  if (!trimmed) return "?";
+  const parts = trimmed.split(/\s+/).filter(Boolean);
   if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase()
+    return parts[0].slice(0, 2).toUpperCase();
   }
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 function UserMenu({
@@ -28,35 +28,36 @@ function UserMenu({
   badgeCount = 0,
   badgeTitle,
 }: Props) {
-  const [open, setOpen] = useState(false)
-  const [imageFailed, setImageFailed] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setImageFailed(false)
-  }, [imageUrl])
+    setImageFailed(false);
+  }, []);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const handler = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false)
+        setOpen(false);
       }
-    }
+    };
     const keyHandler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', keyHandler)
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("keydown", keyHandler);
     return () => {
-      document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', keyHandler)
-    }
-  }, [open])
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("keydown", keyHandler);
+    };
+  }, [open]);
 
   return (
     <div className="user-menu" ref={wrapRef}>
       <button
+        type="button"
         className="user-menu-trigger"
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
@@ -64,11 +65,7 @@ function UserMenu({
       >
         <span className="user-menu-avatar" aria-hidden="true">
           {imageUrl && !imageFailed ? (
-            <img
-              src={imageUrl}
-              alt=""
-              onError={() => setImageFailed(true)}
-            />
+            <img src={imageUrl} alt="" onError={() => setImageFailed(true)} />
           ) : (
             <span className="user-menu-avatar-initials">
               {getInitials(label)}
@@ -80,21 +77,23 @@ function UserMenu({
           <span
             className="user-menu-badge"
             title={badgeTitle ?? `${badgeCount} pending`}
-            aria-label={badgeTitle ?? `${badgeCount} pending`}
           >
-            {badgeCount > 99 ? '99+' : badgeCount}
+            {badgeCount > 99 ? "99+" : badgeCount}
           </span>
         )}
-        <span className="user-menu-caret" aria-hidden="true">▾</span>
+        <span className="user-menu-caret" aria-hidden="true">
+          ▾
+        </span>
       </button>
       {open && (
         <div className="user-menu-dropdown" role="menu">
           <button
+            type="button"
             role="menuitem"
             className="user-menu-item"
             onClick={() => {
-              setOpen(false)
-              onOpenSettings()
+              setOpen(false);
+              onOpenSettings();
             }}
           >
             Settings
@@ -103,16 +102,17 @@ function UserMenu({
                 className="user-menu-item-badge"
                 title={badgeTitle ?? `${badgeCount} pending`}
               >
-                {badgeCount > 99 ? '99+' : badgeCount}
+                {badgeCount > 99 ? "99+" : badgeCount}
               </span>
             )}
           </button>
           <button
+            type="button"
             role="menuitem"
             className="user-menu-item"
             onClick={() => {
-              setOpen(false)
-              onLogout()
+              setOpen(false);
+              onLogout();
             }}
           >
             Logout
@@ -120,7 +120,7 @@ function UserMenu({
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default UserMenu
+export default UserMenu;
