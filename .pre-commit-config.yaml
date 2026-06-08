@@ -10,6 +10,10 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files
+      # Local guard against committing straight to master (the server-side
+      # ruleset is authoritative; this catches it before the push attempt).
+      - id: no-commit-to-branch
+        args: [--branch, master]
 
   - repo: local
     hooks:
