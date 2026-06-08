@@ -15,7 +15,7 @@ ENV GIT_HASH=$GIT_HASH \
 RUN npm run build
 
 # Stage 2: serve the built SPA over HTTPS (TLS terminates here).
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 # Patch base-image CVEs.
 USER root
 RUN apk upgrade --no-cache
