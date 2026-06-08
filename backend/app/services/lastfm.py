@@ -63,6 +63,9 @@ def _sign(params: dict[str, str]) -> str:
     """Build the api_sig per the Last.fm spec (sorted k+v concat + secret, md5)."""
     items = "".join(f"{k}{v}" for k, v in sorted(params.items()))
     items += settings.LASTFM_SHARED_SECRET or ""
+    # Last.fm mandates an MD5 api_sig (their signing spec) — not a security
+    # choice we control, so the weak-hash finding is a false positive.
+    # nosemgrep: python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5  # noqa: E501
     return hashlib.md5(items.encode("utf-8")).hexdigest()
 
 

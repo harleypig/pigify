@@ -677,6 +677,9 @@ async def reorder_playlist(request: Request, playlist_id: str, body: ReorderRequ
 @router.get("/{playlist_id}/undo-status")
 async def undo_status(request: Request, playlist_id: str):
     undo = request.session.get("playlist_undo") or {}
+    # bool() here tests whether the undo session dict is non-empty, not a
+    # numeric cast, so there is no NaN-injection risk (false positive).
+    # nosemgrep: python.django.security.nan-injection.nan-injection
     available = bool(undo) and undo.get("playlist_id") == playlist_id
     return {
         "available": available,
