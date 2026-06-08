@@ -1,0 +1,272 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+env:
+  # Security scanners pinned by digest and run directly — never marketplace
+  # actions or vendor clouds. trivy: avoid aquasecurity/trivy-action /
+  # setup-trivy (compromised March 2026, CVE-2026-33634). semgrep: run the
+  # OSS image with public registry rule packs (no Semgrep Cloud / token).
+  # Bump tag + digest together. See .claude/CONVENTIONS.md.
+  TRIVY_IMAGE: "aquasec/trivy:0.71.0@sha256:016eae51fdcf989332a5404af7e8f625cd5d95d7c0907a221d080a996f556500"
+  SEMGREP_IMAGE: "semgrep/semgrep:1.164.0@sha256:207983631beecdbe7fa29196c7f4a7a5f29033933cdb76c687ce4a672e07618d"
+  OSV_IMAGE: "ghcr.io/google/osv-scanner:v2.3.8@sha256:64e86bec6df2466feea5137fc7c78fb3b7c21ec077f014d7130f64810e50676b"
+  ZAP_IMAGE: "ghcr.io/zaproxy/zaproxy:stable@sha256:2ec1d5d5b44d55cfd02ba9b89cd26852f06d92b7fc0ce9f064b9463babc73074"
+
+jobs:
+  precommit:
+    name: Pre-commit checks
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==2.4.1
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: poetry install
+
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: "22"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install pre-commit
+        run: pipx install pre-commit
+
+      - name: Run check hooks
+        run: >-
+          pre-commit run --all-files
+          --config .pre-commit-config.yaml
+          --show-diff-on-failure
+
+  build:
+    # Validates that a changed component's image builds (no push) and scans
+    # it with trivy (gated on fixable HIGH/CRITICAL CVEs). Docs-only changes
+    # build nothing. Images are pushed on `v*` tags (see the release job).
+    name: Build
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - uses: dorny/paths-filter@v4.0.1
+        id: changes
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+      - uses: docker/setup-buildx-action@v4.1.0
+        if: ${{ steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true' }}
+
+      - name: Cache trivy DB
+        if: ${{ steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true' }}
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/trivy-cache
+          key: trivy-db-${{ github.run_id }}
+          restore-keys: trivy-db-
+
+      - name: Build + load backend image
+        if: ${{ steps.changes.outputs.backend == 'true' }}
+        uses: docker/build-push-action@v7.2.0
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: pigify-backend:ci
+
+      - name: Scan backend image (trivy)
+        if: ${{ steps.changes.outputs.backend == 'true' }}
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "${{ runner.temp }}/trivy-cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --no-progress pigify-backend:ci
+
+      - name: Build + load frontend image
+        if: ${{ steps.changes.outputs.frontend == 'true' }}
+        uses: docker/build-push-action@v7.2.0
+        with:
+          context: ./frontend
+          push: false
+          load: true
+          tags: pigify-frontend:ci
+
+      - name: Scan frontend image (trivy)
+        if: ${{ steps.changes.outputs.frontend == 'true' }}
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "${{ runner.temp }}/trivy-cache:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --no-progress pigify-frontend:ci
+
+  semgrep:
+    # SAST over the source. Gates (non-zero exit) on ERROR + WARNING. Pinned
+    # OSS image, public registry rule packs, no Semgrep Cloud / token. A
+    # reviewed finding is suppressed inline with `# nosemgrep: <rule-id>` +
+    # reason (see rules/semgrep.md).
+    name: Semgrep
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - name: Semgrep scan (ERROR + WARNING gate)
+        run: |
+          docker run --rm \
+            --volume "$PWD:/src" --workdir /src \
+            "$SEMGREP_IMAGE" \
+            semgrep scan \
+            --config p/python --config p/typescript --config p/react \
+            --config p/security-audit --config p/secrets \
+            --severity ERROR --severity WARNING --error
+
+  osv-scanner:
+    # Supply-chain / malicious-package detection. Scans the lockfiles against
+    # OSV.dev (advisories + the OpenSSF MAL- feed) and hard-gates on any
+    # finding. Reviewed false positives go in an osv-scanner.toml allowlist.
+    name: OSV-Scanner
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - name: OSV scan (lockfiles; hard-gate)
+        run: |
+          docker run --rm --volume "$PWD:/src" "$OSV_IMAGE" scan source \
+            --lockfile=/src/backend/poetry.lock \
+            --lockfile=/src/frontend/package-lock.json
+
+  dast:
+    # DAST baseline (OWASP ZAP) over the running app — visible, NOT yet a
+    # required check until promoted. Stands up the full stack over HTTPS (a
+    # throwaway self-signed cert + dummy secrets, since pigify requires TLS),
+    # then runs the passive ZAP baseline against the frontend (which also
+    # fronts /api). Hard-gates on findings; accepted ones are allowlisted in
+    # .zap/baseline-rules.tsv. Active/deep scans are for a planned nightly job.
+    name: DAST (ZAP baseline)
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6.0.3
+
+      - name: Generate throwaway TLS cert + dummy secrets
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout certs/localhost+2-key.pem -out certs/localhost+2.pem \
+            -days 2 -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+          chmod 644 certs/localhost+2-key.pem
+          printf 'ci-not-a-real-secret' > secrets/spotify_client_secret.txt
+          printf 'ci-not-a-real-secret-key' > secrets/secret_key.txt
+
+      - name: Bring up the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the stack to be ready
+        run: |
+          for i in $(seq 1 40); do
+            fe=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost:8080/ || true)
+            be=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health || true)
+            if [ "$fe" = "200" ] && [ "$be" = "200" ]; then echo "ready"; exit 0; fi
+            sleep 3
+          done
+          echo "stack did not become ready"; docker compose logs; exit 1
+
+      - name: ZAP baseline (frontend over HTTPS; allowlisted)
+        run: |
+          docker run --rm --network host --volume "$PWD/.zap:/zap/wrk:rw" \
+            "$ZAP_IMAGE" zap-baseline.py -t https://localhost:8080 -c baseline-rules.tsv
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  release:
+    # Build + push both images on a `v*` tag, tagged :<version> + :latest.
+    # Not a required check (tags don't gate PRs).
+    name: Release images
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - context: ./backend
+            image: ghcr.io/harleypig/pigify-backend
+            dir: backend
+          - context: ./frontend
+            image: ghcr.io/harleypig/pigify-frontend
+            dir: frontend
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve version + component hash
+        id: rel
+        env:
+          TAG: ${{ github.ref_name }}
+          DIR: ${{ matrix.dir }}
+        run: |
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "hash=$(git log -1 --format=%h -- "$DIR")" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v4.1.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7.2.0
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          build-args: |
+            GIT_HASH=${{ steps.rel.outputs.hash }}
+            APP_VERSION=${{ steps.rel.outputs.version }}
+          tags: |
+            ${{ matrix.image }}:${{ steps.rel.outputs.version }}
+            ${{ matrix.image }}:latest
