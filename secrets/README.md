@@ -7,18 +7,23 @@ This directory contains sensitive configuration files that are loaded via Docker
 Create the following files in this directory:
 
 ### spotify_client_secret.txt
+
 Contains your Spotify Client Secret (one line, no quotes):
-```
+
+```text
 your_spotify_client_secret_here
 ```
 
 ### secret_key.txt
+
 Contains your application secret key (one line, no quotes):
-```
+
+```text
 your_secret_key_here
 ```
 
 Generate a secure secret key using:
+
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
@@ -34,4 +39,3 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 The docker-compose.yml file is configured to load these secrets automatically.
 Make sure the files exist before running `docker-compose up`.
-

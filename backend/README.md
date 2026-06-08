@@ -8,7 +8,7 @@ playlist generation).
 
 ## Layout
 
-```
+```text
 app/            # the importable package
   api/          # FastAPI routers (auth, playlists, player, ...)
   services/     # spotify, lastfm, musicbrainz, scrobbler, recipes, ...

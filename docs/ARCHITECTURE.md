@@ -20,7 +20,7 @@ alongside the web one.
 
 ## Project structure
 
-```
+```text
 backend/
   app/
     api/        # auth, playlists, player, integrations, favorites,

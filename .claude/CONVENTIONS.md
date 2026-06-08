@@ -22,7 +22,7 @@ need loopback/deep-link redirect URIs alongside the web one.
 
 ## Layout
 
-```
+```text
 backend/        Poetry project; package `app`, run as `uvicorn app.main:app`
   app/          api/ services/ db/ models/ config.py main.py
   migrations/   Alembic envs: system/ + user/
@@ -116,7 +116,7 @@ dimension:
 | 10 | Performance & load | **Off** — not measured yet; revisit if latency/throughput matters. |
 | 11 | Reliability & observability | **Off** — `/health` + `/api/health/db` liveness only; no metrics/alerting yet. |
 | 12 | Build | **Active** — `docker compose build`; `npm run build`; trivy image scan in CI. |
-| 13 | Documentation | **Active** (content: README + `docs/` + this file). markdownlint is **Planned** — not wired yet (TODO.md). |
+| 13 | Documentation | **Active** — README + `docs/` + this file; markdownlint (`.markdownlint.json`) wired into pre-commit. |
 | 14 | Code review | **Informal** — solo repo; PRs self-reviewed (or via the pr-review tooling). |
 | 15 | CI | **Active** — `.github/workflows/ci.yml` runs the above and gates merges. |
 
