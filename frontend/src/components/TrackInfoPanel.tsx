@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiService, type TrackDetail } from "../services/api";
 import "./TrackInfoPanel.css";
 
@@ -46,7 +46,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const reqRef = useRef(0);
 
-  const fetchDetail = (id: string, refresh: boolean) => {
+  const fetchDetail = useCallback((id: string, refresh: boolean) => {
     const reqId = ++reqRef.current;
     if (refresh) setRefreshing(true);
     else setLoading(true);
@@ -68,7 +68,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
           setRefreshing(false);
         }
       });
-  };
+  }, []);
 
   useEffect(() => {
     if (!trackId) {

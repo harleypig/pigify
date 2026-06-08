@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CHANGELOG, type ChangelogEntry } from "../data/changelog";
 import {
   apiService,
@@ -107,7 +107,7 @@ function FavoritesTab() {
   const [error, setError] = useState<string | null>(null);
   const bgTimerRef = useRef<number | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const data = await apiService.getFavoritesStatus();
       setStatus(data);
@@ -118,7 +118,7 @@ function FavoritesTab() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
@@ -332,7 +332,7 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
   const [savingName, setSavingName] = useState(false);
   const [nameStatus, setNameStatus] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const [conns, prof] = await Promise.all([
@@ -353,7 +353,7 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -565,7 +565,7 @@ function LastfmQueuePanel() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiService.getLastfmQueue();
@@ -585,7 +585,7 @@ function LastfmQueuePanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
