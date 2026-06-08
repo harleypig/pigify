@@ -14,7 +14,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Extract pure helpers into tested modules.",
+      "Make the access gate on-by-default and fail-closed.",
+      "Refresh generated changelog before PR.",
+      "Built-in access gate (Spotify-ID allowlist).",
+      "Built-in auth, phase 1: session seam + dev login bypass.",
+      "Document changelog regen as a pre-PR prep step.",
+      "Extract pure component helpers into tested modules.",
       "Cover the large components (RecipeBuilder, Settings, NowPlaying).",
       "Wire markdownlint into pre-commit + fix docs.",
       "Re-enable useExhaustiveDependencies; fix re-fetch loop.",
@@ -34,12 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Upgrade to Vite 8 + Vitest 4.",
       "Bump @types/node from 22.19.20 to 25.9.2 in /frontend.",
       "Bump node from 20-alpine to 26-alpine in /frontend.",
-      "Bump typescript from 5.9.3 to 6.0.3 in /frontend.",
-      "Bump nginxinc/nginx-unprivileged in /frontend.",
-      "Bump pytest-cov from 6.3.0 to 7.1.0 in /backend.",
-      "Finish master protection + post-bump cleanup.",
-      "Bump starlette from 0.52.1 to 1.2.1 in /backend.",
-      "…and 115 earlier changes."
+      "…and 120 earlier changes."
     ]
   },
   {

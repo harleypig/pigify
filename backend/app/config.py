@@ -73,6 +73,17 @@ class Settings(BaseSettings):
     DEV_SPOTIFY_ID: str = "dev-user"
     DEV_SPOTIFY_REFRESH_TOKEN: str = ""
 
+    # Built-in access gate. ON by default and fail-closed: out of the box,
+    # only Spotify accounts in ALLOWED_SPOTIFY_IDS may establish a session,
+    # and an empty allowlist denies everyone — so a fresh install is locked
+    # until you add your own Spotify id, never accidentally wide open. Set
+    # BUILTIN_AUTH_ENABLED=false only when an external forward-auth proxy
+    # gates access instead (see docs/DEPLOYMENT.md). The allowlist is a
+    # comma-separated string so it sets cleanly from an env var; read it via
+    # the parsed `allowed_spotify_ids` property.
+    BUILTIN_AUTH_ENABLED: bool = True
+    ALLOWED_SPOTIFY_IDS: str = ""
+
     # Concurrency caps for outbound API hydration during recipe resolution.
     # Tunable via env so we can dial up if Spotify/Last.fm tolerate more.
     LASTFM_HYDRATE_CONCURRENCY: int = 10
@@ -153,6 +164,11 @@ class Settings(BaseSettings):
                 "local development)."
             )
         return self
+
+    @property
+    def allowed_spotify_ids(self) -> list[str]:
+        """The configured allowlist, parsed from the comma-separated string."""
+        return [s.strip() for s in self.ALLOWED_SPOTIFY_IDS.split(",") if s.strip()]
 
 
 settings = Settings()

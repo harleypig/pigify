@@ -139,6 +139,24 @@ class TestDevAuthBypassGuard(unittest.TestCase):
         self.assertFalse(Settings(_env_file=None).DEV_AUTH_BYPASS)
 
 
+class TestAllowedSpotifyIdsParsing(unittest.TestCase):
+    def test_default_is_empty_list(self):
+        self.assertEqual(Settings(_env_file=None).allowed_spotify_ids, [])
+
+    def test_comma_separated_is_parsed_and_trimmed(self):
+        s = Settings(_env_file=None, ALLOWED_SPOTIFY_IDS="alice, bob ,, carol")
+        self.assertEqual(s.allowed_spotify_ids, ["alice", "bob", "carol"])
+
+    def test_single_id(self):
+        s = Settings(_env_file=None, ALLOWED_SPOTIFY_IDS="solo")
+        self.assertEqual(s.allowed_spotify_ids, ["solo"])
+
+    def test_gate_defaults_on(self):
+        # Fail-closed by default: a fresh install gates access (and, with an
+        # empty allowlist, denies everyone) rather than being wide open.
+        self.assertTrue(Settings(_env_file=None).BUILTIN_AUTH_ENABLED)
+
+
 class TestCorsDefaults(unittest.TestCase):
     def test_default_cors_origins(self):
         s = Settings(_env_file=None)

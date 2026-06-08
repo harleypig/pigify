@@ -141,9 +141,12 @@ class AuthApiTest(unittest.TestCase):
             }
         )
 
+        # Gate off here: this exercises the OAuth success mechanics (the
+        # gate has its own allow/deny tests below).
         with (
             patch.object(auth_mod, "SpotifyService", cls),
             patch("app.auth.provisioning.apply_user_migrations", AsyncMock()),
+            patch.object(settings, "BUILTIN_AUTH_ENABLED", False),
         ):
             resp = client.get(
                 "/api/auth/spotify/callback?code=abc&state=s1",
@@ -152,6 +155,61 @@ class AuthApiTest(unittest.TestCase):
 
         self.assertIn(resp.status_code, (302, 307))
         self.assertTrue(resp.headers["location"].startswith(settings.FRONTEND_URL))
+
+    # ----- access gate ----------------------------------------------------
+
+    def _callback_spotify_cls(self) -> MagicMock:
+        instance = MagicMock()
+        instance.get_current_user = AsyncMock(
+            return_value=User(id="user-1", display_name="Pig", email=None)
+        )
+        cls = MagicMock(return_value=instance)
+        cls.exchange_code_for_tokens = AsyncMock(
+            return_value={
+                "access_token": "at",
+                "refresh_token": "rt",
+                "expires_in": 3600,
+            }
+        )
+        return cls
+
+    def test_callback_denied_by_gate_redirects_with_error(self) -> None:
+        client = self._client()
+        client.post("/__test__/session", json={"oauth_state": "s1"})
+
+        with (
+            patch.object(auth_mod, "SpotifyService", self._callback_spotify_cls()),
+            patch.object(settings, "BUILTIN_AUTH_ENABLED", True),
+            patch.object(settings, "ALLOWED_SPOTIFY_IDS", "someone-else"),
+        ):
+            resp = client.get(
+                "/api/auth/spotify/callback?code=abc&state=s1",
+                follow_redirects=False,
+            )
+
+        self.assertIn(resp.status_code, (302, 307))
+        self.assertIn("error=not_authorized", resp.headers["location"])
+        # No session was established.
+        self.assertEqual(client.get("/api/auth/token").status_code, 401)
+
+    def test_callback_allowed_by_gate_establishes_session(self) -> None:
+        client = self._client()
+        client.post("/__test__/session", json={"oauth_state": "s1"})
+
+        with (
+            patch.object(auth_mod, "SpotifyService", self._callback_spotify_cls()),
+            patch("app.auth.provisioning.apply_user_migrations", AsyncMock()),
+            patch.object(settings, "BUILTIN_AUTH_ENABLED", True),
+            patch.object(settings, "ALLOWED_SPOTIFY_IDS", "user-1"),
+        ):
+            resp = client.get(
+                "/api/auth/spotify/callback?code=abc&state=s1",
+                follow_redirects=False,
+            )
+
+        self.assertIn(resp.status_code, (302, 307))
+        self.assertTrue(resp.headers["location"].startswith(settings.FRONTEND_URL))
+        self.assertNotIn("error=", resp.headers["location"])
 
     # ----- /me ------------------------------------------------------------
 
