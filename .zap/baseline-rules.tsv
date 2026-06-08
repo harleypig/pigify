@@ -1,0 +1,6 @@
+# ZAP baseline allowlist — reviewed findings accepted as not actionable.
+# Format: <ruleId>	<IGNORE|WARN|FAIL>	<optional note>
+# Seed list; add real findings from the first CI run, each with a reason.
+10027	IGNORE	Suspicious comments are minified vendor-bundle false positives
+10049	IGNORE	Static assets are intentionally cacheable
+10109	IGNORE	Informational: this is a single-page app (modern web app)

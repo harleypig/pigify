@@ -50,7 +50,7 @@ Alembic with **two environments**:
 - `backend/migrations/user/` — migrations applied to every per-user DB.
 
 Migrations run automatically on startup via
-`backend.app.db.bootstrap.bootstrap()`:
+`app.db.bootstrap.bootstrap()`:
 
 1. The system DB is created (if missing) and upgraded to head.
 2. Every Spotify user registered in `users` is iterated and its per-user
@@ -60,30 +60,32 @@ A failure on one user's DB is logged but does not stop the others.
 
 ### Adding a migration
 
-Each environment has its own `alembic.ini`. From the project root:
+Each environment has its own `alembic.ini`. Run these from `backend/`
+(where the Poetry project and the `app` package live):
 
 System DB:
 
 ```bash
-uv run alembic -c backend/migrations/system/alembic.ini \
+poetry run alembic -c migrations/system/alembic.ini \
   revision -m "describe change"
 ```
 
 Per-user DB:
 
 ```bash
-uv run alembic -c backend/migrations/user/alembic.ini \
+poetry run alembic -c migrations/user/alembic.ini \
   revision -m "describe change"
 ```
 
 Edit the generated file under the matching `versions/` directory. The
-next process restart applies it everywhere; or apply manually:
+next process restart applies it everywhere; or apply manually (also from
+`backend/`):
 
 ```bash
-uv run python -m backend.app.db.cli upgrade            # system + every user
-uv run python -m backend.app.db.cli upgrade-system
-uv run python -m backend.app.db.cli upgrade-user <spotify_id>
-uv run python -m backend.app.db.cli list-users
+poetry run python -m app.db.cli upgrade            # system + every user
+poetry run python -m app.db.cli upgrade-system
+poetry run python -m app.db.cli upgrade-user <spotify_id>
+poetry run python -m app.db.cli list-users
 ```
 
 ## Auth integration
@@ -101,7 +103,7 @@ On Spotify OAuth callback (`/api/auth/spotify/callback`):
 
 ```python
 from fastapi import APIRouter
-from backend.app.db.session import UserSessionDep, CurrentUserIdDep
+from app.db.session import UserSessionDep, CurrentUserIdDep
 
 router = APIRouter()
 
@@ -113,7 +115,7 @@ async def something(session = UserSessionDep, user_id: str = CurrentUserIdDep):
 For background jobs, use the context managers directly:
 
 ```python
-from backend.app.db.session import system_session_scope, user_session_scope
+from app.db.session import system_session_scope, user_session_scope
 
 async with user_session_scope(spotify_id) as session:
     ...

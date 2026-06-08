@@ -1,0 +1,11 @@
+# hadolint config for this repo. Mirrors the global baseline so the
+# pre-commit hook (which runs hadolint in a container without the user's
+# XDG config) and any local wrapper agree. See the global rules/hadolint.md.
+
+# Warnings and errors fail; style/info inform without blocking.
+failure-threshold: warning
+
+# FROM images must come from one of these registries (DL3026).
+trustedRegistries:
+  - docker.io
+  - ghcr.io

@@ -1,215 +1,88 @@
 # Pigify
 
-Pigify is a custom Spotify web application that provides an enhanced playlist
-management and music playback experience. Built with FastAPI and React, Pigify
-offers a modern, containerized web interface for browsing your playlists and
-controlling playback through Spotify's Web Playback SDK. The application is
-designed to run as a Docker container and can be easily deployed to your local
-network or production environment.
+Pigify is a self-hosted custom Spotify web app for enhanced playlist
+management and playback. A FastAPI backend exposes an `/api` surface
+consumed by a React + Vite single-page app; playback uses Spotify's Web
+Playback SDK. It runs as two containers (backend + nginx frontend) and is
+intended to grow into desktop and mobile apps sharing the same API.
 
-## App Description (for Spotify Developer Dashboard)
+## Features
 
-**Copy-paste ready (254 characters, under 256 maximum):**
+- Spotify OAuth + Web Playback SDK
+- Playlist browsing, sorting, and track playback
+- Favorites sync (Spotify Saved Tracks ↔ Last.fm loved)
+- Recipes: filtered-playlist generation via a DSL
+- Last.fm scrobbling + MusicBrainz/Wikipedia enrichment
+- Per-user persistence (two-tier SQLite, auto-migrated on startup)
+
+## Architecture
+
+- **Backend** — Python/FastAPI (`uvicorn app.main:app`), plain HTTP on
+  8000 (internal).
+- **Frontend** — React 18 + Vite 5, served by nginx over HTTPS on 8080.
+  TLS terminates here because Spotify OAuth requires HTTPS; nginx proxies
+  `/api` to the backend.
+
+See `docs/ARCHITECTURE.md` for the full picture and
+`.claude/WORKFLOW.md` for all run/build/test commands.
+
+## Spotify dashboard description (≤256 chars)
 
 ```
 Pigify is a custom Spotify web app for playlist management and playback. Built with FastAPI and React, it runs as a self-hosted Docker container with enhanced playlist features and privacy-focused hosting.
 ```
 
-## Features
+## Quick start (Docker, HTTPS)
 
-- Spotify OAuth authentication
-- Playlist browsing and selection
-- Track playback using Spotify Web Playback SDK
-- Docker-based deployment
-- Modern React UI with TypeScript
-
-## Prerequisites
-
-- Docker and Docker Compose installed
-- Spotify Developer Account with app credentials
-- WSL (for initial development) or Linux environment
-
-## Setup
-
-### 1. Set Up Development Environment
-
-**Required:** Set up SSL certificates for local development (Spotify requires
-HTTPS). See `docs/DEVELOP.md` for detailed instructions.
-
-**Quick setup:**
 ```bash
+# 1. Local TLS certs (Spotify OAuth needs HTTPS). WSL: run this inside WSL.
 ./scripts/setup-ssl.sh
-```
 
-### 2. Configure Spotify API
+# 2. Config + secrets
+cp .env.example .env                      # fill SPOTIFY_CLIENT_ID, etc.
+printf '%s' "<spotify client secret>" > secrets/spotify_client_secret.txt
+python3 -c "import secrets;print(secrets.token_urlsafe(32))" > secrets/secret_key.txt
 
-See `docs/SPOTIFY_SETUP.md` for complete Spotify Developer Dashboard setup
-instructions, including:
-- Creating a Spotify app
-- Configuring redirect URIs
-- Required OAuth scopes
-
-### 3. Configure Environment Variables and Secrets
-
-#### Option A: Using Docker Secrets (Recommended)
-
-Create a `.env` file for non-sensitive configuration:
-
-```bash
-cp env.example .env
-```
-
-Edit `.env` and fill in non-sensitive values:
-
-```bash
-# Port Configuration
-PORT=8000
-
-# Spotify API Configuration (Client ID only - secret goes in secrets/)
-SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-SPOTIFY_REDIRECT_URI=https://localhost:8000/api/auth/spotify/callback
-
-# URLs
-BACKEND_URL=https://localhost:8000
-FRONTEND_URL=https://localhost:3000
-
-# Environment
-ENVIRONMENT=development
-```
-
-**Note**: If you change the PORT, update `SPOTIFY_REDIRECT_URI` and
-`BACKEND_URL` accordingly. See `docs/DEVELOP.md` for details.
-
-Create the secrets directory and add sensitive data:
-
-```bash
-mkdir -p secrets
-```
-
-Create `secrets/spotify_client_secret.txt` with your Spotify Client Secret:
-```bash
-echo "your_spotify_client_secret_here" > secrets/spotify_client_secret.txt
-```
-
-Create `secrets/secret_key.txt` with a secure secret key:
-```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))" > secrets/secret_key.txt
-```
-
-Set appropriate permissions:
-```bash
-chmod 600 secrets/*.txt
-```
-
-#### Option B: Using Environment Variables (Development Only)
-
-For development, you can still use environment variables directly. Edit `.env`:
-
-```bash
-# Spotify API Configuration
-SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
-SPOTIFY_REDIRECT_URI=https://localhost:8000/api/auth/spotify/callback
-
-# Application Configuration
-SECRET_KEY=your_secret_key_here_change_in_production
-BACKEND_URL=https://localhost:8000
-FRONTEND_URL=https://localhost:3000
-
-# Environment
-ENVIRONMENT=development
-```
-
-**Note**: Docker secrets take precedence over environment variables. See
-`secrets/README.md` for more details.
-
-### 4. Build and Run with Docker
-
-```bash
-# Build and start the application
+# 3. Run
 docker compose up --build
 ```
 
-The application will be available at:
-- Backend API: https://localhost:${PORT:-8000} (default: 8000, configurable)
-- API Docs: https://localhost:${PORT:-8000}/docs
-- Frontend: https://localhost:3000 (if using dev profile)
+- App (HTTPS): <https://localhost:8080>
+- Backend (direct, debugging): <http://localhost:8000>
+- Set the Spotify app redirect URI to
+  `https://localhost:8080/api/auth/spotify/callback`
 
-**Note**: See `docs/DEVELOP.md` for development workflow and hot-reload
-options.
+See `docs/SPOTIFY_SETUP.md` for the dashboard setup and OAuth scopes.
 
-## Usage
+## Local development (no Docker)
 
-1. Navigate to https://localhost:${PORT:-8000}
-   (or https://localhost:3000 in dev mode)
-2. Click "Login with Spotify"
-3. Authorize the application
-4. Select a playlist from the sidebar
-5. Click on a track to play it
-
-## Project Structure
-
-```
-flj/
-├── backend/           # FastAPI backend application
-│   ├── app/
-│   │   ├── api/       # API route handlers
-│   │   ├── models/    # Pydantic models
-│   │   ├── services/  # Business logic services
-│   │   └── main.py    # Application entry point
-│   └── requirements.txt
-├── frontend/          # React frontend application
-│   ├── src/
-│   │   ├── components/  # React components
-│   │   ├── services/    # API and Spotify SDK wrappers
-│   │   └── App.tsx      # Main app component
-│   └── package.json
-├── config/            # YAML configuration (future)
-├── docker-compose.yml # Docker orchestration
-└── Dockerfile         # Multi-stage Docker build
+```bash
+cd backend && poetry install && poetry run uvicorn app.main:app --reload
+cd frontend && npm install && npm run dev
 ```
 
-## API Endpoints
+Vite (port 5000) proxies `/api` to the backend (port 8000). Note: local
+non-Docker dev is plain HTTP; for the real Spotify OAuth flow use the
+Docker stack. Full command reference: `.claude/WORKFLOW.md`.
 
-- `GET /health` - Health check
-- `GET /api/auth/spotify/login` - Initiate OAuth flow
-- `GET /api/auth/spotify/callback` - OAuth callback handler
-- `GET /api/auth/me` - Get current user info
-- `GET /api/auth/token` - Get access token for Web SDK
-- `POST /api/auth/logout` - Logout
-- `GET /api/playlists` - List user playlists
-- `GET /api/playlists/{id}` - Get playlist details
-- `GET /api/playlists/{id}/tracks` - Get playlist tracks
+## Deployment & access control
 
-## Troubleshooting
+Pigify is **not meant to be public.** Run it behind an authentication
+layer (Authelia SSO in the author's setup, or any forward-auth proxy)
+that gates access to the app — this is separate from the app's own Spotify
+OAuth, which only authorizes the Spotify API for the signed-in user. A
+Traefik + Authelia overlay is provided at `deploy/harleydev/pigify.yml`.
+CI publishes images to ghcr.io on `v*` tags.
 
-### Docker Build Fails
+## Documentation
 
-- Ensure Docker is running
-- Check that all required files exist
-- Review Docker logs: `docker-compose logs`
-
-### Authentication Issues
-
-- Verify Spotify redirect URI matches exactly
-- Check that Client ID and Secret are correct
-- Ensure cookies/sessions are enabled in browser
-
-### Playback Not Working
-
-- Check browser console for errors
-- Verify Spotify Web Playback SDK loaded correctly
-- Ensure access token is valid (check `/api/auth/token`)
-
-## Future Enhancements
-
-- YAML-based playlist rules and smart mixes
-- Database integration (SQLite/Postgres)
-- Advanced playlist management features
-- Network deployment support
-- SSL/Authelia integration
+- `docs/ARCHITECTURE.md` — components, data flow, persistence
+- `docs/DATABASE.md` — two-tier SQLite + Alembic
+- `docs/INTEGRATIONS.md` — Last.fm / MusicBrainz / Wikipedia
+- `docs/SPOTIFY_SETUP.md` — Spotify Developer Dashboard
+- `docs/DEVELOP.md` — local development details
+- `.claude/` — conventions, workflow, and test layout
 
 ## License
 
 MIT
-

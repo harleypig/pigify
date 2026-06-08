@@ -1,179 +1,211 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from "react";
 import {
   apiService,
+  type Playlist,
+  type Recipe,
+  type RecipeBucket,
+  type RecipeFilter,
+  type RecipeResolveResponse,
   recipesApi,
-  Playlist,
-  Recipe,
-  RecipeBucket,
-  RecipeFilter,
-  RecipeResolveResponse,
-  SortField,
-  StoredRecipe,
-  Track,
-} from '../services/api'
-import './RecipeBuilder.css'
+  type SortField,
+  type StoredRecipe,
+  type Track,
+} from "../services/api";
+import "./RecipeBuilder.css";
 
 interface Props {
-  open: boolean
-  initial?: StoredRecipe | null
-  onClose: () => void
-  onSaved: (r: StoredRecipe) => void
+  open: boolean;
+  initial?: StoredRecipe | null;
+  onClose: () => void;
+  onSaved: (r: StoredRecipe) => void;
 }
 
 const COMBINE_LABELS: Record<string, string> = {
-  in_order: 'In order (concatenate buckets)',
-  interleave: 'Interleave (round-robin)',
-  shuffled: 'Shuffled',
-}
+  in_order: "In order (concatenate buckets)",
+  interleave: "Interleave (round-robin)",
+  shuffled: "Shuffled",
+};
 
 const NUMERIC_OPS: Array<[string, string]> = [
-  ['gte', '≥'], ['lte', '≤'], ['gt', '>'], ['lt', '<'],
-  ['eq', '='], ['ne', '≠'], ['between', 'between'],
-]
+  ["gte", "≥"],
+  ["lte", "≤"],
+  ["gt", ">"],
+  ["lt", "<"],
+  ["eq", "="],
+  ["ne", "≠"],
+  ["between", "between"],
+];
 const STRING_OPS: Array<[string, string]> = [
-  ['contains', 'contains'], ['eq', '='], ['ne', '≠'],
-]
-const ENUM_OPS: Array<[string, string]> = [['eq', 'is'], ['ne', 'is not']]
+  ["contains", "contains"],
+  ["eq", "="],
+  ["ne", "≠"],
+];
+const ENUM_OPS: Array<[string, string]> = [
+  ["eq", "is"],
+  ["ne", "is not"],
+];
 const DATE_OPS: Array<[string, string]> = [
-  ['gte', 'on/after'], ['lte', 'on/before'], ['between', 'between'],
-]
+  ["gte", "on/after"],
+  ["lte", "on/before"],
+  ["between", "between"],
+];
 
 function opsForField(f?: SortField): Array<[string, string]> {
-  if (!f) return STRING_OPS
-  if (f.type === 'number') return NUMERIC_OPS
-  if (f.type === 'date') return DATE_OPS
-  if (f.type === 'enum') return ENUM_OPS
-  return STRING_OPS
+  if (!f) return STRING_OPS;
+  if (f.type === "number") return NUMERIC_OPS;
+  if (f.type === "date") return DATE_OPS;
+  if (f.type === "enum") return ENUM_OPS;
+  return STRING_OPS;
 }
 
 function blankBucket(): RecipeBucket {
   return {
-    name: '',
-    source: 'liked',
+    name: "",
+    source: "liked",
     filters: [],
-    sort: { field: 'added_at', direction: 'desc' },
+    sort: { field: "added_at", direction: "desc" },
     count: 10,
-  }
+  };
 }
 
-type SourceKind = 'liked' | 'playlist' | 'playlists' | 'all_playlists'
+type SourceKind = "liked" | "playlist" | "playlists" | "all_playlists";
 
 function parseSource(source: string): { kind: SourceKind; ids: string[] } {
-  if (source === 'liked') return { kind: 'liked', ids: [] }
-  if (source === 'all_playlists') return { kind: 'all_playlists', ids: [] }
-  if (source.startsWith('playlists:')) {
+  if (source === "liked") return { kind: "liked", ids: [] };
+  if (source === "all_playlists") return { kind: "all_playlists", ids: [] };
+  if (source.startsWith("playlists:")) {
     const ids = source
-      .slice('playlists:'.length)
-      .split(',')
+      .slice("playlists:".length)
+      .split(",")
       .map((s) => s.trim())
-      .filter(Boolean)
-    return { kind: 'playlists', ids }
+      .filter(Boolean);
+    return { kind: "playlists", ids };
   }
-  if (source.startsWith('playlist:')) {
-    const id = source.slice('playlist:'.length).trim()
-    return { kind: 'playlist', ids: id ? [id] : [] }
+  if (source.startsWith("playlist:")) {
+    const id = source.slice("playlist:".length).trim();
+    return { kind: "playlist", ids: id ? [id] : [] };
   }
-  return { kind: 'liked', ids: [] }
+  return { kind: "liked", ids: [] };
 }
 
 function buildSource(kind: SourceKind, ids: string[]): string {
-  if (kind === 'liked') return 'liked'
-  if (kind === 'all_playlists') return 'all_playlists'
-  const clean = ids.filter(Boolean)
-  if (clean.length === 0) return 'playlists:'
-  if (clean.length === 1) return `playlist:${clean[0]}`
-  return `playlists:${clean.join(',')}`
+  if (kind === "liked") return "liked";
+  if (kind === "all_playlists") return "all_playlists";
+  const clean = ids.filter(Boolean);
+  if (clean.length === 0) return "playlists:";
+  if (clean.length === 1) return `playlist:${clean[0]}`;
+  return `playlists:${clean.join(",")}`;
 }
 
-function pickCover(images?: Array<{ url: string; height?: number; width?: number }>): string | null {
-  if (!images || images.length === 0) return null
+function pickCover(
+  images?: Array<{ url: string; height?: number; width?: number }>,
+): string | null {
+  if (!images || images.length === 0) return null;
   // Prefer the smallest image >= 32px tall; otherwise pick the smallest available.
-  const withSize = images.filter((i) => i && i.url)
-  if (withSize.length === 0) return null
+  const withSize = images.filter((i) => i?.url);
+  if (withSize.length === 0) return null;
   const sized = withSize
-    .filter((i) => typeof i.height === 'number' && i.height! > 0)
-    .sort((a, b) => (a.height || 0) - (b.height || 0))
-  const small = sized.find((i) => (i.height || 0) >= 32)
-  if (small) return small.url
-  if (sized.length) return sized[0].url
-  return withSize[0].url
+    .filter((i) => typeof i.height === "number" && i.height! > 0)
+    .sort((a, b) => (a.height || 0) - (b.height || 0));
+  const small = sized.find((i) => (i.height || 0) >= 32);
+  if (small) return small.url;
+  if (sized.length) return sized[0].url;
+  return withSize[0].url;
 }
 
 function blankRecipe(): Recipe {
-  return { name: 'New filter', buckets: [blankBucket()], combine: 'in_order' }
+  return { name: "New filter", buckets: [blankBucket()], combine: "in_order" };
 }
 
-export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props) {
-  const [fields, setFields] = useState<SortField[]>([])
-  const [playlists, setPlaylists] = useState<Playlist[]>([])
-  const [meDisplayName, setMeDisplayName] = useState<string>('')
-  const [recipe, setRecipe] = useState<Recipe>(blankRecipe())
-  const [preview, setPreview] = useState<RecipeResolveResponse | null>(null)
-  const [previewing, setPreviewing] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [playing, setPlaying] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export default function RecipeBuilder({
+  open,
+  initial,
+  onClose,
+  onSaved,
+}: Props) {
+  const [fields, setFields] = useState<SortField[]>([]);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [meDisplayName, setMeDisplayName] = useState<string>("");
+  const [recipe, setRecipe] = useState<Recipe>(blankRecipe());
+  const [preview, setPreview] = useState<RecipeResolveResponse | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return
-    apiService.getSortFields().then((r) => setFields(r.fields)).catch(() => {})
-    apiService.getCurrentUser().then((u) => setMeDisplayName(u.display_name || '')).catch(() => {})
+    if (!open) return;
+    apiService
+      .getSortFields()
+      .then((r) => setFields(r.fields))
+      .catch(() => {});
+    apiService
+      .getCurrentUser()
+      .then((u) => setMeDisplayName(u.display_name || ""))
+      .catch(() => {});
     // Load all the user's playlists so the multi-select picker covers their
     // full library, not just the first page.
-    ;(async () => {
-      const all: Playlist[] = []
-      const pageSize = 50
-      let offset = 0
+    (async () => {
+      const all: Playlist[] = [];
+      const pageSize = 50;
+      let offset = 0;
       while (offset < 1000) {
         try {
-          const page = await apiService.getPlaylists(pageSize, offset)
-          if (!page || page.length === 0) break
-          all.push(...page)
-          if (page.length < pageSize) break
-          offset += pageSize
+          const page = await apiService.getPlaylists(pageSize, offset);
+          if (!page || page.length === 0) break;
+          all.push(...page);
+          if (page.length < pageSize) break;
+          offset += pageSize;
         } catch {
-          break
+          break;
         }
       }
-      setPlaylists(all)
-    })()
+      setPlaylists(all);
+    })();
     if (initial) {
       setRecipe({
         name: initial.name,
         combine: initial.combine,
         buckets: initial.buckets,
-      })
+      });
     } else {
-      setRecipe(blankRecipe())
+      setRecipe(blankRecipe());
     }
-    setPreview(null)
-    setError(null)
-  }, [open, initial])
+    setPreview(null);
+    setError(null);
+  }, [open, initial]);
 
   const fieldByKey = useMemo(
     () => new Map(fields.map((f) => [f.key, f])),
-    [fields]
-  )
+    [fields],
+  );
 
-  if (!open) return null
+  if (!open) return null;
 
   const updateBucket = (idx: number, patch: Partial<RecipeBucket>) => {
     setRecipe((r) => ({
       ...r,
       buckets: r.buckets.map((b, i) => (i === idx ? { ...b, ...patch } : b)),
-    }))
-  }
+    }));
+  };
 
   const addBucket = () =>
-    setRecipe((r) => ({ ...r, buckets: [...r.buckets, blankBucket()] }))
+    setRecipe((r) => ({ ...r, buckets: [...r.buckets, blankBucket()] }));
 
   const removeBucket = (idx: number) =>
     setRecipe((r) => ({
       ...r,
-      buckets: r.buckets.length === 1 ? r.buckets : r.buckets.filter((_, i) => i !== idx),
-    }))
+      buckets:
+        r.buckets.length === 1
+          ? r.buckets
+          : r.buckets.filter((_, i) => i !== idx),
+    }));
 
-  const updateFilter = (bIdx: number, fIdx: number, patch: Partial<RecipeFilter>) => {
+  const updateFilter = (
+    bIdx: number,
+    fIdx: number,
+    patch: Partial<RecipeFilter>,
+  ) => {
     setRecipe((r) => ({
       ...r,
       buckets: r.buckets.map((b, i) =>
@@ -181,91 +213,95 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
           ? b
           : {
               ...b,
-              filters: b.filters.map((f, j) => (j === fIdx ? { ...f, ...patch } : f)),
-            }
+              filters: b.filters.map((f, j) =>
+                j === fIdx ? { ...f, ...patch } : f,
+              ),
+            },
       ),
-    }))
-  }
+    }));
+  };
   const addFilter = (bIdx: number) => {
-    const f = fields[0]
-    if (!f) return
+    const f = fields[0];
+    if (!f) return;
     updateBucket(bIdx, {
       filters: [
         ...recipe.buckets[bIdx].filters,
-        { field: f.key, op: opsForField(f)[0][0] as any, value: '' },
+        { field: f.key, op: opsForField(f)[0][0] as any, value: "" },
       ],
-    })
-  }
+    });
+  };
   const removeFilter = (bIdx: number, fIdx: number) =>
     updateBucket(bIdx, {
       filters: recipe.buckets[bIdx].filters.filter((_, j) => j !== fIdx),
-    })
+    });
 
   const handlePreview = async () => {
-    setError(null)
-    setPreviewing(true)
+    setError(null);
+    setPreviewing(true);
     try {
-      const r = await recipesApi.resolve(recipe)
-      setPreview(r)
+      const r = await recipesApi.resolve(recipe);
+      setPreview(r);
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Preview failed')
+      setError(e?.response?.data?.detail || "Preview failed");
     } finally {
-      setPreviewing(false)
+      setPreviewing(false);
     }
-  }
+  };
 
   const handleSave = async () => {
-    setError(null)
-    setSaving(true)
+    setError(null);
+    setSaving(true);
     try {
-      let saved: StoredRecipe
+      let saved: StoredRecipe;
       if (initial?.id) {
-        saved = await recipesApi.update(initial.id, recipe)
+        saved = await recipesApi.update(initial.id, recipe);
       } else {
-        saved = await recipesApi.create(recipe)
+        saved = await recipesApi.create(recipe);
       }
-      onSaved(saved)
-      onClose()
+      onSaved(saved);
+      onClose();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Save failed')
+      setError(e?.response?.data?.detail || "Save failed");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handlePlay = async () => {
-    setError(null)
-    setPlaying(true)
+    setError(null);
+    setPlaying(true);
     try {
-      const uris = preview?.tracks.map((t) => t.uri).filter(Boolean) ?? []
+      const uris = preview?.tracks.map((t) => t.uri).filter(Boolean) ?? [];
       if (uris.length > 0) {
-        await recipesApi.playAdhoc(recipe)
+        await recipesApi.playAdhoc(recipe);
       } else {
-        await recipesApi.playAdhoc(recipe)
+        await recipesApi.playAdhoc(recipe);
       }
     } catch (e: any) {
-      setError(e?.response?.data?.detail || 'Playback failed')
+      setError(e?.response?.data?.detail || "Playback failed");
     } finally {
-      setPlaying(false)
+      setPlaying(false);
     }
-  }
+  };
 
   return (
     /* Backdrop is intentionally a div with click-to-close + ESC keyboard
        handler (in the parent) rather than a real button — making the entire
        overlay a button conflicts with the form controls inside it. The visible
        × close-button below provides the canonical keyboard-reachable dismiss. */
+    // biome-ignore lint/a11y/noStaticElementInteractions: intentional click-to-close backdrop; the canonical dismiss is the visible × button inside
     <div
       className="recipe-modal-backdrop"
       onClick={onClose}
       onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose()
+        if (e.key === "Escape") onClose();
       }}
       role="presentation"
     >
       <div
         className="recipe-modal"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-label="Edit recipe"
@@ -278,6 +314,7 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
             placeholder="Recipe name"
           />
           <button
+            type="button"
             className="ghost"
             onClick={onClose}
             aria-label="Close recipe editor"
@@ -305,32 +342,43 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
               canRemove={recipe.buckets.length > 1}
             />
           ))}
-          <button className="add-bucket" onClick={addBucket}>+ Add bucket</button>
+          <button type="button" className="add-bucket" onClick={addBucket}>
+            + Add bucket
+          </button>
         </div>
 
         <div className="recipe-combine">
-          <label>Combine strategy</label>
-          <select
-            value={recipe.combine}
-            onChange={(e) =>
-              setRecipe((r) => ({ ...r, combine: e.target.value as any }))
-            }
-          >
-            {Object.entries(COMBINE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
+          <label>
+            Combine strategy
+            <select
+              value={recipe.combine}
+              onChange={(e) =>
+                setRecipe((r) => ({ ...r, combine: e.target.value as any }))
+              }
+            >
+              {Object.entries(COMBINE_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="recipe-actions">
-          <button onClick={handlePreview} disabled={previewing}>
-            {previewing ? 'Resolving…' : 'Preview'}
+          <button type="button" onClick={handlePreview} disabled={previewing}>
+            {previewing ? "Resolving…" : "Preview"}
           </button>
-          <button onClick={handlePlay} disabled={playing}>
-            {playing ? 'Starting…' : 'Play now'}
+          <button type="button" onClick={handlePlay} disabled={playing}>
+            {playing ? "Starting…" : "Play now"}
           </button>
-          <button className="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : initial ? 'Save changes' : 'Save recipe'}
+          <button
+            type="button"
+            className="primary"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "Saving…" : initial ? "Save changes" : "Save recipe"}
           </button>
         </div>
 
@@ -342,35 +390,39 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
               <strong>{preview.tracks.length} tracks</strong>
               {preview.bucket_counts.length > 1 && (
                 <span className="preview-counts">
-                  ({preview.bucket_counts.join(' + ')} from buckets)
+                  ({preview.bucket_counts.join(" + ")} from buckets)
                 </span>
               )}
             </div>
             {preview.warnings.length > 0 && (
               <ul className="preview-warnings">
-                {preview.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                {preview.warnings.map((w, i) => (
+                  <li key={i}>{w}</li>
+                ))}
               </ul>
             )}
             <div className="preview-list">
               {preview.tracks.slice(0, 100).map((t: Track, i: number) => {
-                const sources = preview.track_sources?.[t.id] ?? []
-                const sourceLabel = sources.map((s) => s.name).join(', ')
+                const sources = preview.track_sources?.[t.id] ?? [];
+                const sourceLabel = sources.map((s) => s.name).join(", ");
                 return (
                   <div key={`${t.id}-${i}`} className="preview-row">
                     <span className="preview-num">{i + 1}</span>
                     <span className="preview-name">{t.name}</span>
-                    <span className="preview-artist">{t.artists.join(', ')}</span>
+                    <span className="preview-artist">
+                      {t.artists.join(", ")}
+                    </span>
                     {sources.length > 0 && (
                       <span className="preview-source" title={sourceLabel}>
-                        from{' '}
+                        from{" "}
                         {sources.map((s, idx) => {
                           const href =
-                            s.id === 'liked'
-                              ? 'https://open.spotify.com/collection/tracks'
-                              : `https://open.spotify.com/playlist/${s.id}`
+                            s.id === "liked"
+                              ? "https://open.spotify.com/collection/tracks"
+                              : `https://open.spotify.com/playlist/${s.id}`;
                           return (
                             <span key={`${s.id}-${idx}`}>
-                              {idx > 0 && ', '}
+                              {idx > 0 && ", "}
                               <a
                                 className="preview-source-link"
                                 href={href}
@@ -382,54 +434,67 @@ export default function RecipeBuilder({ open, initial, onClose, onSaved }: Props
                                 {s.name}
                               </a>
                             </span>
-                          )
+                          );
                         })}
                       </span>
                     )}
                   </div>
-                )
+                );
               })}
               {preview.tracks.length > 100 && (
-                <div className="preview-more">… and {preview.tracks.length - 100} more</div>
+                <div className="preview-more">
+                  … and {preview.tracks.length - 100} more
+                </div>
               )}
             </div>
           </div>
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function BucketEditor(props: {
-  bucket: RecipeBucket
-  index: number
-  fields: SortField[]
-  fieldByKey: Map<string, SortField>
-  playlists: Playlist[]
-  meDisplayName: string
-  onChange: (patch: Partial<RecipeBucket>) => void
-  onRemove: () => void
-  onUpdateFilter: (fIdx: number, patch: Partial<RecipeFilter>) => void
-  onAddFilter: () => void
-  onRemoveFilter: (fIdx: number) => void
-  canRemove: boolean
+  bucket: RecipeBucket;
+  index: number;
+  fields: SortField[];
+  fieldByKey: Map<string, SortField>;
+  playlists: Playlist[];
+  meDisplayName: string;
+  onChange: (patch: Partial<RecipeBucket>) => void;
+  onRemove: () => void;
+  onUpdateFilter: (fIdx: number, patch: Partial<RecipeFilter>) => void;
+  onAddFilter: () => void;
+  onRemoveFilter: (fIdx: number) => void;
+  canRemove: boolean;
 }) {
   const {
-    bucket, index, fields, fieldByKey, playlists, meDisplayName,
-    onChange, onRemove, onUpdateFilter, onAddFilter, onRemoveFilter, canRemove,
-  } = props
+    bucket,
+    index,
+    fields,
+    fieldByKey,
+    playlists,
+    meDisplayName,
+    onChange,
+    onRemove,
+    onUpdateFilter,
+    onAddFilter,
+    onRemoveFilter,
+    canRemove,
+  } = props;
 
   return (
     <div className="bucket">
       <div className="bucket-head">
         <input
           className="bucket-name"
-          value={bucket.name ?? ''}
+          value={bucket.name ?? ""}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder={`Bucket ${index + 1}`}
         />
         {canRemove && (
           <button
+            type="button"
             className="ghost"
             onClick={onRemove}
             aria-label="Remove bucket"
@@ -447,45 +512,52 @@ function BucketEditor(props: {
         onChange={(s) => onChange({ source: s })}
       />
 
-
       <div className="bucket-filters">
-        <label>Filters</label>
+        <span className="bucket-filters-label">Filters</span>
         {bucket.filters.map((f, fIdx) => {
-          const fld = fieldByKey.get(f.field)
-          const ops = opsForField(fld)
-          const isNumber = fld?.type === 'number'
-          const isDate = fld?.type === 'date'
-          const inputType = isNumber ? 'number' : isDate ? 'date' : 'text'
+          const fld = fieldByKey.get(f.field);
+          const ops = opsForField(fld);
+          const isNumber = fld?.type === "number";
+          const isDate = fld?.type === "date";
+          const inputType = isNumber ? "number" : isDate ? "date" : "text";
           return (
             <div className="filter-row" key={fIdx}>
               <select
                 value={f.field}
                 onChange={(e) => {
-                  const newField = fields.find((x) => x.key === e.target.value)
-                  const newOps = opsForField(newField)
+                  const newField = fields.find((x) => x.key === e.target.value);
+                  const newOps = opsForField(newField);
                   onUpdateFilter(fIdx, {
                     field: e.target.value,
                     op: newOps[0][0] as any,
-                    value: '',
+                    value: "",
                     value2: undefined,
-                  })
+                  });
                 }}
               >
                 {fields.map((x) => (
-                  <option key={x.key} value={x.key}>{x.label}</option>
+                  <option key={x.key} value={x.key}>
+                    {x.label}
+                  </option>
                 ))}
               </select>
               <select
                 value={f.op}
-                onChange={(e) => onUpdateFilter(fIdx, { op: e.target.value as any })}
+                onChange={(e) =>
+                  onUpdateFilter(fIdx, { op: e.target.value as any })
+                }
               >
-                {ops.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {ops.map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
               </select>
-              {fld?.type === 'enum' ? (
+              {fld?.type === "enum" ? (
                 <select
-                  value={String(f.value ?? 'false')}
+                  value={String(f.value ?? "false")}
                   onChange={(e) =>
-                    onUpdateFilter(fIdx, { value: e.target.value === 'true' })
+                    onUpdateFilter(fIdx, { value: e.target.value === "true" })
                   }
                 >
                   <option value="true">Yes</option>
@@ -494,18 +566,23 @@ function BucketEditor(props: {
               ) : (
                 <input
                   type={inputType}
-                  value={f.value ?? ''}
-                  onChange={(e) => onUpdateFilter(fIdx, { value: e.target.value })}
+                  value={f.value ?? ""}
+                  onChange={(e) =>
+                    onUpdateFilter(fIdx, { value: e.target.value })
+                  }
                 />
               )}
-              {f.op === 'between' && (
+              {f.op === "between" && (
                 <input
                   type={inputType}
-                  value={f.value2 ?? ''}
-                  onChange={(e) => onUpdateFilter(fIdx, { value2: e.target.value })}
+                  value={f.value2 ?? ""}
+                  onChange={(e) =>
+                    onUpdateFilter(fIdx, { value2: e.target.value })
+                  }
                 />
               )}
               <button
+                type="button"
                 className="ghost"
                 onClick={() => onRemoveFilter(fIdx)}
                 aria-label="Remove filter"
@@ -514,33 +591,44 @@ function BucketEditor(props: {
                 ×
               </button>
             </div>
-          )
+          );
         })}
-        <button className="add-filter" onClick={onAddFilter}>+ Add filter</button>
+        <button type="button" className="add-filter" onClick={onAddFilter}>
+          + Add filter
+        </button>
       </div>
 
       <div className="bucket-row">
-        <label>Sort by</label>
+        <label>
+          Sort by
+          <select
+            value={bucket.sort?.field ?? ""}
+            onChange={(e) =>
+              onChange({
+                sort: e.target.value
+                  ? {
+                      field: e.target.value,
+                      direction: bucket.sort?.direction ?? "desc",
+                    }
+                  : null,
+              })
+            }
+          >
+            <option value="">— none —</option>
+            {fields.map((x) => (
+              <option key={x.key} value={x.key}>
+                {x.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <select
-          value={bucket.sort?.field ?? ''}
-          onChange={(e) =>
-            onChange({
-              sort: e.target.value
-                ? { field: e.target.value, direction: bucket.sort?.direction ?? 'desc' }
-                : null,
-            })
-          }
-        >
-          <option value="">— none —</option>
-          {fields.map((x) => <option key={x.key} value={x.key}>{x.label}</option>)}
-        </select>
-        <select
-          value={bucket.sort?.direction ?? 'desc'}
+          value={bucket.sort?.direction ?? "desc"}
           onChange={(e) =>
             onChange({
               sort: bucket.sort
                 ? { ...bucket.sort, direction: e.target.value as any }
-                : { field: 'added_at', direction: e.target.value as any },
+                : { field: "added_at", direction: e.target.value as any },
             })
           }
           disabled={!bucket.sort}
@@ -551,36 +639,42 @@ function BucketEditor(props: {
       </div>
 
       <div className="bucket-row">
-        <label>Take</label>
-        <input
-          type="number"
-          min={1}
-          max={500}
-          value={bucket.count}
-          onChange={(e) =>
-            onChange({ count: Math.max(1, Math.min(500, Number(e.target.value) || 1)) })
-          }
-        />
+        <label>
+          Take
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={bucket.count}
+            onChange={(e) =>
+              onChange({
+                count: Math.max(1, Math.min(500, Number(e.target.value) || 1)),
+              })
+            }
+          />
+        </label>
         <span className="hint">tracks</span>
       </div>
     </div>
-  )
+  );
 }
 
-type GroupBy = 'none' | 'owner' | 'alpha'
+type GroupBy = "none" | "owner" | "alpha";
 
-const RECENT_PLAYLISTS_KEY = 'recipe.recentPlaylistIds'
-const RECENT_PLAYLISTS_LIMIT = 10
+const RECENT_PLAYLISTS_KEY = "recipe.recentPlaylistIds";
+const RECENT_PLAYLISTS_LIMIT = 10;
 
 function loadRecentPlaylistIds(): string[] {
   try {
-    const raw = localStorage.getItem(RECENT_PLAYLISTS_KEY)
-    if (!raw) return []
-    const arr = JSON.parse(raw)
-    if (!Array.isArray(arr)) return []
-    return arr.filter((x): x is string => typeof x === 'string').slice(0, RECENT_PLAYLISTS_LIMIT)
+    const raw = localStorage.getItem(RECENT_PLAYLISTS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((x): x is string => typeof x === "string")
+      .slice(0, RECENT_PLAYLISTS_LIMIT);
   } catch {
-    return []
+    return [];
   }
 }
 
@@ -588,155 +682,163 @@ function saveRecentPlaylistIds(ids: string[]) {
   try {
     localStorage.setItem(
       RECENT_PLAYLISTS_KEY,
-      JSON.stringify(ids.slice(0, RECENT_PLAYLISTS_LIMIT))
-    )
+      JSON.stringify(ids.slice(0, RECENT_PLAYLISTS_LIMIT)),
+    );
   } catch {
     // ignore quota / disabled storage
   }
 }
 
 function BucketSourcePicker(props: {
-  source: string
-  playlists: Playlist[]
-  meDisplayName: string
-  onChange: (source: string) => void
+  source: string;
+  playlists: Playlist[];
+  meDisplayName: string;
+  onChange: (source: string) => void;
 }) {
-  const { source, playlists, meDisplayName, onChange } = props
-  const parsed = parseSource(source)
-  const selected = new Set(parsed.ids)
-  const [query, setQuery] = useState('')
-  const [groupBy, setGroupBy] = useState<GroupBy>('none')
-  const [recentIds, setRecentIds] = useState<string[]>(() => loadRecentPlaylistIds())
+  const { source, playlists, meDisplayName, onChange } = props;
+  const parsed = parseSource(source);
+  const selected = new Set(parsed.ids);
+  const [query, setQuery] = useState("");
+  const [groupBy, setGroupBy] = useState<GroupBy>("none");
+  const [recentIds, setRecentIds] = useState<string[]>(() =>
+    loadRecentPlaylistIds(),
+  );
 
   const setSelected = (next: Set<string>) => {
-    onChange(buildSource('playlists', Array.from(next)))
-  }
+    onChange(buildSource("playlists", Array.from(next)));
+  };
 
   const recordRecent = (ids: string[]) => {
-    if (ids.length === 0) return
+    if (ids.length === 0) return;
     const merged = [...ids, ...recentIds.filter((x) => !ids.includes(x))].slice(
       0,
-      RECENT_PLAYLISTS_LIMIT
-    )
-    setRecentIds(merged)
-    saveRecentPlaylistIds(merged)
-  }
+      RECENT_PLAYLISTS_LIMIT,
+    );
+    setRecentIds(merged);
+    saveRecentPlaylistIds(merged);
+  };
 
   const togglePlaylist = (id: string) => {
-    const next = new Set(selected)
-    const adding = !next.has(id)
-    if (adding) next.add(id)
-    else next.delete(id)
-    setSelected(next)
-    if (adding) recordRecent([id])
-  }
+    const next = new Set(selected);
+    const adding = !next.has(id);
+    if (adding) next.add(id);
+    else next.delete(id);
+    setSelected(next);
+    if (adding) recordRecent([id]);
+  };
 
   const onKindChange = (kind: SourceKind) => {
-    if (kind === 'liked' || kind === 'all_playlists') {
-      onChange(buildSource(kind, []))
+    if (kind === "liked" || kind === "all_playlists") {
+      onChange(buildSource(kind, []));
     } else {
-      onChange(buildSource('playlists', parsed.ids))
+      onChange(buildSource("playlists", parsed.ids));
     }
-  }
+  };
 
-  const showList = parsed.kind === 'playlist' || parsed.kind === 'playlists'
-  const uiKind: SourceKind = parsed.kind === 'playlist' ? 'playlists' : parsed.kind
+  const showList = parsed.kind === "playlist" || parsed.kind === "playlists";
+  const uiKind: SourceKind =
+    parsed.kind === "playlist" ? "playlists" : parsed.kind;
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return playlists
+    const q = query.trim().toLowerCase();
+    if (!q) return playlists;
     return playlists.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
-        (p.owner || '').toLowerCase().includes(q)
-    )
-  }, [playlists, query])
+        (p.owner || "").toLowerCase().includes(q),
+    );
+  }, [playlists, query]);
 
   const groups = useMemo(() => {
-    if (groupBy === 'none') {
-      return [{ label: '', items: filtered }]
+    if (groupBy === "none") {
+      return [{ label: "", items: filtered }];
     }
-    if (groupBy === 'owner') {
-      const mine: Playlist[] = []
-      const byOwner = new Map<string, Playlist[]>()
-      const me = (meDisplayName || '').toLowerCase()
+    if (groupBy === "owner") {
+      const mine: Playlist[] = [];
+      const byOwner = new Map<string, Playlist[]>();
+      const me = (meDisplayName || "").toLowerCase();
       for (const p of filtered) {
-        if (me && (p.owner || '').toLowerCase() === me) {
-          mine.push(p)
+        if (me && (p.owner || "").toLowerCase() === me) {
+          mine.push(p);
         } else {
-          const key = p.owner || 'Unknown'
-          if (!byOwner.has(key)) byOwner.set(key, [])
-          byOwner.get(key)!.push(p)
+          const key = p.owner || "Unknown";
+          if (!byOwner.has(key)) byOwner.set(key, []);
+          byOwner.get(key)?.push(p);
         }
       }
-      const result: Array<{ label: string; items: Playlist[] }> = []
-      if (mine.length) result.push({ label: 'Yours', items: mine })
+      const result: Array<{ label: string; items: Playlist[] }> = [];
+      if (mine.length) result.push({ label: "Yours", items: mine });
       const others = Array.from(byOwner.entries()).sort((a, b) =>
-        a[0].localeCompare(b[0])
-      )
+        a[0].localeCompare(b[0]),
+      );
       for (const [owner, items] of others) {
-        result.push({ label: owner, items })
+        result.push({ label: owner, items });
       }
-      return result
+      return result;
     }
     // alphabetical: bucket by first character of name
-    const buckets = new Map<string, Playlist[]>()
+    const buckets = new Map<string, Playlist[]>();
     for (const p of filtered) {
-      const first = (p.name || '').trim().charAt(0).toUpperCase()
-      const key = first && /[A-Z]/.test(first) ? first : '#'
-      if (!buckets.has(key)) buckets.set(key, [])
-      buckets.get(key)!.push(p)
+      const first = (p.name || "").trim().charAt(0).toUpperCase();
+      const key = first && /[A-Z]/.test(first) ? first : "#";
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)?.push(p);
     }
     return Array.from(buckets.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
       .map(([label, items]) => ({
         label,
         items: items.slice().sort((a, b) => a.name.localeCompare(b.name)),
-      }))
-  }, [filtered, groupBy, meDisplayName])
+      }));
+  }, [filtered, groupBy, meDisplayName]);
 
   const filteredById = useMemo(
     () => new Map(filtered.map((p) => [p.id, p])),
-    [filtered]
-  )
+    [filtered],
+  );
   const recentItems = useMemo(() => {
-    const out: Playlist[] = []
+    const out: Playlist[] = [];
     for (const id of recentIds) {
-      const p = filteredById.get(id)
-      if (p) out.push(p)
+      const p = filteredById.get(id);
+      if (p) out.push(p);
     }
-    return out
-  }, [recentIds, filteredById])
+    return out;
+  }, [recentIds, filteredById]);
 
-  const visibleIds = useMemo(() => filtered.map((p) => p.id), [filtered])
+  const visibleIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
   const allVisibleSelected =
-    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id))
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
 
   const selectAllVisible = () => {
-    const next = new Set(selected)
-    const added: string[] = []
+    const next = new Set(selected);
+    const added: string[] = [];
     for (const id of visibleIds) {
-      if (!next.has(id)) added.push(id)
-      next.add(id)
+      if (!next.has(id)) added.push(id);
+      next.add(id);
     }
-    setSelected(next)
-    recordRecent(added)
-  }
+    setSelected(next);
+    recordRecent(added);
+  };
   const clearVisible = () => {
-    const next = new Set(selected)
-    for (const id of visibleIds) next.delete(id)
-    setSelected(next)
-  }
+    const next = new Set(selected);
+    for (const id of visibleIds) next.delete(id);
+    setSelected(next);
+  };
 
   return (
     <div className="bucket-source">
       <div className="bucket-row">
-        <label>Source</label>
-        <select value={uiKind} onChange={(e) => onKindChange(e.target.value as SourceKind)}>
-          <option value="liked">Liked Songs</option>
-          <option value="playlists">Specific playlists…</option>
-          <option value="all_playlists">All my playlists</option>
-        </select>
+        <label>
+          Source
+          <select
+            value={uiKind}
+            onChange={(e) => onKindChange(e.target.value as SourceKind)}
+          >
+            <option value="liked">Liked Songs</option>
+            <option value="playlists">Specific playlists…</option>
+            <option value="all_playlists">All my playlists</option>
+          </select>
+        </label>
       </div>
       {showList && (
         <>
@@ -765,11 +867,11 @@ function BucketSourcePicker(props: {
               disabled={visibleIds.length === 0}
               title={
                 allVisibleSelected
-                  ? 'Clear all currently visible playlists'
-                  : 'Select all currently visible playlists'
+                  ? "Clear all currently visible playlists"
+                  : "Select all currently visible playlists"
               }
             >
-              {allVisibleSelected ? 'Clear visible' : 'Select visible'}
+              {allVisibleSelected ? "Clear visible" : "Select visible"}
             </button>
           </div>
           <div className="bucket-source-list">
@@ -783,33 +885,45 @@ function BucketSourcePicker(props: {
               <div className="source-group-block source-recent-block">
                 <div className="source-group-label">Recently used</div>
                 {recentItems.map((p) => {
-                  const cover = pickCover(p.images)
+                  const cover = pickCover(p.images);
                   return (
-                  <label key={`recent-${p.id}`} className="source-check">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(p.id)}
-                      onChange={() => togglePlaylist(p.id)}
-                    />
-                    {cover ? (
-                      <img className="source-cover" src={cover} alt="" loading="lazy" />
-                    ) : (
-                      <span className="source-cover source-cover-placeholder" aria-hidden="true">♪</span>
-                    )}
-                    <span className="source-name">{p.name}</span>
-                    {p.owner && <span className="source-owner">{p.owner}</span>}
-                  </label>
-                  )
+                    <label key={`recent-${p.id}`} className="source-check">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(p.id)}
+                        onChange={() => togglePlaylist(p.id)}
+                      />
+                      {cover ? (
+                        <img
+                          className="source-cover"
+                          src={cover}
+                          alt=""
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span
+                          className="source-cover source-cover-placeholder"
+                          aria-hidden="true"
+                        >
+                          ♪
+                        </span>
+                      )}
+                      <span className="source-name">{p.name}</span>
+                      {p.owner && (
+                        <span className="source-owner">{p.owner}</span>
+                      )}
+                    </label>
+                  );
                 })}
               </div>
             )}
             {groups.map((g, gi) => (
               <div key={gi} className="source-group-block">
-                {g.label && groupBy !== 'none' && (
+                {g.label && groupBy !== "none" && (
                   <div className="source-group-label">{g.label}</div>
                 )}
                 {g.items.map((p) => {
-                  const cover = pickCover(p.images)
+                  const cover = pickCover(p.images);
                   return (
                     <label key={p.id} className="source-check">
                       <input
@@ -825,14 +939,19 @@ function BucketSourcePicker(props: {
                           loading="lazy"
                         />
                       ) : (
-                        <span className="source-cover source-cover-placeholder" aria-hidden="true">♪</span>
+                        <span
+                          className="source-cover source-cover-placeholder"
+                          aria-hidden="true"
+                        >
+                          ♪
+                        </span>
                       )}
                       <span className="source-name">{p.name}</span>
-                      {groupBy !== 'owner' && p.owner && (
+                      {groupBy !== "owner" && p.owner && (
                         <span className="source-owner">{p.owner}</span>
                       )}
                     </label>
-                  )
+                  );
                 })}
               </div>
             ))}
@@ -847,12 +966,12 @@ function BucketSourcePicker(props: {
           )}
         </>
       )}
-      {parsed.kind === 'all_playlists' && (
+      {parsed.kind === "all_playlists" && (
         <div className="hint">
           Pulls every playlist you own or follow; tracks appearing in multiple
           playlists are counted once.
         </div>
       )}
     </div>
-  )
+  );
 }

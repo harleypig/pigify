@@ -1,7 +1,7 @@
 """Integration tests for the recipes (saved filters) persistence layer.
 
 These tests cover the per-user-DB-backed CRUD endpoints in
-``backend.app.api.recipes`` end-to-end through a FastAPI ``TestClient``.
+``app.api.recipes`` end-to-end through a FastAPI ``TestClient``.
 A throwaway SQLite file under a tmp ``DATA_DIR`` stands in for the real
 per-user DB, so each test gets an isolated, empty repository.
 
@@ -17,32 +17,32 @@ Coverage:
 
 Run:
 
-    python -m unittest backend.tests.test_recipes_persistence -v
+    poetry run pytest tests/test_recipes_persistence.py
 """
+
 from __future__ import annotations
 
 import shutil
 import tempfile
 import unittest
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from starlette.middleware.sessions import SessionMiddleware
 
-from backend.app.api import recipes as recipes_api
-from backend.app.config import settings
-from backend.app.db import engines as db_engines
-from backend.app.db import paths as db_paths
-from backend.app.db.base import UserBase
-from backend.app.db.models import user as _user_models  # noqa: F401  (register tables)
-
+from app.api import recipes as recipes_api
+from app.config import settings
+from app.db import engines as db_engines
+from app.db import paths as db_paths
+from app.db.base import UserBase
+from app.db.models import user as _user_models  # noqa: F401  (register tables)
 
 SPOTIFY_ID = "testuser"
 
 
-def _make_recipe(name: str = "My Recipe", source: str = "liked") -> Dict[str, Any]:
+def _make_recipe(name: str = "My Recipe", source: str = "liked") -> dict[str, Any]:
     """Minimal valid Recipe payload accepted by the POST/PUT endpoints."""
     return {
         "name": name,
@@ -68,7 +68,7 @@ def _build_test_app() -> FastAPI:
     app.include_router(recipes_api.router, prefix="/api/recipes")
 
     @app.post("/__test__/session")
-    async def _set_session(request: Request, payload: Dict[str, Any]):
+    async def _set_session(request: Request, payload: dict[str, Any]):
         for k, v in payload.items():
             request.session[k] = v
         return {"ok": True}
@@ -118,7 +118,7 @@ class RecipesPersistenceTests(unittest.TestCase):
         self,
         *,
         authenticated: bool = True,
-        legacy_recipes: Optional[List[Dict[str, Any]]] = None,
+        legacy_recipes: list[dict[str, Any]] | None = None,
     ) -> TestClient:
         """Build a TestClient with a fresh cookie jar, optionally
         pre-seeded with ``spotify_user_id`` and a legacy
@@ -128,7 +128,7 @@ class RecipesPersistenceTests(unittest.TestCase):
         db_engines._user_engines.clear()
         client = TestClient(self.app)
         if authenticated:
-            payload: Dict[str, Any] = {"spotify_user_id": SPOTIFY_ID}
+            payload: dict[str, Any] = {"spotify_user_id": SPOTIFY_ID}
             if legacy_recipes is not None:
                 payload["recipes"] = legacy_recipes
             r = client.post("/__test__/session", json=payload)
@@ -167,9 +167,7 @@ class RecipesPersistenceTests(unittest.TestCase):
 
         new_body = _make_recipe("New Name", source="playlist:abc")
         new_body["combine"] = "shuffled"
-        updated = client.put(
-            f"/api/recipes/{created['id']}", json=new_body
-        ).json()
+        updated = client.put(f"/api/recipes/{created['id']}", json=new_body).json()
 
         self.assertEqual(updated["id"], created["id"])
         self.assertEqual(updated["name"], "New Name")

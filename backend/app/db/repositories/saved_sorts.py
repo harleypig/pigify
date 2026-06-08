@@ -1,12 +1,11 @@
 """Saved sort definitions repository."""
-from __future__ import annotations
 
-from typing import Optional
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import SavedSort
+from app.db.models.user import SavedSort
 
 
 async def list_all(session: AsyncSession) -> list[SavedSort]:
@@ -17,11 +16,11 @@ async def list_all(session: AsyncSession) -> list[SavedSort]:
     )
 
 
-async def get(session: AsyncSession, sort_id: int) -> Optional[SavedSort]:
+async def get(session: AsyncSession, sort_id: int) -> SavedSort | None:
     return await session.get(SavedSort, sort_id)
 
 
-async def get_by_name(session: AsyncSession, name: str) -> Optional[SavedSort]:
+async def get_by_name(session: AsyncSession, name: str) -> SavedSort | None:
     return (
         await session.execute(select(SavedSort).where(SavedSort.name == name))
     ).scalar_one_or_none()
@@ -32,7 +31,7 @@ async def create(
     *,
     name: str,
     keys: list,
-    description: Optional[str] = None,
+    description: str | None = None,
 ) -> SavedSort:
     row = SavedSort(name=name, keys=keys, description=description)
     session.add(row)
@@ -44,10 +43,10 @@ async def update(
     session: AsyncSession,
     sort_id: int,
     *,
-    name: Optional[str] = None,
-    keys: Optional[list] = None,
-    description: Optional[str] = None,
-) -> Optional[SavedSort]:
+    name: str | None = None,
+    keys: list | None = None,
+    description: str | None = None,
+) -> SavedSort | None:
     row = await get(session, sort_id)
     if row is None:
         return None

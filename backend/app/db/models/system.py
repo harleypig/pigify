@@ -1,13 +1,13 @@
 """System-DB tables: users, instance settings, schema version."""
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.base import SystemBase, TimestampMixin
+from app.db.base import SystemBase, TimestampMixin
 
 
 class User(SystemBase, TimestampMixin):
@@ -23,15 +23,15 @@ class User(SystemBase, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     spotify_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    display_name: Mapped[Optional[str]] = mapped_column(String(255))
+    display_name: Mapped[str | None] = mapped_column(String(255))
     # User-chosen display name overriding the Spotify-supplied one. Null
     # means "use the default" (the stable Spotify user id, exposed via
     # `spotify_id`). Trimmed empty strings are normalised to NULL by the
     # repository so "cleared" reliably reverts to the default.
-    custom_display_name: Mapped[Optional[str]] = mapped_column(String(255))
-    email: Mapped[Optional[str]] = mapped_column(String(320))
+    custom_display_name: Mapped[str | None] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(320))
     db_path: Mapped[str] = mapped_column(Text, nullable=False)
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Setting(SystemBase, TimestampMixin):
@@ -40,7 +40,7 @@ class Setting(SystemBase, TimestampMixin):
     __tablename__ = "settings"
 
     key: Mapped[str] = mapped_column(String(128), primary_key=True)
-    value: Mapped[Optional[str]] = mapped_column(Text)
+    value: Mapped[str | None] = mapped_column(Text)
 
 
 class SchemaVersion(SystemBase):

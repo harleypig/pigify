@@ -2,20 +2,21 @@
 Player control API endpoints using Spotify REST API.
 Works across all active devices (desktop, mobile, etc.).
 """
-from fastapi import APIRouter, Request, HTTPException, Query
-from typing import Optional
-from pydantic import BaseModel
-import math
 
-from backend.app.services.spotify import SpotifyService
-from backend.app.services import scrobbler
+import contextlib
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel
+
+from app.services import scrobbler
+from app.services.spotify import SpotifyService
 
 router = APIRouter()
 
 
 class PlayRequest(BaseModel):
-    track_uri: Optional[str] = None
-    device_id: Optional[str] = None
+    track_uri: str | None = None
+    device_id: str | None = None
 
 
 def _get_token(request: Request) -> str:
@@ -32,26 +33,24 @@ async def get_playback_state(request: Request):
     try:
         state = await spotify.get_playback_state()
         # Hook into the scrobbling pipeline. Never raises.
-        try:
+        with contextlib.suppress(Exception):
             await scrobbler.process_state(request, state)
-        except Exception:
-            pass
         if state is None:
             return {"is_playing": False, "item": None, "device": None, "progress_ms": 0}
         return state
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/play")
-async def play(request: Request, body: PlayRequest = PlayRequest()):
+async def play(request: Request, body: PlayRequest = PlayRequest()):  # noqa: B008
     """Start or resume playback, optionally for a specific track URI."""
     spotify = SpotifyService(_get_token(request))
     try:
         await spotify.play_track(track_uri=body.track_uri, device_id=body.device_id)
         return {"status": "playing"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/pause")
@@ -62,7 +61,7 @@ async def pause(request: Request):
         await spotify.pause_playback()
         return {"status": "paused"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/next")
@@ -73,7 +72,7 @@ async def next_track(request: Request):
         await spotify.next_track()
         return {"status": "skipped"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/previous")
@@ -84,7 +83,7 @@ async def previous_track(request: Request):
         await spotify.previous_track()
         return {"status": "rewound"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.put("/seek")
@@ -95,7 +94,7 @@ async def seek(request: Request, position_ms: int = Query(..., ge=0)):
         await spotify._put("/me/player/seek", params={"position_ms": position_ms})
         return {"status": "ok", "position_ms": position_ms}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.get("/analysis/{track_id}")
@@ -132,7 +131,7 @@ async def get_audio_analysis(
 
         # Average each bucket; fill empty buckets with neighbour or -60
         averaged = []
-        for i, b in enumerate(buckets):
+        for _i, b in enumerate(buckets):
             if b:
                 averaged.append(sum(b) / len(b))
             elif averaged:
@@ -147,6 +146,6 @@ async def get_audio_analysis(
         normalised = [round((v - min_db) / db_range, 4) for v in averaged]
 
         return {"bars": normalised, "duration": track_duration}
-    except Exception as e:
+    except Exception:
         # Non-fatal — just return empty so frontend falls back to plain bar
         return {"bars": [], "duration": 0}

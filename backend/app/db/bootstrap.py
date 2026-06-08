@@ -6,20 +6,21 @@ short-lived connection. We then write a `schema_version` row on the
 system DB so external tools can read the applied head without parsing
 Alembic's own table.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import select
 
-from backend.app.db.engines import get_system_engine, get_user_engine
-from backend.app.db.models.system import SchemaVersion, User
-from backend.app.db.paths import system_db_url, user_db_url
-from backend.app.db.session import system_session_scope
+from app.db.engines import get_system_engine, get_user_engine
+from app.db.models.system import SchemaVersion, User
+from app.db.paths import system_db_url, user_db_url
+from app.db.session import system_session_scope
 
 log = logging.getLogger(__name__)
 
@@ -87,7 +88,7 @@ async def apply_all_known_user_migrations() -> None:
     for sid in rows:
         try:
             await apply_user_migrations(sid)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.exception("user migration failed for %s", sid)
             failures.append((sid, str(e)))
     if failures:
@@ -102,11 +103,9 @@ async def _record_system_head() -> None:
     head = script.get_current_head() or "unknown"
     async with system_session_scope() as session:
         existing = await session.get(SchemaVersion, "system")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if existing is None:
-            session.add(
-                SchemaVersion(scope="system", version=head, applied_at=now)
-            )
+            session.add(SchemaVersion(scope="system", version=head, applied_at=now))
         else:
             existing.version = head
             existing.applied_at = now
@@ -126,6 +125,6 @@ async def known_user_ids() -> list[str]:
     at Postgres.
     """
     async with system_session_scope() as session:
-        from backend.app.db.repositories import users as users_repo
+        from app.db.repositories import users as users_repo
 
         return await users_repo.all_spotify_ids(session)

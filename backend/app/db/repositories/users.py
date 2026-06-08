@@ -1,8 +1,8 @@
 """System-DB users repository."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -10,10 +10,10 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.system import User
+from app.db.models.system import User
 
 
-async def get_by_spotify_id(session: AsyncSession, spotify_id: str) -> Optional[User]:
+async def get_by_spotify_id(session: AsyncSession, spotify_id: str) -> User | None:
     return (
         await session.execute(select(User).where(User.spotify_id == spotify_id))
     ).scalar_one_or_none()
@@ -24,8 +24,8 @@ async def upsert(
     *,
     spotify_id: str,
     db_path: str,
-    display_name: Optional[str] = None,
-    email: Optional[str] = None,
+    display_name: str | None = None,
+    email: str | None = None,
 ) -> User:
     """Insert-or-update a User row keyed by ``spotify_id``.
 
@@ -36,7 +36,7 @@ async def upsert(
     expose an upsert (we don't currently target any such backend, but the
     fallback keeps tests on alternate dialects from blowing up).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     dialect = session.bind.dialect.name if session.bind is not None else ""
 
     insert_stmt = None
@@ -107,21 +107,19 @@ async def count(session: AsyncSession) -> int:
     )
 
 
-async def get_custom_display_name(
-    session: AsyncSession, spotify_id: str
-) -> Optional[str]:
+async def get_custom_display_name(session: AsyncSession, spotify_id: str) -> str | None:
     user = await get_by_spotify_id(session, spotify_id)
     return user.custom_display_name if user else None
 
 
 async def set_custom_display_name(
-    session: AsyncSession, spotify_id: str, value: Optional[str]
-) -> Optional[str]:
+    session: AsyncSession, spotify_id: str, value: str | None
+) -> str | None:
     """Persist a custom display name. Empty/whitespace clears it."""
     user = await get_by_spotify_id(session, spotify_id)
     if user is None:
         raise LookupError(f"unknown spotify_id: {spotify_id}")
-    normalised: Optional[str] = None
+    normalised: str | None = None
     if value is not None:
         trimmed = value.strip()
         normalised = trimmed if trimmed else None
@@ -137,6 +135,4 @@ def effective_display_name(user: User) -> str:
 
 
 async def all_spotify_ids(session: AsyncSession) -> list[str]:
-    return list(
-        (await session.execute(select(User.spotify_id))).scalars().all()
-    )
+    return list((await session.execute(select(User.spotify_id))).scalars().all())

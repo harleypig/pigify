@@ -5,17 +5,18 @@ returns a session bound to the per-user DB inferred from the request's
 authenticated Spotify user, so feature code never has to thread a user
 ID through every call.
 """
+
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator, Optional
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from backend.app.db.engines import get_system_engine, get_user_engine
+from app.db.engines import get_system_engine, get_user_engine
 
-_system_factory: Optional[async_sessionmaker[AsyncSession]] = None
+_system_factory: async_sessionmaker[AsyncSession] | None = None
 
 
 def _system_sessionmaker() -> async_sessionmaker[AsyncSession]:
@@ -41,9 +42,7 @@ async def system_session_scope() -> AsyncIterator[AsyncSession]:
 @asynccontextmanager
 async def user_session_scope(spotify_id: str) -> AsyncIterator[AsyncSession]:
     engine = await get_user_engine(spotify_id)
-    factory = async_sessionmaker(
-        bind=engine, expire_on_commit=False, autoflush=False
-    )
+    factory = async_sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
     async with factory() as session:
         try:
             yield session
@@ -54,7 +53,8 @@ async def user_session_scope(spotify_id: str) -> AsyncIterator[AsyncSession]:
 
 # ---------- FastAPI dependencies ----------
 
-async def SystemSession() -> AsyncIterator[AsyncSession]:  # noqa: N802
+
+async def SystemSession() -> AsyncIterator[AsyncSession]:
     """FastAPI dependency yielding a system-DB session."""
     async with system_session_scope() as s:
         yield s
@@ -67,7 +67,7 @@ def _spotify_id_from_request(request: Request) -> str:
     return sid
 
 
-async def UserSession(  # noqa: N802
+async def UserSession(
     request: Request,
 ) -> AsyncIterator[AsyncSession]:
     """FastAPI dependency yielding the current user's per-user DB session."""
@@ -76,7 +76,7 @@ async def UserSession(  # noqa: N802
         yield s
 
 
-def CurrentUserId(request: Request) -> str:  # noqa: N802
+def CurrentUserId(request: Request) -> str:
     """FastAPI dependency returning the authenticated Spotify user ID."""
     return _spotify_id_from_request(request)
 

@@ -39,7 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Auto-purge stale enrichment_cache rows.",
       "Make all newly suggested tasks default to drafts.",
       "Add a button to clear cached track trivia.",
-      "…and 51 earlier changes."
+      "…and 78 earlier changes."
     ]
   },
   {

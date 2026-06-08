@@ -54,7 +54,9 @@
   cursor: pointer;
   user-select: none;
 }
-.tip-raw-toggle input { cursor: pointer; }
+.tip-raw-toggle input {
+  cursor: pointer;
+}
 
 .tip-toggle {
   background: transparent;
@@ -66,9 +68,18 @@
   padding: 2px 6px;
   border-radius: 4px;
 }
-.tip-toggle:hover { color: #fff; background: #2a2a2a; }
-.tip-toggle:disabled { opacity: 0.4; cursor: default; background: transparent; }
-.tip-refresh { font-size: 16px; }
+.tip-toggle:hover {
+  color: #fff;
+  background: #2a2a2a;
+}
+.tip-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+  background: transparent;
+}
+.tip-refresh {
+  font-size: 16px;
+}
 
 .tip-body {
   overflow-y: auto;
@@ -76,15 +87,42 @@
   flex: 1;
 }
 
-.tip-empty, .tip-error { color: #888; font-size: 13px; margin: 0; padding: 8px 0; }
-.tip-error { color: #ff8a8a; }
+.tip-empty,
+.tip-error {
+  color: #888;
+  font-size: 13px;
+  margin: 0;
+  padding: 8px 0;
+}
+.tip-error {
+  color: #ff8a8a;
+}
 
-.tip-section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #262626; }
-.tip-head-section { margin-top: 0; padding-top: 0; border-top: none; }
+.tip-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #262626;
+}
+.tip-head-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
 
-.tip-track-name { margin: 0 0 4px; font-size: 16px; }
-.tip-sub { margin: 0 0 4px; color: #ddd; font-size: 13px; }
-.tip-meta { color: #888; font-size: 12px; margin: 4px 0; }
+.tip-track-name {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.tip-sub {
+  margin: 0 0 4px;
+  color: #ddd;
+  font-size: 13px;
+}
+.tip-meta {
+  color: #888;
+  font-size: 12px;
+  margin: 4px 0;
+}
 
 .tip-extlink {
   display: inline-block;
@@ -93,7 +131,9 @@
   text-decoration: none;
   font-size: 12px;
 }
-.tip-extlink:hover { text-decoration: underline; }
+.tip-extlink:hover {
+  text-decoration: underline;
+}
 
 .tip-section h4 {
   margin: 0 0 8px;
@@ -111,9 +151,18 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-.tip-tier-authenticated { background: #1db95433; color: #1ed760; }
-.tip-tier-public { background: #4f9bff33; color: #66a8ff; }
-.tip-tier-none { background: #66666633; color: #aaa; }
+.tip-tier-authenticated {
+  background: #1db95433;
+  color: #1ed760;
+}
+.tip-tier-public {
+  background: #4f9bff33;
+  color: #66a8ff;
+}
+.tip-tier-none {
+  background: #66666633;
+  color: #aaa;
+}
 
 .tip-stats {
   display: flex;
@@ -123,9 +172,19 @@
   color: #ccc;
   margin: 0 0 8px;
 }
-.tip-stats code { background: #222; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+.tip-stats code {
+  background: #222;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+}
 
-.tip-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.tip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
 .tip-tag {
   background: #232323;
   color: #ccc;
@@ -149,17 +208,28 @@
   color: #888;
 }
 
-.tip-similar, .tip-releases {
+.tip-similar,
+.tip-releases {
   list-style: none;
   padding: 0;
   margin: 0;
   font-size: 12px;
   color: #ccc;
 }
-.tip-similar li, .tip-releases li { padding: 2px 0; }
-.tip-similar a { color: #1ed760; text-decoration: none; }
-.tip-similar a:hover { text-decoration: underline; }
-.tip-similar-artist { color: #888; }
+.tip-similar li,
+.tip-releases li {
+  padding: 2px 0;
+}
+.tip-similar a {
+  color: #1ed760;
+  text-decoration: none;
+}
+.tip-similar a:hover {
+  text-decoration: underline;
+}
+.tip-similar-artist {
+  color: #888;
+}
 
 .tip-raw {
   position: relative;
@@ -188,10 +258,22 @@
   font-weight: 600;
   cursor: pointer;
 }
-.tip-copy:hover { background: #1ed760; }
+.tip-copy:hover {
+  background: #1ed760;
+}
 
-.tip-json-key { color: #79b8ff; }
-.tip-json-string { color: #c3e88d; }
-.tip-json-number { color: #f78c6c; }
-.tip-json-bool { color: #c792ea; }
-.tip-json-null { color: #ff6b8b; }
+.tip-json-key {
+  color: #79b8ff;
+}
+.tip-json-string {
+  color: #c3e88d;
+}
+.tip-json-number {
+  color: #f78c6c;
+}
+.tip-json-bool {
+  color: #c792ea;
+}
+.tip-json-null {
+  color: #ff6b8b;
+}

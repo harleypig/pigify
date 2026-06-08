@@ -1,57 +1,57 @@
-import { useState, useEffect } from 'react'
-import { spotifyService } from '../services/spotify'
-import './Player.css'
+import { useEffect, useState } from "react";
+import { spotifyService } from "../services/spotify";
+import "./Player.css";
 
 interface PlayerProps {
-  trackUri: string
+  trackUri: string;
 }
 
 function Player({ trackUri }: PlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentState, setCurrentState] = useState<any>(null)
-
-  useEffect(() => {
-    playTrack()
-    const interval = setInterval(updateState, 1000)
-    return () => clearInterval(interval)
-  }, [trackUri])
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentState, setCurrentState] = useState<any>(null);
 
   const playTrack = async () => {
     try {
-      await spotifyService.play(trackUri)
-      setIsPlaying(true)
+      await spotifyService.play(trackUri);
+      setIsPlaying(true);
     } catch (error) {
-      console.error('Error playing track:', error)
+      console.error("Error playing track:", error);
     }
-  }
+  };
 
   const updateState = async () => {
     try {
-      const state = await spotifyService.getCurrentState()
-      setCurrentState(state)
+      const state = await spotifyService.getCurrentState();
+      setCurrentState(state);
       if (state) {
-        setIsPlaying(!state.paused)
+        setIsPlaying(!state.paused);
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently handle errors
     }
-  }
+  };
+
+  useEffect(() => {
+    playTrack();
+    const interval = setInterval(updateState, 1000);
+    return () => clearInterval(interval);
+  }, [updateState, playTrack]);
 
   const handlePlayPause = async () => {
     try {
       if (isPlaying) {
-        await spotifyService.pause()
-        setIsPlaying(false)
+        await spotifyService.pause();
+        setIsPlaying(false);
       } else {
-        await spotifyService.resume()
-        setIsPlaying(true)
+        await spotifyService.resume();
+        setIsPlaying(true);
       }
     } catch (error) {
-      console.error('Error toggling play/pause:', error)
+      console.error("Error toggling play/pause:", error);
     }
-  }
+  };
 
-  const track = currentState?.track_window?.current_track
+  const track = currentState?.track_window?.current_track;
 
   return (
     <div className="player">
@@ -69,30 +69,26 @@ function Player({ trackUri }: PlayerProps) {
               <div className="player-track-details">
                 <div className="player-track-name">{track.name}</div>
                 <div className="player-track-artist">
-                  {track.artists.map((a: any) => a.name).join(', ')}
+                  {track.artists.map((a: any) => a.name).join(", ")}
                 </div>
               </div>
             </div>
             <div className="player-controls">
               <button
+                type="button"
                 className="player-play-pause"
                 onClick={handlePlayPause}
-                aria-label={isPlaying ? 'Pause' : 'Play'}
+                aria-label={isPlaying ? "Pause" : "Play"}
               >
-                {isPlaying ? '⏸' : '▶'}
+                {isPlaying ? "⏸" : "▶"}
               </button>
             </div>
           </>
         )}
-        {!track && (
-          <div className="player-status">
-            Initializing player…
-          </div>
-        )}
+        {!track && <div className="player-status">Initializing player…</div>}
       </div>
     </div>
-  )
+  );
 }
 
-export default Player
-
+export default Player;

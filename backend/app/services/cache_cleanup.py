@@ -8,15 +8,16 @@ on app startup and then on a fixed cadence.
 The cleanup is best-effort: a failure on one user DB is logged but
 must not stop the loop or block the rest of the app.
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
-from typing import Optional
 
-from backend.app.db.bootstrap import known_user_ids
-from backend.app.db.repositories import enrichment_cache as cache_repo
-from backend.app.db.session import user_session_scope
+from app.db.bootstrap import known_user_ids
+from app.db.repositories import enrichment_cache as cache_repo
+from app.db.session import user_session_scope
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 # wasted work.
 DEFAULT_INTERVAL_SECONDS = 24 * 60 * 60
 
-_task: Optional[asyncio.Task] = None
+_task: asyncio.Task | None = None
 
 
 async def purge_user(spotify_id: str) -> int:
@@ -85,7 +86,9 @@ def start_periodic_cleanup(
     global _task
     if _task is not None and not _task.done():
         return
-    _task = asyncio.create_task(_loop(interval_seconds), name="enrichment-cache-cleanup")
+    _task = asyncio.create_task(
+        _loop(interval_seconds), name="enrichment-cache-cleanup"
+    )
 
 
 async def stop_periodic_cleanup() -> None:
@@ -96,7 +99,5 @@ async def stop_periodic_cleanup() -> None:
     if task is None or task.done():
         return
     task.cancel()
-    try:
+    with contextlib.suppress(asyncio.CancelledError, Exception):
         await task
-    except (asyncio.CancelledError, Exception):
-        pass

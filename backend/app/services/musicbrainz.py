@@ -8,11 +8,11 @@ Strategy for resolving a Spotify track to MBIDs:
 Rate-limit policy: MusicBrainz allows ~1 req/s with a proper User-Agent.
 We set a descriptive UA and add a small async semaphore.
 """
+
 import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
-
 
 MB_BASE = "https://musicbrainz.org/ws/2"
 USER_AGENT = "Pigify/0.1 (https://github.com/pigify; contact: dev@pigify.local)"
@@ -24,7 +24,7 @@ class MusicBrainzError(Exception):
     pass
 
 
-async def _get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
+async def _get(path: str, params: dict[str, Any]) -> dict[str, Any]:
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     async with _semaphore:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -38,7 +38,7 @@ async def _get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
     return resp.json()
 
 
-async def lookup_by_isrc(isrc: str) -> List[Dict[str, Any]]:
+async def lookup_by_isrc(isrc: str) -> list[dict[str, Any]]:
     data = await _get(
         f"/isrc/{isrc}",
         {"inc": "artists+releases+release-groups", "fmt": "json"},
@@ -48,7 +48,7 @@ async def lookup_by_isrc(isrc: str) -> List[Dict[str, Any]]:
 
 async def search_recording(
     artist: str, title: str, *, limit: int = 5
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     # Lucene-style query
     query = f'recording:"{title}" AND artist:"{artist}"'
     data = await _get(
@@ -58,21 +58,23 @@ async def search_recording(
     return data.get("recordings", []) or []
 
 
-async def get_recording(mbid: str) -> Dict[str, Any]:
+async def get_recording(mbid: str) -> dict[str, Any]:
     return await _get(
         f"/recording/{mbid}",
         {"inc": "artists+releases+release-groups+isrcs+tags+work-rels", "fmt": "json"},
     )
 
 
-def summarize_recording(rec: Dict[str, Any]) -> Dict[str, Any]:
+def summarize_recording(rec: dict[str, Any]) -> dict[str, Any]:
     """Reduce a MusicBrainz recording to the bits the UI needs."""
     if not rec:
         return {}
     artists = [
         {"name": a.get("name"), "mbid": a.get("id")}
         for a in (
-            ac.get("artist", {}) for ac in rec.get("artist-credit", []) if isinstance(ac, dict)
+            ac.get("artist", {})
+            for ac in rec.get("artist-credit", [])
+            if isinstance(ac, dict)
         )
         if a.get("id")
     ]
@@ -101,10 +103,10 @@ def summarize_recording(rec: Dict[str, Any]) -> Dict[str, Any]:
 
 async def resolve_spotify_track(
     *,
-    isrc: Optional[str],
+    isrc: str | None,
     artist: str,
     title: str,
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """
     Try ISRC first, then fall back to fuzzy search. Returns a summarised
     recording dict or None if nothing matched.
@@ -120,6 +122,6 @@ async def resolve_spotify_track(
         if recs:
             detail = await get_recording(recs[0]["id"])
             return summarize_recording(detail)
-    except (MusicBrainzError, httpx.HTTPError, asyncio.TimeoutError):
+    except (TimeoutError, MusicBrainzError, httpx.HTTPError):
         return None
     return None

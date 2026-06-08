@@ -1,62 +1,67 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from "react";
+import { CHANGELOG, type ChangelogEntry } from "../data/changelog";
 import {
   apiService,
-  ConnectionStatus,
-  FavoritesStatus,
-  LastfmQueueEntry,
-  LastfmQueueFlushResult,
-  LastfmStatus,
-  Profile,
-  VersionInfo,
-} from '../services/api'
-import { CHANGELOG, ChangelogEntry } from '../data/changelog'
-import './SettingsPanel.css'
+  type ConnectionStatus,
+  type FavoritesStatus,
+  type LastfmQueueEntry,
+  type LastfmQueueFlushResult,
+  type LastfmStatus,
+  type Profile,
+  type VersionInfo,
+} from "../services/api";
+import "./SettingsPanel.css";
 
-export type SettingsTabId = 'favorites' | 'connections' | 'about'
+export type SettingsTabId = "favorites" | "connections" | "about";
 
 interface Props {
-  onClose: () => void
-  onProfileChange?: (profile: Profile) => void
-  initialTab?: SettingsTabId
+  onClose: () => void;
+  onProfileChange?: (profile: Profile) => void;
+  initialTab?: SettingsTabId;
 }
 
 interface TabDef {
-  id: SettingsTabId
-  label: string
+  id: SettingsTabId;
+  label: string;
 }
 
 const TABS: TabDef[] = [
-  { id: 'favorites', label: 'Favorites' },
-  { id: 'connections', label: 'Connections' },
-  { id: 'about', label: 'About' },
-]
+  { id: "favorites", label: "Favorites" },
+  { id: "connections", label: "Connections" },
+  { id: "about", label: "About" },
+];
 
-const GITHUB_REPO_URL = 'https://github.com/harleypig/pigify'
+const GITHUB_REPO_URL = "https://github.com/harleypig/pigify";
 
 function tierLabel(tier: string): string {
-  if (tier === 'authenticated') return 'Connected'
-  if (tier === 'public') return 'Public access only'
-  return 'Unavailable'
+  if (tier === "authenticated") return "Connected";
+  if (tier === "public") return "Public access only";
+  return "Unavailable";
 }
 
 function tierClass(tier: string): string {
-  if (tier === 'authenticated') return 'tier-ok'
-  if (tier === 'public') return 'tier-public'
-  return 'tier-none'
+  if (tier === "authenticated") return "tier-ok";
+  if (tier === "public") return "tier-public";
+  return "tier-none";
 }
 
-function SettingsPanel({ onClose, onProfileChange, initialTab = 'favorites' }: Props) {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab)
+function SettingsPanel({
+  onClose,
+  onProfileChange,
+  initialTab = "favorites",
+}: Props) {
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
 
   useEffect(() => {
-    setActiveTab(initialTab)
-  }, [initialTab])
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   return (
     <aside className="settings-panel" aria-label="Settings">
       <header className="sp-header">
         <span className="sp-title-tag">Settings</span>
         <button
+          type="button"
           className="sp-close"
           onClick={onClose}
           aria-label="Close settings"
@@ -68,10 +73,11 @@ function SettingsPanel({ onClose, onProfileChange, initialTab = 'favorites' }: P
       <div className="sp-tabs" role="tablist">
         {TABS.map((t) => (
           <button
+            type="button"
             key={t.id}
             role="tab"
             aria-selected={activeTab === t.id}
-            className={`sp-tab ${activeTab === t.id ? 'active' : ''}`}
+            className={`sp-tab ${activeTab === t.id ? "active" : ""}`}
             onClick={() => setActiveTab(t.id)}
           >
             {t.label}
@@ -79,102 +85,113 @@ function SettingsPanel({ onClose, onProfileChange, initialTab = 'favorites' }: P
         ))}
       </div>
       <div className="sp-body">
-        <div hidden={activeTab !== 'favorites'} role="tabpanel">
+        <div hidden={activeTab !== "favorites"} role="tabpanel">
           <FavoritesTab />
         </div>
-        <div hidden={activeTab !== 'connections'} role="tabpanel">
+        <div hidden={activeTab !== "connections"} role="tabpanel">
           <ConnectionsTab onProfileChange={onProfileChange} />
         </div>
-        <div hidden={activeTab !== 'about'} role="tabpanel">
+        <div hidden={activeTab !== "about"} role="tabpanel">
           <AboutTab />
         </div>
       </div>
     </aside>
-  )
+  );
 }
 
 function FavoritesTab() {
-  const [status, setStatus] = useState<FavoritesStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
-  const [intervalDraft, setIntervalDraft] = useState(0)
-  const [error, setError] = useState<string | null>(null)
-  const bgTimerRef = useRef<number | null>(null)
+  const [status, setStatus] = useState<FavoritesStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [intervalDraft, setIntervalDraft] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const bgTimerRef = useRef<number | null>(null);
 
   const load = async () => {
     try {
-      const data = await apiService.getFavoritesStatus()
-      setStatus(data)
-      setIntervalDraft(data.background_interval_minutes)
-      setError(null)
+      const data = await apiService.getFavoritesStatus();
+      setStatus(data);
+      setIntervalDraft(data.background_interval_minutes);
+      setError(null);
     } catch {
-      setError('Failed to load settings')
+      setError("Failed to load settings");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, [load]);
 
   useEffect(() => {
     if (bgTimerRef.current) {
-      window.clearInterval(bgTimerRef.current)
-      bgTimerRef.current = null
+      window.clearInterval(bgTimerRef.current);
+      bgTimerRef.current = null;
     }
-    const minutes = status?.background_interval_minutes ?? 0
+    const minutes = status?.background_interval_minutes ?? 0;
     if (minutes > 0) {
-      bgTimerRef.current = window.setInterval(() => {
-        apiService
-          .syncFavorites()
-          .then((s) => {
-            setStatus((prev) =>
-              prev ? { ...prev, last_sync: s, pending_conflicts: s.conflicts } : prev
-            )
-          })
-          .catch(() => {})
-      }, minutes * 60 * 1000)
+      bgTimerRef.current = window.setInterval(
+        () => {
+          apiService
+            .syncFavorites()
+            .then((s) => {
+              setStatus((prev) =>
+                prev
+                  ? { ...prev, last_sync: s, pending_conflicts: s.conflicts }
+                  : prev,
+              );
+            })
+            .catch(() => {});
+        },
+        minutes * 60 * 1000,
+      );
     }
     return () => {
-      if (bgTimerRef.current) window.clearInterval(bgTimerRef.current)
-    }
-  }, [status?.background_interval_minutes])
+      if (bgTimerRef.current) window.clearInterval(bgTimerRef.current);
+    };
+  }, [status?.background_interval_minutes]);
 
   const runSync = async () => {
-    setSyncing(true)
+    setSyncing(true);
     try {
-      const summary = await apiService.syncFavorites()
+      const summary = await apiService.syncFavorites();
       setStatus((prev) =>
-        prev ? { ...prev, last_sync: summary, pending_conflicts: summary.conflicts } : prev
-      )
+        prev
+          ? {
+              ...prev,
+              last_sync: summary,
+              pending_conflicts: summary.conflicts,
+            }
+          : prev,
+      );
     } catch {
-      setError('Sync failed')
+      setError("Sync failed");
     } finally {
-      setSyncing(false)
+      setSyncing(false);
     }
-  }
+  };
 
   const saveInterval = async () => {
     try {
-      const next = await apiService.updateFavoritesSettings(intervalDraft)
-      setStatus(next)
+      const next = await apiService.updateFavoritesSettings(intervalDraft);
+      setStatus(next);
     } catch {
-      setError('Failed to save interval')
+      setError("Failed to save interval");
     }
-  }
+  };
 
   const resolve = async (
     index: number,
-    choice: 'love_both' | 'unlove_both' | 'keep'
+    choice: "love_both" | "unlove_both" | "keep",
   ) => {
     try {
-      await apiService.resolveFavoriteConflict(index, choice)
-      await load()
+      await apiService.resolveFavoriteConflict(index, choice);
+      await load();
     } catch {
-      setError('Failed to resolve conflict')
+      setError("Failed to resolve conflict");
     }
-  }
+  };
 
   return (
     <div className="sp-tabpanel">
@@ -187,14 +204,19 @@ function FavoritesTab() {
             <h3>Sync sources</h3>
             <ul className="sp-list">
               {status.connections.map((c) => (
-                <li key={c.service} className={`sp-conn ${c.connected ? 'on' : 'off'}`}>
+                <li
+                  key={c.service}
+                  className={`sp-conn ${c.connected ? "on" : "off"}`}
+                >
                   <span className="sp-conn-name">{c.service}</span>
                   <span className="sp-conn-state">
                     {c.connected
-                      ? `Connected${c.username ? ` as ${c.username}` : ''}`
-                      : 'Not connected'}
+                      ? `Connected${c.username ? ` as ${c.username}` : ""}`
+                      : "Not connected"}
                   </span>
-                  {c.detail && <span className="sp-conn-detail">{c.detail}</span>}
+                  {c.detail && (
+                    <span className="sp-conn-detail">{c.detail}</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -204,7 +226,7 @@ function FavoritesTab() {
             <h3>Background sync</h3>
             <div className="sp-row">
               <label>
-                Interval (minutes, 0 to disable):{' '}
+                Interval (minutes, 0 to disable):{" "}
                 <input
                   type="number"
                   min={0}
@@ -213,20 +235,27 @@ function FavoritesTab() {
                   onChange={(e) => setIntervalDraft(Number(e.target.value))}
                 />
               </label>
-              <button className="sp-btn" onClick={saveInterval}>
+              <button type="button" className="sp-btn" onClick={saveInterval}>
                 Save
               </button>
             </div>
             <div className="sp-row">
-              <button className="sp-btn" onClick={runSync} disabled={syncing}>
-                {syncing ? 'Syncing…' : 'Sync now'}
+              <button
+                type="button"
+                className="sp-btn"
+                onClick={runSync}
+                disabled={syncing}
+              >
+                {syncing ? "Syncing…" : "Sync now"}
               </button>
               {status.last_sync && (
                 <span className="sp-meta">
-                  Last sync: {new Date(status.last_sync.ran_at).toLocaleString()} ·{' '}
-                  Spotify {status.last_sync.spotify_count} · Last.fm{' '}
-                  {status.last_sync.lastfm_count} · Matched {status.last_sync.matched}
-                  {status.last_sync.error ? ` · ${status.last_sync.error}` : ''}
+                  Last sync:{" "}
+                  {new Date(status.last_sync.ran_at).toLocaleString()} · Spotify{" "}
+                  {status.last_sync.spotify_count} · Last.fm{" "}
+                  {status.last_sync.lastfm_count} · Matched{" "}
+                  {status.last_sync.matched}
+                  {status.last_sync.error ? ` · ${status.last_sync.error}` : ""}
                 </span>
               )}
             </div>
@@ -243,24 +272,34 @@ function FavoritesTab() {
                     <div className="sp-conflict-info">
                       <strong>{c.track.name}</strong> — {c.track.artist}
                       <div className="sp-conflict-meta">
-                        Loved on: {c.loved_on.join(', ') || '—'} · Missing on:{' '}
-                        {c.not_loved_on.join(', ') || '—'}
+                        Loved on: {c.loved_on.join(", ") || "—"} · Missing on:{" "}
+                        {c.not_loved_on.join(", ") || "—"}
                       </div>
                     </div>
                     <div className="sp-conflict-actions">
                       <button
+                        type="button"
                         className="sp-btn"
-                        onClick={() => resolve(i, 'love_both')}
+                        onClick={() => resolve(i, "love_both")}
                         disabled={
-                          !c.track.spotify_id && c.not_loved_on.includes('spotify')
+                          !c.track.spotify_id &&
+                          c.not_loved_on.includes("spotify")
                         }
                       >
                         Love on both
                       </button>
-                      <button className="sp-btn" onClick={() => resolve(i, 'unlove_both')}>
+                      <button
+                        type="button"
+                        className="sp-btn"
+                        onClick={() => resolve(i, "unlove_both")}
+                      >
                         Unlove on both
                       </button>
-                      <button className="sp-btn" onClick={() => resolve(i, 'keep')}>
+                      <button
+                        type="button"
+                        className="sp-btn"
+                        onClick={() => resolve(i, "keep")}
+                      >
                         Keep as-is
                       </button>
                     </div>
@@ -272,67 +311,71 @@ function FavoritesTab() {
         </>
       )}
     </div>
-  )
+  );
 }
 
 interface ConnectionsTabProps {
-  onProfileChange?: (profile: Profile) => void
+  onProfileChange?: (profile: Profile) => void;
 }
 
 function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
-  const [connections, setConnections] = useState<Record<string, ConnectionStatus>>({})
-  const [lastfmStatus, setLastfmStatus] = useState<LastfmStatus>({})
-  const [loading, setLoading] = useState(false)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [nameInput, setNameInput] = useState('')
-  const [savingName, setSavingName] = useState(false)
-  const [nameStatus, setNameStatus] = useState<string | null>(null)
+  const [connections, setConnections] = useState<
+    Record<string, ConnectionStatus>
+  >({});
+  const [lastfmStatus, setLastfmStatus] = useState<LastfmStatus>({});
+  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [nameInput, setNameInput] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [nameStatus, setNameStatus] = useState<string | null>(null);
 
   const refresh = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const [conns, prof] = await Promise.all([
         apiService.getConnections(),
         apiService.getProfile(),
-      ])
-      setConnections(conns)
-      setProfile(prof)
-      setNameInput(prof.custom_display_name ?? '')
-      if (conns.lastfm && conns.lastfm.tier !== 'none') {
+      ]);
+      setConnections(conns);
+      setProfile(prof);
+      setNameInput(prof.custom_display_name ?? "");
+      if (conns.lastfm && conns.lastfm.tier !== "none") {
         try {
-          const s = await apiService.getLastfmStatus()
-          setLastfmStatus(s.status || {})
+          const s = await apiService.getLastfmStatus();
+          setLastfmStatus(s.status || {});
         } catch {
-          setLastfmStatus({})
+          setLastfmStatus({});
         }
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    refresh()
-  }, [])
+    refresh();
+  }, [refresh]);
 
   const saveName = async () => {
-    setSavingName(true)
-    setNameStatus(null)
+    setSavingName(true);
+    setNameStatus(null);
     try {
-      const trimmed = nameInput.trim()
-      const updated = await apiService.updateProfile(trimmed === '' ? null : trimmed)
-      setProfile(updated)
-      setNameInput(updated.custom_display_name ?? '')
-      setNameStatus('Saved')
-      onProfileChange?.(updated)
+      const trimmed = nameInput.trim();
+      const updated = await apiService.updateProfile(
+        trimmed === "" ? null : trimmed,
+      );
+      setProfile(updated);
+      setNameInput(updated.custom_display_name ?? "");
+      setNameStatus("Saved");
+      onProfileChange?.(updated);
     } catch {
-      setNameStatus('Failed to save')
+      setNameStatus("Failed to save");
     } finally {
-      setSavingName(false)
+      setSavingName(false);
     }
-  }
+  };
 
-  const lastfm = connections.lastfm
+  const lastfm = connections.lastfm;
 
   return (
     <div className="sp-tabpanel">
@@ -344,8 +387,8 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
             <h3>Profile</h3>
           </header>
           <p className="sp-meta">
-            Pick how Pigify labels you in the header. Leave empty to use your Spotify
-            user id.
+            Pick how Pigify labels you in the header. Leave empty to use your
+            Spotify user id.
           </p>
           <div className="sp-row">
             <input
@@ -353,29 +396,30 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
               className="sp-input"
               value={nameInput}
               onChange={(e) => {
-                setNameInput(e.target.value)
-                setNameStatus(null)
+                setNameInput(e.target.value);
+                setNameStatus(null);
               }}
               placeholder={profile.spotify_id}
               maxLength={255}
               aria-label="Display name"
             />
             <button
+              type="button"
               className="sp-btn-primary"
               onClick={saveName}
               disabled={
                 savingName ||
-                nameInput.trim() === (profile.custom_display_name ?? '')
+                nameInput.trim() === (profile.custom_display_name ?? "")
               }
             >
-              {savingName ? 'Saving…' : 'Save'}
+              {savingName ? "Saving…" : "Save"}
             </button>
           </div>
           {nameStatus && <p className="sp-meta">{nameStatus}</p>}
         </section>
       )}
 
-      {lastfm && lastfm.tier !== 'none' && (
+      {lastfm && lastfm.tier !== "none" && (
         <section className="sp-card">
           <header>
             <h3>Last.fm</h3>
@@ -383,37 +427,43 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
               {tierLabel(lastfm.tier)}
             </span>
           </header>
-          {lastfm.tier === 'authenticated' ? (
+          {lastfm.tier === "authenticated" ? (
             <>
               {lastfm.needs_reconnect && (
                 <div className="sp-reconnect-banner" role="alert">
                   <strong>Reconnect Last.fm</strong>
                   <p className="sp-meta">
                     Last.fm rejected your saved session
-                    {lastfm.last_error ? `: ${lastfm.last_error}` : '.'} Queued
+                    {lastfm.last_error ? `: ${lastfm.last_error}` : "."} Queued
                     scrobbles will keep waiting until you sign in again.
                   </p>
-                  <a className="sp-btn-primary" href="/api/integrations/lastfm/login">
+                  <a
+                    className="sp-btn-primary"
+                    href="/api/integrations/lastfm/login"
+                  >
                     Reconnect Last.fm
                   </a>
                 </div>
               )}
               <p className="sp-meta">
-                Signed in as <strong>{lastfm.connected_account}</strong>. Plays will be
-                scrobbled automatically.
+                Signed in as <strong>{lastfm.connected_account}</strong>. Plays
+                will be scrobbled automatically.
               </p>
               <p className="sp-meta">
-                Last scrobble:{' '}
+                Last scrobble:{" "}
                 {lastfmStatus.last_scrobble_at
-                  ? new Date(lastfmStatus.last_scrobble_at * 1000).toLocaleTimeString()
-                  : 'none yet'}
-                {lastfmStatus.queued ? ` · ${lastfmStatus.queued} queued` : ''}
+                  ? new Date(
+                      lastfmStatus.last_scrobble_at * 1000,
+                    ).toLocaleTimeString()
+                  : "none yet"}
+                {lastfmStatus.queued ? ` · ${lastfmStatus.queued} queued` : ""}
               </p>
               <button
+                type="button"
                 className="sp-btn-danger"
                 onClick={async () => {
-                  await apiService.disconnectLastfm()
-                  refresh()
+                  await apiService.disconnectLastfm();
+                  refresh();
                 }}
               >
                 Disconnect
@@ -423,10 +473,14 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
           ) : (
             <>
               <p className="sp-meta">
-                Connect your Last.fm account to scrobble plays and see your personal
-                play counts. See the About tab for what works without signing in.
+                Connect your Last.fm account to scrobble plays and see your
+                personal play counts. See the About tab for what works without
+                signing in.
               </p>
-              <a className="sp-btn-primary" href="/api/integrations/lastfm/login">
+              <a
+                className="sp-btn-primary"
+                href="/api/integrations/lastfm/login"
+              >
                 Connect Last.fm
               </a>
             </>
@@ -436,30 +490,31 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
 
       <EnrichmentCacheCard />
     </div>
-  )
+  );
 }
 
 function EnrichmentCacheCard() {
-  const [busy, setBusy] = useState(false)
-  const [status, setStatus] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
 
   const clear = async () => {
-    if (!window.confirm('Clear all cached track trivia for your account?')) return
-    setBusy(true)
-    setStatus(null)
+    if (!window.confirm("Clear all cached track trivia for your account?"))
+      return;
+    setBusy(true);
+    setStatus(null);
     try {
-      const res = await apiService.clearEnrichmentCache()
+      const res = await apiService.clearEnrichmentCache();
       setStatus(
         res.deleted > 0
-          ? `Cleared ${res.deleted} cached entr${res.deleted === 1 ? 'y' : 'ies'}.`
-          : 'Cache was already empty.'
-      )
+          ? `Cleared ${res.deleted} cached entr${res.deleted === 1 ? "y" : "ies"}.`
+          : "Cache was already empty.",
+      );
     } catch {
-      setStatus('Failed to clear cache.')
+      setStatus("Failed to clear cache.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   return (
     <section className="sp-card">
@@ -467,151 +522,159 @@ function EnrichmentCacheCard() {
         <h3>Cached track trivia</h3>
       </header>
       <p className="sp-meta">
-        Last.fm, MusicBrainz and Wikipedia results are cached for up to a week so
-        track details open instantly. If a Wikipedia article was fixed or a Last.fm
-        tag changed, clear the cache to force fresh lookups on the next open.
+        Last.fm, MusicBrainz and Wikipedia results are cached for up to a week
+        so track details open instantly. If a Wikipedia article was fixed or a
+        Last.fm tag changed, clear the cache to force fresh lookups on the next
+        open.
       </p>
-      <button className="sp-btn-danger" onClick={clear} disabled={busy}>
-        {busy ? 'Clearing…' : 'Clear cached track trivia'}
+      <button
+        type="button"
+        className="sp-btn-danger"
+        onClick={clear}
+        disabled={busy}
+      >
+        {busy ? "Clearing…" : "Clear cached track trivia"}
       </button>
       {status && <p className="sp-meta">{status}</p>}
     </section>
-  )
+  );
 }
 
 function formatRelative(iso?: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return '—'
-  const diff = Date.now() - d.getTime()
-  const sec = Math.round(diff / 1000)
-  if (sec < 60) return `${sec}s ago`
-  if (sec < 3600) return `${Math.round(sec / 60)}m ago`
-  if (sec < 86400) return `${Math.round(sec / 3600)}h ago`
-  return d.toLocaleString()
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const diff = Date.now() - d.getTime();
+  const sec = Math.round(diff / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m ago`;
+  if (sec < 86400) return `${Math.round(sec / 3600)}h ago`;
+  return d.toLocaleString();
 }
 
 function LastfmQueuePanel() {
-  const [entries, setEntries] = useState<LastfmQueueEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [busy, setBusy] = useState(false)
-  const [flushResult, setFlushResult] = useState<LastfmQueueFlushResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [entries, setEntries] = useState<LastfmQueueEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [flushResult, setFlushResult] = useState<LastfmQueueFlushResult | null>(
+    null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const load = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await apiService.getLastfmQueue()
-      setEntries(data.entries)
+      const data = await apiService.getLastfmQueue();
+      setEntries(data.entries);
       // Drop any selections for entries that no longer exist.
       setSelected((prev) => {
-        const ids = new Set(data.entries.map((e) => e.id))
-        const next = new Set<number>()
+        const ids = new Set(data.entries.map((e) => e.id));
+        const next = new Set<number>();
         prev.forEach((id) => {
-          if (ids.has(id)) next.add(id)
-        })
-        return next
-      })
-      setError(null)
+          if (ids.has(id)) next.add(id);
+        });
+        return next;
+      });
+      setError(null);
     } catch {
-      setError('Failed to load queue')
+      setError("Failed to load queue");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, [load]);
 
   const flush = async () => {
-    setBusy(true)
-    setFlushResult(null)
+    setBusy(true);
+    setFlushResult(null);
     try {
-      const result = await apiService.flushLastfmQueue()
-      setFlushResult(result)
-      await load()
+      const result = await apiService.flushLastfmQueue();
+      setFlushResult(result);
+      await load();
     } catch {
-      setError('Retry failed')
+      setError("Retry failed");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const remove = async (id: number) => {
-    setBusy(true)
+    setBusy(true);
     try {
-      await apiService.deleteLastfmQueueEntry(id)
-      setEntries((prev) => prev.filter((e) => e.id !== id))
+      await apiService.deleteLastfmQueueEntry(id);
+      setEntries((prev) => prev.filter((e) => e.id !== id));
       setSelected((prev) => {
-        if (!prev.has(id)) return prev
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch {
-      setError('Failed to delete entry')
+      setError("Failed to delete entry");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const toggleOne = (id: number) => {
     setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-  const allSelected = entries.length > 0 && selected.size === entries.length
+  const allSelected = entries.length > 0 && selected.size === entries.length;
   const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(entries.map((e) => e.id)))
-  }
+    setSelected(allSelected ? new Set() : new Set(entries.map((e) => e.id)));
+  };
 
   const clearAll = async () => {
-    if (entries.length === 0) return
+    if (entries.length === 0) return;
     const ok = window.confirm(
-      `Delete all ${entries.length} pending scrobbles? This cannot be undone.`
-    )
-    if (!ok) return
-    setBusy(true)
-    setFlushResult(null)
+      `Delete all ${entries.length} pending scrobbles? This cannot be undone.`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setFlushResult(null);
     try {
-      await apiService.clearLastfmQueue()
-      setEntries([])
-      setSelected(new Set())
-      setError(null)
+      await apiService.clearLastfmQueue();
+      setEntries([]);
+      setSelected(new Set());
+      setError(null);
     } catch {
-      setError('Failed to clear queue')
+      setError("Failed to clear queue");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   const deleteSelected = async () => {
-    if (selected.size === 0) return
-    const ids = Array.from(selected)
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
     const ok = window.confirm(
-      `Delete ${ids.length} selected scrobble${ids.length === 1 ? '' : 's'}?`
-    )
-    if (!ok) return
-    setBusy(true)
-    setFlushResult(null)
+      `Delete ${ids.length} selected scrobble${ids.length === 1 ? "" : "s"}?`,
+    );
+    if (!ok) return;
+    setBusy(true);
+    setFlushResult(null);
     try {
-      await apiService.clearLastfmQueue(ids)
-      const removed = new Set(ids)
-      setEntries((prev) => prev.filter((e) => !removed.has(e.id)))
-      setSelected(new Set())
-      setError(null)
+      await apiService.clearLastfmQueue(ids);
+      const removed = new Set(ids);
+      setEntries((prev) => prev.filter((e) => !removed.has(e.id)));
+      setSelected(new Set());
+      setError(null);
     } catch {
-      setError('Failed to delete selected entries')
+      setError("Failed to delete selected entries");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
-  }
+  };
 
   return (
     <div className="sp-queue">
@@ -619,6 +682,7 @@ function LastfmQueuePanel() {
         <h4>Pending scrobbles ({entries.length})</h4>
         <div className="sp-queue-actions">
           <button
+            type="button"
             className="sp-btn"
             onClick={load}
             disabled={loading || busy}
@@ -627,13 +691,15 @@ function LastfmQueuePanel() {
             Refresh
           </button>
           <button
+            type="button"
             className="sp-btn-primary"
             onClick={flush}
             disabled={busy || entries.length === 0}
           >
-            {busy ? 'Working…' : 'Retry now'}
+            {busy ? "Working…" : "Retry now"}
           </button>
           <button
+            type="button"
             className="sp-btn-danger"
             onClick={deleteSelected}
             disabled={busy || selected.size === 0}
@@ -642,6 +708,7 @@ function LastfmQueuePanel() {
             Delete selected ({selected.size})
           </button>
           <button
+            type="button"
             className="sp-btn-danger"
             onClick={clearAll}
             disabled={busy || entries.length === 0}
@@ -657,9 +724,9 @@ function LastfmQueuePanel() {
 
       {flushResult && (
         <p className="sp-meta">
-          Retried {flushResult.attempted} · sent {flushResult.succeeded} ·{' '}
+          Retried {flushResult.attempted} · sent {flushResult.succeeded} ·{" "}
           {flushResult.remaining} remaining
-          {flushResult.error ? ` · ${flushResult.error}` : ''}
+          {flushResult.error ? ` · ${flushResult.error}` : ""}
         </p>
       )}
 
@@ -694,12 +761,12 @@ function LastfmQueuePanel() {
                   <strong>{e.track}</strong>
                   <span className="sp-queue-artist"> — {e.artist}</span>
                   <div className="sp-queue-meta">
-                    Queued {formatRelative(e.queued_at)} ·{' '}
-                    Played {new Date(e.timestamp * 1000).toLocaleString()} ·{' '}
-                    {e.attempts} {e.attempts === 1 ? 'attempt' : 'attempts'}
+                    Queued {formatRelative(e.queued_at)} · Played{" "}
+                    {new Date(e.timestamp * 1000).toLocaleString()} ·{" "}
+                    {e.attempts} {e.attempts === 1 ? "attempt" : "attempts"}
                     {e.next_attempt_at
                       ? ` · next retry ${formatRelative(e.next_attempt_at)}`
-                      : ''}
+                      : ""}
                   </div>
                   {e.last_error && (
                     <div className="sp-queue-error" title={e.last_error}>
@@ -708,6 +775,7 @@ function LastfmQueuePanel() {
                   )}
                 </div>
                 <button
+                  type="button"
                   className="sp-btn-danger sp-queue-del"
                   onClick={() => remove(e.id)}
                   disabled={busy}
@@ -722,35 +790,35 @@ function LastfmQueuePanel() {
         </>
       )}
     </div>
-  )
+  );
 }
 
 interface ProviderEntry {
-  name: string
-  url: string
-  description: string
+  name: string;
+  url: string;
+  description: string;
 }
 
 const PUBLIC_PROVIDERS: ProviderEntry[] = [
   {
-    name: 'MusicBrainz',
-    url: 'https://musicbrainz.org/',
+    name: "MusicBrainz",
+    url: "https://musicbrainz.org/",
     description:
-      'Open music encyclopedia. Pigify uses it to look up track identifiers, releases and credits — no account needed.',
+      "Open music encyclopedia. Pigify uses it to look up track identifiers, releases and credits — no account needed.",
   },
   {
-    name: 'Wikipedia',
-    url: 'https://www.wikipedia.org/',
+    name: "Wikipedia",
+    url: "https://www.wikipedia.org/",
     description:
-      'Free encyclopedia. Used to pull short artist and album summaries shown in the track detail panel.',
+      "Free encyclopedia. Used to pull short artist and album summaries shown in the track detail panel.",
   },
   {
-    name: 'Last.fm (public)',
-    url: 'https://www.last.fm/',
+    name: "Last.fm (public)",
+    url: "https://www.last.fm/",
     description:
-      'Without signing in, Last.fm provides tags, similar tracks and global play counts. Connect your account in the Connections tab to also scrobble plays and see your personal play counts.',
+      "Without signing in, Last.fm provides tags, similar tracks and global play counts. Connect your account in the Connections tab to also scrobble plays and see your personal play counts.",
   },
-]
+];
 
 function ChangelogEntryView({ entry }: { entry: ChangelogEntry }) {
   return (
@@ -765,13 +833,13 @@ function ChangelogEntryView({ entry }: { entry: ChangelogEntry }) {
         ))}
       </ul>
     </li>
-  )
+  );
 }
 
 function WhatsNewCard() {
-  const [showOlder, setShowOlder] = useState(false)
-  if (CHANGELOG.length === 0) return null
-  const [latest, ...older] = CHANGELOG
+  const [showOlder, setShowOlder] = useState(false);
+  if (CHANGELOG.length === 0) return null;
+  const [latest, ...older] = CHANGELOG;
 
   return (
     <section className="sp-card">
@@ -784,12 +852,13 @@ function WhatsNewCard() {
       {older.length > 0 && (
         <>
           <button
+            type="button"
             className="sp-btn"
             onClick={() => setShowOlder((v) => !v)}
             aria-expanded={showOlder}
           >
             {showOlder
-              ? 'Hide older releases'
+              ? "Hide older releases"
               : `Show older releases (${older.length})`}
           </button>
           {showOlder && (
@@ -802,38 +871,38 @@ function WhatsNewCard() {
         </>
       )}
     </section>
-  )
+  );
 }
 
 function AboutTab() {
-  const [info, setInfo] = useState<VersionInfo | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [info, setInfo] = useState<VersionInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     apiService
       .getVersionInfo()
       .then((v) => {
         if (!cancelled) {
-          setInfo(v)
-          setError(null)
+          setInfo(v);
+          setError(null);
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Backend version info unavailable')
+        if (!cancelled) setError("Backend version info unavailable");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+        if (!cancelled) setLoading(false);
+      });
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
-  const frontendVersion = __APP_VERSION__
+  const frontendVersion = __APP_VERSION__;
   const fmt = (v: string | null | undefined): string =>
-    v && v.length > 0 ? v : 'unavailable'
+    v && v.length > 0 ? v : "unavailable";
 
   return (
     <div className="sp-tabpanel">
@@ -845,7 +914,7 @@ function AboutTab() {
           Custom Spotify frontend with playlist management.
         </p>
         <p className="sp-meta">
-          Source code:{' '}
+          Source code:{" "}
           <a href={GITHUB_REPO_URL} target="_blank" rel="noopener noreferrer">
             {GITHUB_REPO_URL}
           </a>
@@ -893,7 +962,8 @@ function AboutTab() {
           <h3>Public providers</h3>
         </header>
         <p className="sp-meta">
-          External data sources Pigify uses out of the box, with no sign-in required.
+          External data sources Pigify uses out of the box, with no sign-in
+          required.
         </p>
         <ul className="sp-list">
           {PUBLIC_PROVIDERS.map((p) => (
@@ -909,7 +979,7 @@ function AboutTab() {
         </ul>
       </section>
     </div>
-  )
+  );
 }
 
-export default SettingsPanel
+export default SettingsPanel;
