@@ -263,7 +263,7 @@ function SortMenu(props: SortMenuProps) {
             <div className="sort-section-title">Custom</div>
             {keys.map((k, i) => (
               <KeyRow
-                key={i}
+                key={k.field}
                 fields={fields}
                 value={k}
                 index={i}
@@ -374,8 +374,8 @@ function SortMenu(props: SortMenuProps) {
             </div>
             {warnings && warnings.length > 0 && (
               <div className="sort-warnings">
-                {warnings.map((w, i) => (
-                  <div key={i} className="sort-warning">
+                {warnings.map((w) => (
+                  <div key={w} className="sort-warning">
                     ⚠ {w}
                   </div>
                 ))}

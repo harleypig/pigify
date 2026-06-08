@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { spotifyService } from "../services/spotify";
+import { spotifyService, type WebPlaybackState } from "../services/spotify";
 import "./Player.css";
 
 interface PlayerProps {
@@ -8,7 +8,9 @@ interface PlayerProps {
 
 function Player({ trackUri }: PlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentState, setCurrentState] = useState<any>(null);
+  const [currentState, setCurrentState] = useState<WebPlaybackState | null>(
+    null,
+  );
 
   const playTrack = async () => {
     try {
@@ -69,7 +71,7 @@ function Player({ trackUri }: PlayerProps) {
               <div className="player-track-details">
                 <div className="player-track-name">{track.name}</div>
                 <div className="player-track-artist">
-                  {track.artists.map((a: any) => a.name).join(", ")}
+                  {track.artists.map((a) => a.name).join(", ")}
                 </div>
               </div>
             </div>

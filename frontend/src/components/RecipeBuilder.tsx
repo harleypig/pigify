@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  apiErrorMessage,
   apiService,
+  type CombineStrategy,
+  type FilterOp,
   type Playlist,
   type Recipe,
   type RecipeBucket,
   type RecipeFilter,
   type RecipeResolveResponse,
   recipesApi,
+  type SortDirection,
   type SortField,
   type StoredRecipe,
-  type Track,
 } from "../services/api";
 import "./RecipeBuilder.css";
 
@@ -26,7 +29,7 @@ const COMBINE_LABELS: Record<string, string> = {
   shuffled: "Shuffled",
 };
 
-const NUMERIC_OPS: Array<[string, string]> = [
+const NUMERIC_OPS: Array<[FilterOp, string]> = [
   ["gte", "≥"],
   ["lte", "≤"],
   ["gt", ">"],
@@ -35,22 +38,32 @@ const NUMERIC_OPS: Array<[string, string]> = [
   ["ne", "≠"],
   ["between", "between"],
 ];
-const STRING_OPS: Array<[string, string]> = [
+const STRING_OPS: Array<[FilterOp, string]> = [
   ["contains", "contains"],
   ["eq", "="],
   ["ne", "≠"],
 ];
-const ENUM_OPS: Array<[string, string]> = [
+const ENUM_OPS: Array<[FilterOp, string]> = [
   ["eq", "is"],
   ["ne", "is not"],
 ];
-const DATE_OPS: Array<[string, string]> = [
+const DATE_OPS: Array<[FilterOp, string]> = [
   ["gte", "on/after"],
   ["lte", "on/before"],
   ["between", "between"],
 ];
 
-function opsForField(f?: SortField): Array<[string, string]> {
+/**
+ * Coerce a filter value to a string suitable for a text/number `<input>`.
+ * Enum (boolean) filters use a dedicated `<select>`, and list operands are
+ * not edited through these inputs, so those collapse to an empty string.
+ */
+function inputValue(v: RecipeFilter["value"]): string {
+  if (v == null || typeof v === "boolean" || Array.isArray(v)) return "";
+  return String(v);
+}
+
+function opsForField(f?: SortField): Array<[FilterOp, string]> {
   if (!f) return STRING_OPS;
   if (f.type === "number") return NUMERIC_OPS;
   if (f.type === "date") return DATE_OPS;
@@ -132,6 +145,18 @@ export default function RecipeBuilder({
   const [saving, setSaving] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The first 100 preview tracks, each paired with a stable key. A resolved
+  // recipe can contain the same track more than once, so the key combines the
+  // track id with a per-id occurrence count rather than the array index.
+  const previewRows = useMemo(() => {
+    const seen = new Map<string, number>();
+    return (preview?.tracks ?? []).slice(0, 100).map((track) => {
+      const occ = seen.get(track.id) ?? 0;
+      seen.set(track.id, occ + 1);
+      return { track, key: `${track.id}-${occ}` };
+    });
+  }, [preview]);
 
   useEffect(() => {
     if (!open) return;
@@ -226,7 +251,7 @@ export default function RecipeBuilder({
     updateBucket(bIdx, {
       filters: [
         ...recipe.buckets[bIdx].filters,
-        { field: f.key, op: opsForField(f)[0][0] as any, value: "" },
+        { field: f.key, op: opsForField(f)[0][0], value: "" },
       ],
     });
   };
@@ -241,8 +266,8 @@ export default function RecipeBuilder({
     try {
       const r = await recipesApi.resolve(recipe);
       setPreview(r);
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || "Preview failed");
+    } catch (e) {
+      setError(apiErrorMessage(e, "Preview failed"));
     } finally {
       setPreviewing(false);
     }
@@ -260,8 +285,8 @@ export default function RecipeBuilder({
       }
       onSaved(saved);
       onClose();
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || "Save failed");
+    } catch (e) {
+      setError(apiErrorMessage(e, "Save failed"));
     } finally {
       setSaving(false);
     }
@@ -277,8 +302,8 @@ export default function RecipeBuilder({
       } else {
         await recipesApi.playAdhoc(recipe);
       }
-    } catch (e: any) {
-      setError(e?.response?.data?.detail || "Playback failed");
+    } catch (e) {
+      setError(apiErrorMessage(e, "Playback failed"));
     } finally {
       setPlaying(false);
     }
@@ -327,6 +352,7 @@ export default function RecipeBuilder({
         <div className="recipe-buckets">
           {recipe.buckets.map((bucket, bIdx) => (
             <BucketEditor
+              // biome-ignore lint/suspicious/noArrayIndexKey: buckets have no stable id and are only appended/removed (never reordered); BucketEditor is fully controlled, so positional keying loses no local state
               key={bIdx}
               bucket={bucket}
               index={bIdx}
@@ -353,7 +379,10 @@ export default function RecipeBuilder({
             <select
               value={recipe.combine}
               onChange={(e) =>
-                setRecipe((r) => ({ ...r, combine: e.target.value as any }))
+                setRecipe((r) => ({
+                  ...r,
+                  combine: e.target.value as CombineStrategy,
+                }))
               }
             >
               {Object.entries(COMBINE_LABELS).map(([k, v]) => (
@@ -396,17 +425,17 @@ export default function RecipeBuilder({
             </div>
             {preview.warnings.length > 0 && (
               <ul className="preview-warnings">
-                {preview.warnings.map((w, i) => (
-                  <li key={i}>{w}</li>
+                {preview.warnings.map((w) => (
+                  <li key={w}>{w}</li>
                 ))}
               </ul>
             )}
             <div className="preview-list">
-              {preview.tracks.slice(0, 100).map((t: Track, i: number) => {
+              {previewRows.map(({ track: t, key }, i) => {
                 const sources = preview.track_sources?.[t.id] ?? [];
                 const sourceLabel = sources.map((s) => s.name).join(", ");
                 return (
-                  <div key={`${t.id}-${i}`} className="preview-row">
+                  <div key={key} className="preview-row">
                     <span className="preview-num">{i + 1}</span>
                     <span className="preview-name">{t.name}</span>
                     <span className="preview-artist">
@@ -421,7 +450,7 @@ export default function RecipeBuilder({
                               ? "https://open.spotify.com/collection/tracks"
                               : `https://open.spotify.com/playlist/${s.id}`;
                           return (
-                            <span key={`${s.id}-${idx}`}>
+                            <span key={s.id}>
                               {idx > 0 && ", "}
                               <a
                                 className="preview-source-link"
@@ -521,6 +550,7 @@ function BucketEditor(props: {
           const isDate = fld?.type === "date";
           const inputType = isNumber ? "number" : isDate ? "date" : "text";
           return (
+            // biome-ignore lint/suspicious/noArrayIndexKey: filters have no stable id and are only appended/removed (never reordered); the row is fully controlled, so positional keying loses no local state
             <div className="filter-row" key={fIdx}>
               <select
                 value={f.field}
@@ -529,7 +559,7 @@ function BucketEditor(props: {
                   const newOps = opsForField(newField);
                   onUpdateFilter(fIdx, {
                     field: e.target.value,
-                    op: newOps[0][0] as any,
+                    op: newOps[0][0],
                     value: "",
                     value2: undefined,
                   });
@@ -544,7 +574,7 @@ function BucketEditor(props: {
               <select
                 value={f.op}
                 onChange={(e) =>
-                  onUpdateFilter(fIdx, { op: e.target.value as any })
+                  onUpdateFilter(fIdx, { op: e.target.value as FilterOp })
                 }
               >
                 {ops.map(([k, v]) => (
@@ -566,7 +596,7 @@ function BucketEditor(props: {
               ) : (
                 <input
                   type={inputType}
-                  value={f.value ?? ""}
+                  value={inputValue(f.value)}
                   onChange={(e) =>
                     onUpdateFilter(fIdx, { value: e.target.value })
                   }
@@ -575,7 +605,7 @@ function BucketEditor(props: {
               {f.op === "between" && (
                 <input
                   type={inputType}
-                  value={f.value2 ?? ""}
+                  value={inputValue(f.value2)}
                   onChange={(e) =>
                     onUpdateFilter(fIdx, { value2: e.target.value })
                   }
@@ -627,8 +657,11 @@ function BucketEditor(props: {
           onChange={(e) =>
             onChange({
               sort: bucket.sort
-                ? { ...bucket.sort, direction: e.target.value as any }
-                : { field: "added_at", direction: e.target.value as any },
+                ? { ...bucket.sort, direction: e.target.value as SortDirection }
+                : {
+                    field: "added_at",
+                    direction: e.target.value as SortDirection,
+                  },
             })
           }
           disabled={!bucket.sort}
@@ -917,8 +950,8 @@ function BucketSourcePicker(props: {
                 })}
               </div>
             )}
-            {groups.map((g, gi) => (
-              <div key={gi} className="source-group-block">
+            {groups.map((g) => (
+              <div key={g.label} className="source-group-block">
                 {g.label && groupBy !== "none" && (
                   <div className="source-group-label">{g.label}</div>
                 )}

@@ -8,6 +8,20 @@ const apiClient = axios.create({
   },
 });
 
+/**
+ * Pull the FastAPI error message out of a caught error. Our backend returns
+ * `{ detail: string }` on errors, exposed by axios at
+ * `error.response.data.detail`. Falls back to the given message for non-axios
+ * errors or responses without a `detail`.
+ */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail;
+    if (typeof detail === "string" && detail) return detail;
+  }
+  return fallback;
+}
+
 export interface Playlist {
   id: string;
   name: string;
@@ -32,6 +46,29 @@ export interface Track {
   release_date?: string | null;
   disc_number?: number | null;
   track_number?: number | null;
+}
+
+/**
+ * A track item as returned by the Spotify Web API playback-state endpoint
+ * (`/api/player/state`). Distinct from {@link Track} (our normalized shape):
+ * this mirrors Spotify's raw object with nested `album`/`artists`.
+ */
+export interface PlaybackItem {
+  id: string;
+  uri: string;
+  name: string;
+  duration_ms: number;
+  artists: Array<{ name: string }>;
+  album: {
+    name?: string;
+    images: Array<{ url: string; height?: number; width?: number }>;
+  };
+}
+
+export interface PlaybackState {
+  item: PlaybackItem | null;
+  is_playing: boolean;
+  progress_ms: number | null;
 }
 
 export type SortType = "string" | "number" | "date" | "enum";
@@ -233,7 +270,7 @@ export const apiService = {
     return response.data;
   },
 
-  async getPlaybackState(): Promise<any> {
+  async getPlaybackState(): Promise<PlaybackState | null> {
     const response = await apiClient.get("/api/player/state");
     return response.data;
   },
@@ -414,11 +451,18 @@ export type FilterOp =
   | "in"
   | "not_in";
 
+export type FilterValue =
+  | string
+  | number
+  | boolean
+  | Array<string | number>
+  | null;
+
 export interface RecipeFilter {
   field: string;
   op: FilterOp;
-  value?: any;
-  value2?: any;
+  value?: FilterValue;
+  value2?: FilterValue;
 }
 
 export interface RecipeSort {
