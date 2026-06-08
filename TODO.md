@@ -24,6 +24,10 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
       `frontend/biome.json` because existing components violate them):
       - `correctness/useExhaustiveDependencies` (11) — audit each
         `useEffect` dependency list; behaviour-affecting, do carefully.
+        Concrete case: `TrackList.tsx`'s load effect lists non-memoized
+        callbacks and sets state synchronously, so it re-fetches every
+        render (throttled only by the network in the app). Fixing it
+        unblocks `TrackList` component tests (see Tests).
       - `suspicious/noArrayIndexKey` (13) — give list items stable keys.
       - `suspicious/noExplicitAny` (22) — replace `any` with real types.
 - [ ] **markdownlint in pre-commit** — add the check hook to
@@ -32,14 +36,21 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Tests
 
-- [ ] Grow Vitest coverage beyond the smoke tests (sort engine, API
-      client, other pure helpers).
-- [ ] **Component render testing (jsdom + React Testing Library).** Add the
-      `jsdom` + `@testing-library/react` dev deps and a jsdom Vitest
-      environment; start with an `App` mount smoke test (API client mocked)
-      to automate the runtime check a React major bump currently relies on
-      a manual browser pass for, then grow to per-component tests. (Full
-      browser e2e via Playwright stays separate.)
+- [x] **Component render testing (jsdom + React Testing Library).** Wired
+      jsdom + RTL (`*.test.tsx` opt in via a `// @vitest-environment jsdom`
+      docblock; `globals: true` for auto-cleanup; jest-dom matchers). Added
+      an `App` mount smoke test + render/interaction tests for Login,
+      HeartButton, UserMenu, PlaylistSelector, Player, SortMenu,
+      RecipesSidebar, TrackInfoPanel (104 frontend tests total).
+- [ ] Component tests for the large components not yet covered:
+      `RecipeBuilder`, `SettingsPanel`, `NowPlayingBar`.
+- [ ] `TrackList`: only an import smoke test today — blocked by the
+      re-render loop noted under the biome `useExhaustiveDependencies`
+      item; fix that effect, then add real coverage.
+- [ ] (Optional) extract pure helpers trapped in components (e.g. App's
+      `pickAvatarUrl`) into modules and unit-test them directly.
+
+Full browser e2e via Playwright stays separate (deferred).
 
 ## Product roadmap
 
