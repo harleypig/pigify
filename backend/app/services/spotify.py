@@ -2,13 +2,6 @@
 Spotify API service wrapper using spotipy.
 """
 
-# TODO(types): `_get` returns `dict | None`; several methods below index the
-# result assuming success. Each call should guard against None (raise/clean
-# error on a missing payload) — tracked in TODO.md. Until that behaviour-
-# affecting cleanup lands, defer just these two optional-access rules for this
-# one file (every other type error here still surfaces).
-# pyright: reportOptionalMemberAccess=false, reportOptionalSubscript=false
-
 import asyncio
 import base64
 
@@ -16,6 +9,11 @@ import httpx
 
 from app.config import settings
 from app.models.playlist import Playlist, Track, User
+
+
+class SpotifyError(Exception):
+    """Raised when the Spotify API returns an unexpected or empty response."""
+
 
 # A single shared httpx.AsyncClient so we get connection pooling and
 # avoid TLS handshakes on every Spotify call. Lazily constructed on first
@@ -308,6 +306,8 @@ class SpotifyService:
             User object
         """
         data = await self._get("/me")
+        if data is None:
+            raise SpotifyError("Spotify returned no data for the current user")
         return User(
             id=data["id"],
             display_name=data.get("display_name", ""),
@@ -331,6 +331,8 @@ class SpotifyService:
         data = await self._get(
             "/me/playlists", params={"limit": limit, "offset": offset}
         )
+        if data is None:
+            raise SpotifyError("Spotify returned no playlist data")
 
         playlists = []
         for item in data.get("items", []):
@@ -359,6 +361,8 @@ class SpotifyService:
             Playlist object
         """
         data = await self._get(f"/playlists/{playlist_id}")
+        if data is None:
+            raise SpotifyError(f"Spotify returned no data for playlist {playlist_id}")
 
         return Playlist(
             id=data["id"],

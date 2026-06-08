@@ -1,9 +1,9 @@
 """Characterization tests for ``app.services.spotify.SpotifyService``.
 
-The Spotify Web API base URL is mocked with respx. Only happy paths with
-realistic JSON are exercised: several methods index ``_get`` results
-without guarding against None (a known bug — see the module's TODO), so
-malformed/empty-payload cases are deliberately not tested here.
+The Spotify Web API base URL is mocked with respx. Happy paths with
+realistic JSON are exercised, plus the None-guards: ``get_current_user`` /
+``get_user_playlists`` / ``get_playlist`` raise ``SpotifyError`` when the
+API returns 204 No Content (an empty payload they can't index).
 
 The service uses a process-wide shared httpx.AsyncClient; it is reset
 before/after each test so respx's mock transport is in effect and no
@@ -18,7 +18,7 @@ import httpx
 import respx
 
 from app.services import spotify as spotify_mod
-from app.services.spotify import SpotifyService
+from app.services.spotify import SpotifyError, SpotifyService
 from tests._helpers import spotify_track_item
 
 BASE = SpotifyService.BASE_URL
@@ -100,6 +100,24 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(pl.id, "pl-9")
         self.assertEqual(pl.owner, "Bob")
         self.assertEqual(pl.track_count, 3)
+
+    @respx.mock
+    async def test_get_current_user_raises_on_empty_payload(self) -> None:
+        respx.get(f"{BASE}/me").mock(return_value=httpx.Response(204))
+        with self.assertRaises(SpotifyError):
+            await self.svc.get_current_user()
+
+    @respx.mock
+    async def test_get_user_playlists_raises_on_empty_payload(self) -> None:
+        respx.get(f"{BASE}/me/playlists").mock(return_value=httpx.Response(204))
+        with self.assertRaises(SpotifyError):
+            await self.svc.get_user_playlists()
+
+    @respx.mock
+    async def test_get_playlist_raises_on_empty_payload(self) -> None:
+        respx.get(f"{BASE}/playlists/pl-9").mock(return_value=httpx.Response(204))
+        with self.assertRaises(SpotifyError):
+            await self.svc.get_playlist("pl-9")
 
     @respx.mock
     async def test_get_saved_tracks(self) -> None:
