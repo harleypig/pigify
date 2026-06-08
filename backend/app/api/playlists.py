@@ -26,6 +26,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
+from app.auth.session import require_spotify_id as _require_spotify_user
+from app.auth.session import require_token as _require_token
 from app.db.repositories import saved_sorts as saved_sorts_repo
 from app.db.session import user_session_scope
 from app.models.playlist import Playlist, Track
@@ -35,16 +37,6 @@ from app.services.sort_fields import SORT_FIELD_KEYS, SORT_FIELDS
 from app.services.spotify import SpotifyService
 
 router = APIRouter()
-
-
-# --------------------------------- Helpers ----------------------------------
-
-
-def _require_token(request: Request) -> str:
-    token = request.session.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return token
 
 
 # ============================ Static / list endpoints =======================
@@ -111,13 +103,6 @@ def _validate_sort_keys(keys: list[SortKeySpec]) -> None:
 # survive logout, cookie expiry, and device changes. The DB row stores the
 # ordered list of sort keys in `keys`; the wire shape is `{name, keys}` (with
 # legacy `primary`/`secondary` accepted on input by the SortPreset validator).
-
-
-def _require_spotify_user(request: Request) -> str:
-    sid = request.session.get("spotify_user_id")
-    if not sid:
-        raise HTTPException(401, "Not authenticated")
-    return sid
 
 
 def _clean_key(k: dict[str, Any]) -> dict[str, Any]:
@@ -344,8 +329,7 @@ async def hydrate_tracks(
         "warnings":       [str, ...]      # e.g. degraded sources
       }
     """
-    _require_token(request)
-    spotify = SpotifyService(request.session["access_token"])
+    spotify = SpotifyService(_require_token(request))
 
     out: dict[str, Any] = {"audio_features": {}, "lastfm": {}, "warnings": []}
     sources = set(body.sources or [])

@@ -27,6 +27,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.session import require_spotify_id as _require_spotify_user
+from app.auth.session import require_token as _require_token
 from app.db.repositories import saved_filters as saved_filters_repo
 from app.db.session import user_session_scope
 from app.models.playlist import Track
@@ -38,20 +40,6 @@ from app.services.recipes import (
 from app.services.spotify import SpotifyService
 
 router = APIRouter()
-
-
-def _require_token(request: Request) -> str:
-    token = request.session.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return token
-
-
-def _require_spotify_user(request: Request) -> str:
-    sid = request.session.get("spotify_user_id")
-    if not sid:
-        raise HTTPException(401, "Not authenticated")
-    return sid
 
 
 def _lastfm_username(request: Request) -> str | None:

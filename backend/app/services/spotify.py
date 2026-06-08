@@ -99,6 +99,40 @@ class SpotifyService:
         response.raise_for_status()
         return response.json()
 
+    @staticmethod
+    async def refresh_access_token(refresh_token: str) -> dict:
+        """
+        Mint a fresh access token from a stored refresh token.
+
+        Args:
+            refresh_token: a previously-issued Spotify refresh token
+
+        Returns:
+            Dictionary containing at least ``access_token`` (Spotify may also
+            return a rotated ``refresh_token`` and an ``expires_in``).
+        """
+        auth_string = f"{settings.SPOTIFY_CLIENT_ID}:{settings.SPOTIFY_CLIENT_SECRET}"
+        auth_b64 = base64.b64encode(auth_string.encode("utf-8")).decode("utf-8")
+
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token,
+        }
+
+        headers = {
+            "Authorization": f"Basic {auth_b64}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+
+        client = await get_shared_client()
+        response = await client.post(
+            SpotifyService.TOKEN_URL,
+            data=data,
+            headers=headers,
+        )
+        response.raise_for_status()
+        return response.json()
+
     async def _get(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make GET request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
