@@ -43,19 +43,13 @@ Re-enable each (remove the override) once the code is cleaned:
 
 ## Repo hardening
 
-- [ ] **Protect the `master` branch once a real test suite is in place.**
-      The CI workflow already runs the gates; after frontend/e2e tests
-      grow enough to trust as required checks, protect master in two
-      layers (see the global git rules):
-      1. Server-side GitHub ruleset (authoritative): require a PR,
-         require the relevant CI status checks (Pre-commit checks, Build,
-         Semgrep, OSV-Scanner), and block direct push + deletion +
-         force-push. Apply via the host API with an admin/OAuth token.
-      2. Local `no-commit-to-branch` pre-commit hook (early guard):
-         add `pre-commit/pre-commit-hooks`'s `no-commit-to-branch`
-         (`args: [--branch, master]`) to `.pre-commit-config.yaml`.
-      Deferred until tests exist so the required checks are meaningful and
-      don't block routine work prematurely.
+- [x] **Protect the `master` branch.** Done in two layers:
+      1. Server-side GitHub ruleset "Protect Master Branch" (active):
+         PR required (squash-only), block deletion + force-push, required
+         checks = Pre-commit checks / Build / OSV-Scanner (Semgrep + DAST
+         excluded while they're non-blocking). Applied from
+         `private_dotfiles/github-rulesets/protect-master-solo.json`.
+      2. Local `no-commit-to-branch` hook in `.pre-commit-config.yaml`.
 
 ### Security scanners — promote from non-blocking to required
 
@@ -69,10 +63,12 @@ the branch ruleset's required checks):
       API *requires* MD5 request signatures), and guard the `float()`
       nan-injection in `app/api/playlists.py` (reject NaN). Consider
       narrowing the gate to ERROR-only first.
-- [ ] **OSV-Scanner**: bump `starlette` off the allowlisted CVE once
-      FastAPI supports starlette 1.x; bump the dev tooling
-      (`vite`/`vitest`/`esbuild`) when the frontend toolchain is upgraded,
-      then trim `osv-scanner.toml`.
+- [x] **OSV-Scanner / starlette**: bumped to 1.2.x (FastAPI 0.136 is
+      compatible; the 362-test suite passed on it) — CVE resolved, its
+      allowlist entries removed from `osv-scanner.toml`.
+- [ ] **OSV-Scanner / dev tooling**: bump `vite`/`vitest`/`esbuild` (the
+      Dependabot PRs that break the build today) when the frontend
+      toolchain is upgraded, then trim `osv-scanner.toml`.
 - [ ] **DAST (ZAP)**: add the baseline WARNs to `.zap/baseline-rules.tsv`
       with reasons (CSP `style-src 'unsafe-inline'`, COEP, cache-control)
       and add an HSTS header (or accept it as proxy-provided), then make
