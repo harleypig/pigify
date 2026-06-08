@@ -142,3 +142,12 @@ def require_spotify_id(request: Request) -> str:
     if not grant.spotify_id:
         raise HTTPException(status_code=401, detail=_NOT_AUTHENTICATED)
     return grant.spotify_id
+
+
+def current_refresh_token(request: Request) -> str | None:
+    """The stored Spotify refresh token, if any.
+
+    Not part of SessionGrant (it isn't needed for access decisions); exposed
+    only for the dev-only helper that surfaces it for DEV_SPOTIFY_REFRESH_TOKEN.
+    """
+    return request.session.get(_K_REFRESH_TOKEN)

@@ -203,6 +203,42 @@ class AuthApiTest(unittest.TestCase):
         after = client.get("/api/auth/token")
         self.assertEqual(after.status_code, 401)
 
+    # ----- dev refresh-token helper --------------------------------------
+
+    def test_dev_refresh_token_returns_token_in_development(self) -> None:
+        client = self._client()
+        client.post(
+            "/__test__/session",
+            json={"access_token": "at", "spotify_user_id": "u", "refresh_token": "rt"},
+        )
+        resp = client.get("/api/auth/dev/refresh-token")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["refresh_token"], "rt")
+
+    def test_dev_refresh_token_404_outside_development(self) -> None:
+        client = self._client()
+        client.post(
+            "/__test__/session",
+            json={"access_token": "at", "spotify_user_id": "u", "refresh_token": "rt"},
+        )
+        with patch.object(settings, "ENVIRONMENT", "production"):
+            resp = client.get("/api/auth/dev/refresh-token")
+        self.assertEqual(resp.status_code, 404)
+
+    def test_dev_refresh_token_requires_session(self) -> None:
+        client = self._client()
+        resp = client.get("/api/auth/dev/refresh-token")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_dev_refresh_token_404_when_session_has_none(self) -> None:
+        client = self._client()
+        client.post(
+            "/__test__/session",
+            json={"access_token": "at", "spotify_user_id": "u"},
+        )
+        resp = client.get("/api/auth/dev/refresh-token")
+        self.assertEqual(resp.status_code, 404)
+
 
 if __name__ == "__main__":
     unittest.main()

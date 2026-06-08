@@ -14,6 +14,7 @@ from app.auth.dev_bypass import maybe_establish_dev_session
 from app.auth.provisioning import provision_user
 from app.auth.session import (
     clear_session,
+    current_refresh_token,
     establish_session,
     require_grant,
     require_spotify_id,
@@ -225,3 +226,24 @@ async def logout(request: Request):
     """
     clear_session(request)
     return {"message": "Logged out successfully"}
+
+
+@router.get("/dev/refresh-token")
+async def dev_refresh_token(request: Request):
+    """
+    Dev-only: reveal the current session's Spotify refresh token so it can be
+    pasted into DEV_SPOTIFY_REFRESH_TOKEN for the real-data auth bypass.
+
+    Returns 404 outside development, so the endpoint effectively does not
+    exist in a real deployment. Requires an authenticated session (log in
+    normally with the bypass off, then call this once).
+    """
+    if settings.ENVIRONMENT.lower() != "development":
+        raise HTTPException(status_code=404, detail="Not found")
+    require_grant(request)
+    refresh_token = current_refresh_token(request)
+    if not refresh_token:
+        raise HTTPException(
+            status_code=404, detail="No refresh token in the current session"
+        )
+    return {"refresh_token": refresh_token}

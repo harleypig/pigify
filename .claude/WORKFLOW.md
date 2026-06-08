@@ -34,10 +34,12 @@ round-trip. Two modes:
 - **Placeholder (default):** a UI-only synthetic user (`DEV_SPOTIFY_ID`).
   The app chrome loads; Spotify-backed panels are empty — good for layout
   and component work.
-- **Real data:** also set `DEV_SPOTIFY_REFRESH_TOKEN` (grab it by logging in
-  once normally). The bypass mints a fresh access token from it on each
-  load, so you see your real playlists. Treat the refresh token like a
-  password; never commit it.
+- **Real data:** also set `DEV_SPOTIFY_REFRESH_TOKEN`. To get it: with the
+  bypass off, log in once normally (the Docker HTTPS stack), then hit
+  `GET /api/auth/dev/refresh-token` (a dev-only endpoint — 404 in any other
+  environment) and copy the value into `backend/.env`. The bypass mints a
+  fresh access token from it on each load, so you see your real playlists.
+  Treat the refresh token like a password; never commit it.
 
 This is **development-only and fail-closed**: the backend refuses to boot if
 `DEV_AUTH_BYPASS` is true with `ENVIRONMENT` set to anything but
