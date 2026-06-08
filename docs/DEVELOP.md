@@ -53,17 +53,19 @@ without security warnings:
    This creates `certs/localhost+2.pem` (certificate) and
    `certs/localhost+2-key.pem` (private key).
 
-4. The docker-compose.yml will automatically detect the certificates and use
-   HTTPS. No manual configuration needed!
+4. The frontend nginx container mounts `certs/` and uses these to serve
+   HTTPS on port 8080 (TLS terminates there; the backend stays plain HTTP
+   internally). `scripts/setup-ssl.sh` also `chmod 644`s the key so the
+   unprivileged nginx user can read it.
 
 5. Update your `.env` file to use HTTPS URLs:
    ```bash
-   SPOTIFY_REDIRECT_URI=https://localhost:8000/api/auth/spotify/callback
-   BACKEND_URL=https://localhost:8000
-   FRONTEND_URL=https://localhost:3000
+   SPOTIFY_REDIRECT_URI=https://localhost:8080/api/auth/spotify/callback
+   BACKEND_URL=https://localhost:8080
+   FRONTEND_URL=https://localhost:8080
    ```
 
-6. Access your app at `https://localhost:8000` (you may need to accept the
+6. Access your app at `https://localhost:8080` (you may need to accept the
    certificate warning the first time)
 
 #### Option 2: Using ngrok (Quick Testing)
@@ -90,22 +92,21 @@ server configuration.
 
 **SSL Certificate Requirement:**
 
-The docker-compose.yml requires SSL certificates to be present. If
-certificates are not found, the container will fail to start. This is
-intentional - Spotify requires HTTPS for redirect URIs, so the app cannot run
-without SSL certificates.
+The frontend nginx container needs `certs/localhost+2.pem` and
+`certs/localhost+2-key.pem` to be present (it serves HTTPS). Generate them
+with `scripts/setup-ssl.sh` before `docker compose up`. Spotify requires
+HTTPS for redirect URIs, so the app cannot run without them.
 
 **Port Configuration:**
 
-If you change the `PORT` environment variable in your `.env` file (e.g., to
-8080 because port 8000 is in use), you **must** update the URLs in your
-`.env` file:
+The host ports are set with `FRONTEND_PORT` (default 8080, the HTTPS app)
+and `BACKEND_PORT` (default 8000, direct backend access for debugging). If
+you change `FRONTEND_PORT`, update the URLs and the Spotify redirect URI:
 
 ```bash
-PORT=8080
-SPOTIFY_REDIRECT_URI=https://localhost:8080/api/auth/spotify/callback
-BACKEND_URL=https://localhost:8080
-FRONTEND_URL=https://localhost:3000
+FRONTEND_PORT=9443
+SPOTIFY_REDIRECT_URI=https://localhost:9443/api/auth/spotify/callback
+FRONTEND_URL=https://localhost:9443
 ```
 
 **Production Deployment:**
@@ -123,26 +124,21 @@ to match your production URL.
 
 ## Development Workflow
 
-After making code changes:
+For day-to-day development, run the two processes locally (fast, with
+hot-reload) rather than rebuilding containers — see `.claude/WORKFLOW.md`
+for the full command set:
 
 ```bash
-# Rebuild and start the containers
-docker compose up --build
+cd backend  && poetry install && poetry run uvicorn app.main:app --reload
+cd frontend && npm install     && npm run dev      # Vite on :5000, proxies /api
 ```
 
-**Note**: Hot reloading is not available to prevent accidental secret
-leakage.
-
-## Development Mode (Frontend Hot-Reload)
-
-For frontend hot-reload during development:
+Local dev is plain HTTP; for the real Spotify OAuth flow (HTTPS), use the
+Docker stack:
 
 ```bash
-# Start with dev profile
-docker-compose --profile dev up
+docker compose up --build      # rebuilds images after code changes
 ```
-
-This will run the frontend dev server separately on port 3000.
 
 ## Restart Policy
 
