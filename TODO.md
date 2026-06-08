@@ -40,3 +40,19 @@ Re-enable each (remove the override) once the code is cleaned:
 
 - [ ] Grow Vitest coverage beyond the initial smoke tests (sort engine,
       API client, any pure helpers).
+
+## Repo hardening
+
+- [ ] **Protect the `master` branch once a real test suite is in place.**
+      The CI workflow already runs the gates; after frontend/e2e tests
+      grow enough to trust as required checks, protect master in two
+      layers (see the global git rules):
+      1. Server-side GitHub ruleset (authoritative): require a PR,
+         require the relevant CI status checks (Pre-commit checks, Build,
+         Semgrep, OSV-Scanner), and block direct push + deletion +
+         force-push. Apply via the host API with an admin/OAuth token.
+      2. Local `no-commit-to-branch` pre-commit hook (early guard):
+         add `pre-commit/pre-commit-hooks`'s `no-commit-to-branch`
+         (`args: [--branch, master]`) to `.pre-commit-config.yaml`.
+      Deferred until tests exist so the required checks are meaningful and
+      don't block routine work prematurely.
