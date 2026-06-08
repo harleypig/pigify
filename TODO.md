@@ -14,10 +14,9 @@ rules/mixes DSL, etc.) lives in `todo-spotify.md`.
 
 ## Tests
 
-- [ ] (Optional) extract pure helpers trapped in components (e.g. App's
-      `pickAvatarUrl`) into modules and unit-test them directly.
-
-Full browser e2e via Playwright stays separate (deferred).
+Pure helpers trapped in components have been extracted into co-located
+`*.helpers.ts` modules and unit-tested directly. Full browser e2e via
+Playwright stays separate (deferred).
 
 ## Product roadmap
 

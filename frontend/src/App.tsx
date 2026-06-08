@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  evaluateScrobbleAlert,
+  pickAvatarUrl,
+  readDismissed,
+  SCROBBLE_DISMISS_KEY,
+  type ScrobbleAlertState,
+  scrobbleBadgeTitle,
+} from "./App.helpers";
 import Login from "./components/Login";
 import NowPlayingBar from "./components/NowPlayingBar";
 import PlaylistSelector from "./components/PlaylistSelector";
@@ -11,48 +19,7 @@ import { apiService, type Profile, type User } from "./services/api";
 import "./App.css";
 
 const PANEL_COLLAPSED_KEY = "pigify.trackInfoPanel.collapsed";
-const SCROBBLE_DISMISS_KEY = "pigify.scrobbleAlert.dismissed";
-const SCROBBLE_QUEUE_THRESHOLD = 5;
-const SCROBBLE_STALE_MS = 60 * 60 * 1000; // 1 hour
 const SCROBBLE_POLL_MS = 60 * 1000; // 60s
-
-interface ScrobbleAlertState {
-  queued: number;
-  oldestQueuedAt: string | null;
-}
-
-function readDismissed(): ScrobbleAlertState | null {
-  try {
-    const raw = localStorage.getItem(SCROBBLE_DISMISS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.queued === "number" &&
-      (parsed.oldestQueuedAt === null ||
-        typeof parsed.oldestQueuedAt === "string")
-    ) {
-      return parsed;
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-function pickAvatarUrl(
-  images?: Array<{ url: string; height?: number; width?: number }> | null,
-): string | null {
-  if (!images || images.length === 0) return null;
-  const sized = images.filter((img) => typeof img.height === "number");
-  if (sized.length > 0) {
-    const smallest = sized.reduce((a, b) =>
-      (a.height ?? Infinity) <= (b.height ?? Infinity) ? a : b,
-    );
-    return smallest.url;
-  }
-  return images[images.length - 1].url;
-}
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -192,17 +159,11 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
-  const oldestStaleMs = scrobbleAlert.oldestQueuedAt
-    ? Date.now() - new Date(scrobbleAlert.oldestQueuedAt).getTime()
-    : 0;
-  const isStale = scrobbleAlert.queued > 0 && oldestStaleMs > SCROBBLE_STALE_MS;
-  const isOverThreshold = scrobbleAlert.queued > SCROBBLE_QUEUE_THRESHOLD;
-  const severe = isStale || isOverThreshold;
-  const alertSignatureChanged =
-    !bannerDismissed ||
-    scrobbleAlert.queued > bannerDismissed.queued ||
-    scrobbleAlert.oldestQueuedAt !== bannerDismissed.oldestQueuedAt;
-  const showBanner = severe && alertSignatureChanged;
+  const { isStale, showBanner } = evaluateScrobbleAlert(
+    scrobbleAlert,
+    bannerDismissed,
+    Date.now(),
+  );
 
   const openScrobbleQueue = () => {
     setSettingsInitialTab("connections");
@@ -218,12 +179,7 @@ function App() {
     }
   };
 
-  const badgeTitle =
-    scrobbleAlert.queued > 0
-      ? isStale
-        ? `${scrobbleAlert.queued} pending scrobble${scrobbleAlert.queued === 1 ? "" : "s"} · oldest stuck for over 1h — click Settings to review`
-        : `${scrobbleAlert.queued} pending scrobble${scrobbleAlert.queued === 1 ? "" : "s"} — click Settings to review`
-      : undefined;
+  const badgeTitle = scrobbleBadgeTitle(scrobbleAlert, isStale);
 
   return (
     <div className="app">

@@ -6,6 +6,7 @@ import type {
   SortPreset,
 } from "../services/api";
 import { presetToKeys } from "../services/sortEngine";
+import { fieldLabel } from "./SortMenu.helpers";
 import "./SortMenu.css";
 
 export interface SortSpec {
@@ -28,10 +29,6 @@ interface SortMenuProps {
 }
 
 const MAX_KEYS = 8;
-
-function fieldLabel(fields: SortField[], key: string): string {
-  return fields.find((f) => f.key === key)?.label ?? key;
-}
 
 function KeyRow({
   fields,

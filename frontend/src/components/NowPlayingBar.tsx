@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { apiService, type PlaybackItem } from "../services/api";
 import HeartButton from "./HeartButton";
+import { formatMs } from "./NowPlayingBar.helpers";
 import "./NowPlayingBar.css";
 
 /**
@@ -40,13 +41,6 @@ interface NowPlayingBarProps {
   trackUri: string | null;
   onShowDetails?: () => void;
   onTrackChange?: (trackId: string | null) => void;
-}
-
-function formatMs(ms: number): string {
-  const totalSec = Math.floor(Math.max(0, ms) / 1000);
-  const mins = Math.floor(totalSec / 60);
-  const secs = totalSec % 60;
-  return `${mins}:${String(secs).padStart(2, "0")}`;
 }
 
 interface WaveformBarProps {
