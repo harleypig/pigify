@@ -1,40 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiService, type TrackDetail } from "../services/api";
+import { formatDuration, highlightJson } from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
 
 interface Props {
   trackId: string | null;
   collapsed: boolean;
   onToggleCollapsed: () => void;
-}
-
-function formatDuration(ms?: number): string {
-  if (!ms) return "";
-  const sec = Math.round(ms / 1000);
-  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function highlightJson(value: unknown): string {
-  const json = JSON.stringify(value, null, 2) ?? "";
-  const escaped = escapeHtml(json);
-  // Match strings (with optional trailing colon for keys), numbers, booleans, null
-  const re =
-    /("(?:\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
-  return escaped.replace(re, (match, str, colon, kw) => {
-    if (str !== undefined) {
-      const cls = colon ? "tip-json-key" : "tip-json-string";
-      return `<span class="${cls}">${str}</span>${colon || ""}`;
-    }
-    if (kw !== undefined) {
-      const cls = kw === "null" ? "tip-json-null" : "tip-json-bool";
-      return `<span class="${cls}">${kw}</span>`;
-    }
-    return `<span class="tip-json-number">${match}</span>`;
-  });
 }
 
 function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
