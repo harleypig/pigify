@@ -19,10 +19,11 @@ auth-agnostic (it can sit behind Authelia / Authentik / oauth2-proxy /
       callback. **On by default and fail-closed:** a fresh install denies
       everyone until you allowlist your own id; set off to delegate gating
       to an external proxy. See `docs/DEPLOYMENT.md`.
-- [ ] **Demo invites.** Owner-minted, single-use, time-boxed (1h after
-      activation) codes that grant a real or placeholder session, on a
-      proxy-bypassable `/api/demo/*` path (document the Authelia bypass
-      rule). For invite-based demos.
+- [x] **Demo invites.** Owner-minted (CLI), single-use, time-boxed codes
+      that grant a real or placeholder session via `/api/demo/redeem`. For
+      a forward-auth deployment, reach the demo through a separate
+      no-forward-auth entrypoint (pigify's own gate keeps it safe). See
+      `docs/DEPLOYMENT.md`.
 
 ## Tests
 

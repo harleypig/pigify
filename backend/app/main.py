@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import (
     auth,
+    demo,
     favorites,
     health,
     integrations,
@@ -81,6 +82,7 @@ app.add_middleware(CORSMiddleware, **_cors_kwargs)
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(auth.me_router, prefix="/api/me", tags=["me"])
+app.include_router(demo.router, prefix="/api/demo", tags=["demo"])
 app.include_router(playlists.router, prefix="/api/playlists", tags=["playlists"])
 app.include_router(player.router, prefix="/api/player", tags=["player"])
 app.include_router(
