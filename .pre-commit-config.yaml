@@ -10,10 +10,20 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: check-added-large-files
+      # Block committed private keys (the app handles Spotify secrets +
+      # mkcert keys, which live in gitignored dirs — this catches strays).
+      - id: detect-private-key
       # Local guard against committing straight to master (the server-side
       # ruleset is authoritative; this catches it before the push attempt).
       - id: no-commit-to-branch
         args: [--branch, master]
+
+  # Secret scanning of staged content at commit time (full-history scanning
+  # is the security-scan skill's job). Verified clean on the repo.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
 
   - repo: local
     hooks:
