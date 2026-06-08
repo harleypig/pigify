@@ -1,3 +1,12 @@
+# Local full-stack run. `docker compose up --build` starts the FastAPI
+# backend (plain HTTP, internal) and the nginx frontend (HTTPS, published).
+# TLS terminates at the frontend; Spotify OAuth requires HTTPS, so generate
+# the local certs first with ./scripts/setup-ssl.sh and point your Spotify
+# app's redirect URI at https://localhost:8080/api/auth/spotify/callback.
+---
+volumes:
+  pigify-data:
+
 secrets:
   spotify_client_secret:
     file: ./secrets/spotify_client_secret.txt
@@ -7,58 +16,49 @@ secrets:
 services:
   backend:
     build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "${PORT:-8000}:8000"
+      context: ./backend
+      args:
+        GIT_HASH: ${GIT_HASH:-}
+        APP_VERSION: ${APP_VERSION:-}
     environment:
-      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
-      - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
-      - SECRET_KEY=${SECRET_KEY}
-      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI}
-      - BACKEND_URL=${BACKEND_URL}
-      - FRONTEND_URL=${FRONTEND_URL:-https://localhost:3000}
+      - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID:-}
+      - SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI:-https://localhost:8080/api/auth/spotify/callback}
+      # Secrets are read from the mounted files below (Docker secrets).
+      - SPOTIFY_CLIENT_SECRET_FILE=/run/secrets/spotify_client_secret
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      - LASTFM_API_KEY=${LASTFM_API_KEY:-}
+      - LASTFM_SHARED_SECRET=${LASTFM_SHARED_SECRET:-}
+      - BACKEND_URL=${BACKEND_URL:-http://localhost:8000}
+      - FRONTEND_URL=${FRONTEND_URL:-https://localhost:8080}
       - ENVIRONMENT=${ENVIRONMENT:-development}
-      - DATA_DIR=${DATA_DIR:-/data}
+      - DATA_DIR=/data
     secrets:
       - spotify_client_secret
       - secret_key
     volumes:
-      - ./config:/app/config
-      - ./certs:/app/certs:ro
       # Persistent storage for the system DB and per-user SQLite files.
-      - ./data:/data
-    env_file:
-      - .env
-    # Require SSL certificates - fail if not found (Spotify requires HTTPS)
-    command: >
-      sh -c "if [ ! -f /app/certs/localhost+2.pem ] || [ ! -f /app/certs/localhost+2-key.pem ]; then
-        echo 'ERROR: SSL certificates not found in /app/certs/'
-        echo 'Pigify requires HTTPS for Spotify OAuth. Please set up SSL certificates.'
-        echo 'Run: ./scripts/setup-ssl.sh'
-        echo 'See: docs/SPOTIFY_SETUP.md for details'
-        exit 1
-      fi
-
-      uvicorn backend.app.main:app \
-        --host 0.0.0.0 \
-        --port ${PORT:-8000} \
-        --ssl-keyfile /app/certs/localhost+2-key.pem \
-        --ssl-certfile /app/certs/localhost+2.pem
-      "
+      # A named volume (not a host bind mount) so Docker initialises it from
+      # the image's app-owned /data — avoids host/container uid mismatches
+      # that make SQLite see a read-only database. Local non-docker dev still
+      # uses ./data (DATA_DIR default).
+      - pigify-data:/data
+    ports:
+      # Optional: direct backend access for debugging. The SPA reaches it
+      # through the frontend's /api proxy, not this port.
+      - "${BACKEND_PORT:-8000}:8000"
     restart: ${RESTART_POLICY:-unless-stopped}
 
-  # Development frontend (optional, for hot-reload)
-  frontend-dev:
+  frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
-    ports:
-      - "3000:3000"
+      args:
+        GIT_HASH: ${GIT_HASH:-}
+        APP_VERSION: ${APP_VERSION:-}
+    depends_on:
+      - backend
     volumes:
-      - /app/node_modules
-    environment:
-      - VITE_BACKEND_URL=${BACKEND_URL:-https://localhost:8000}
-    profiles:
-      - dev
+      # mkcert localhost certs for TLS termination (read-only).
+      - ./certs:/certs:ro
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
     restart: ${RESTART_POLICY:-unless-stopped}
