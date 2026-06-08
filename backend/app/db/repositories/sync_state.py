@@ -1,16 +1,16 @@
 """Sync state + log repository."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import SyncLog, SyncState
+from app.db.models.user import SyncLog, SyncState
 
 
-async def get_state(session: AsyncSession, domain: str) -> Optional[SyncState]:
+async def get_state(session: AsyncSession, domain: str) -> SyncState | None:
     return await session.get(SyncState, domain)
 
 
@@ -18,12 +18,12 @@ async def upsert_state(
     session: AsyncSession,
     domain: str,
     *,
-    cursor: Optional[str] = None,
-    status: Optional[str] = None,
-    summary: Optional[dict] = None,
-    ran_at: Optional[datetime] = None,
+    cursor: str | None = None,
+    status: str | None = None,
+    summary: dict | None = None,
+    ran_at: datetime | None = None,
 ) -> SyncState:
-    when = ran_at or datetime.now(timezone.utc)
+    when = ran_at or datetime.now(UTC)
     row = await get_state(session, domain)
     if row is None:
         row = SyncState(
@@ -51,9 +51,9 @@ async def append_log(
     domain: str,
     *,
     started_at: datetime,
-    finished_at: Optional[datetime],
+    finished_at: datetime | None,
     status: str,
-    detail: Optional[dict] = None,
+    detail: dict | None = None,
 ) -> SyncLog:
     row = SyncLog(
         domain=domain,

@@ -5,15 +5,17 @@ call (or a logged-out browser) doesn't drop the play. Entries are
 retried whenever the scrobbler runs and removed only after Last.fm
 confirms acceptance.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+from typing import cast
 
-from sqlalchemy import delete as sql_delete, select
+from sqlalchemy import CursorResult, select
+from sqlalchemy import delete as sql_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import ScrobbleQueueEntry
+from app.db.models.user import ScrobbleQueueEntry
 
 
 async def enqueue(
@@ -22,8 +24,8 @@ async def enqueue(
     artist: str,
     track: str,
     timestamp: int,
-    album: Optional[str] = None,
-    duration_sec: Optional[int] = None,
+    album: str | None = None,
+    duration_sec: int | None = None,
 ) -> ScrobbleQueueEntry:
     row = ScrobbleQueueEntry(
         artist=artist,
@@ -43,22 +45,21 @@ async def list_all(session: AsyncSession) -> list[ScrobbleQueueEntry]:
     Used by the UI panel that surfaces pending scrobbles to the user
     (regardless of whether the backoff window has elapsed).
     """
-    stmt = (
-        select(ScrobbleQueueEntry)
-        .order_by(ScrobbleQueueEntry.timestamp.asc(), ScrobbleQueueEntry.id.asc())
+    stmt = select(ScrobbleQueueEntry).order_by(
+        ScrobbleQueueEntry.timestamp.asc(), ScrobbleQueueEntry.id.asc()
     )
     return list((await session.execute(stmt)).scalars().all())
 
 
 async def list_due(
-    session: AsyncSession, *, now: Optional[datetime] = None
+    session: AsyncSession, *, now: datetime | None = None
 ) -> list[ScrobbleQueueEntry]:
     """Return queued scrobbles that are eligible to retry now.
 
     `next_attempt_at IS NULL` matches first-time attempts; otherwise we
     only return entries whose backoff window has elapsed.
     """
-    moment = now or datetime.now(timezone.utc)
+    moment = now or datetime.now(UTC)
     stmt = (
         select(ScrobbleQueueEntry)
         .where(
@@ -77,9 +78,7 @@ async def delete(session: AsyncSession, entry_id: int) -> None:
         await session.flush()
 
 
-async def delete_many(
-    session: AsyncSession, entry_ids: list[int]
-) -> int:
+async def delete_many(session: AsyncSession, entry_ids: list[int]) -> int:
     """Delete the given queue entries. Returns the number actually removed.
 
     Unknown IDs are silently skipped so a partial selection still succeeds.
@@ -87,19 +86,17 @@ async def delete_many(
     if not entry_ids:
         return 0
     result = await session.execute(
-        sql_delete(ScrobbleQueueEntry).where(
-            ScrobbleQueueEntry.id.in_(entry_ids)
-        )
+        sql_delete(ScrobbleQueueEntry).where(ScrobbleQueueEntry.id.in_(entry_ids))
     )
     await session.flush()
-    return int(result.rowcount or 0)
+    return int(cast(CursorResult, result).rowcount or 0)
 
 
 async def delete_all(session: AsyncSession) -> int:
     """Wipe every queued scrobble. Returns the number removed."""
     result = await session.execute(sql_delete(ScrobbleQueueEntry))
     await session.flush()
-    return int(result.rowcount or 0)
+    return int(cast(CursorResult, result).rowcount or 0)
 
 
 async def mark_failed(
@@ -107,7 +104,7 @@ async def mark_failed(
     entry_id: int,
     *,
     error: str,
-    next_attempt_at: Optional[datetime] = None,
+    next_attempt_at: datetime | None = None,
 ) -> None:
     row = await session.get(ScrobbleQueueEntry, entry_id)
     if row is None:
@@ -123,8 +120,6 @@ async def count(session: AsyncSession) -> int:
 
     return int(
         (
-            await session.execute(
-                select(func.count()).select_from(ScrobbleQueueEntry)
-            )
+            await session.execute(select(func.count()).select_from(ScrobbleQueueEntry))
         ).scalar_one()
     )

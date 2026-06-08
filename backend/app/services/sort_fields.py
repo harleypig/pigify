@@ -16,45 +16,204 @@ Each entry describes a sortable attribute of a playlist track:
 The frontend mirrors this registry to know how to fetch values and which
 comparator to apply. Keep keys in sync with `frontend/src/services/sortEngine.ts`.
 """
-from typing import List, TypedDict
+
+from typing import Required, TypedDict
 
 
 class SortField(TypedDict, total=False):
-    key: str
+    key: Required[str]
     label: str
-    type: str        # "string" | "number" | "date" | "enum"
-    source: str      # "spotify_track" | "audio_features" | "lastfm"
+    type: str  # "string" | "number" | "date" | "enum"
+    source: str  # "spotify_track" | "audio_features" | "lastfm"
     requires_hydration: bool
     group: str
     default: bool
 
 
-SORT_FIELDS: List[SortField] = [
+SORT_FIELDS: list[SortField] = [
     # --- Spotify track basics (always available) ---
-    {"key": "added_at",    "label": "Date added",    "type": "date",   "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "name",        "label": "Title",         "type": "string", "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "artist",      "label": "Artist",        "type": "string", "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "album",       "label": "Album",         "type": "string", "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "duration_ms", "label": "Duration",      "type": "number", "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "release_date","label": "Release date",  "type": "date",   "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "popularity",  "label": "Popularity",    "type": "number", "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": True},
-    {"key": "explicit",    "label": "Explicit",      "type": "enum",   "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": False},
-    {"key": "track_number","label": "Track number",  "type": "number", "source": "spotify_track", "requires_hydration": False, "group": "Spotify",     "default": False},
-
+    {
+        "key": "added_at",
+        "label": "Date added",
+        "type": "date",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "name",
+        "label": "Title",
+        "type": "string",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "artist",
+        "label": "Artist",
+        "type": "string",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "album",
+        "label": "Album",
+        "type": "string",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "duration_ms",
+        "label": "Duration",
+        "type": "number",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "release_date",
+        "label": "Release date",
+        "type": "date",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "popularity",
+        "label": "Popularity",
+        "type": "number",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": True,
+    },
+    {
+        "key": "explicit",
+        "label": "Explicit",
+        "type": "enum",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": False,
+    },
+    {
+        "key": "track_number",
+        "label": "Track number",
+        "type": "number",
+        "source": "spotify_track",
+        "requires_hydration": False,
+        "group": "Spotify",
+        "default": False,
+    },
     # --- Spotify audio features (requires hydration) ---
-    {"key": "tempo",        "label": "BPM",          "type": "number", "source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": True},
-    {"key": "energy",       "label": "Energy",       "type": "number", "source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": True},
-    {"key": "danceability", "label": "Danceability", "type": "number", "source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": False},
-    {"key": "valence",      "label": "Valence (mood)","type": "number","source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": False},
-    {"key": "acousticness", "label": "Acousticness", "type": "number", "source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": False},
-    {"key": "instrumentalness","label": "Instrumentalness","type":"number","source":"audio_features","requires_hydration":True,"group":"Audio features","default":False},
-    {"key": "loudness",     "label": "Loudness",     "type": "number", "source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": False},
-    {"key": "speechiness",  "label": "Speechiness",  "type": "number", "source": "audio_features", "requires_hydration": True, "group": "Audio features", "default": False},
-
+    {
+        "key": "tempo",
+        "label": "BPM",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": True,
+    },
+    {
+        "key": "energy",
+        "label": "Energy",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": True,
+    },
+    {
+        "key": "danceability",
+        "label": "Danceability",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": False,
+    },
+    {
+        "key": "valence",
+        "label": "Valence (mood)",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": False,
+    },
+    {
+        "key": "acousticness",
+        "label": "Acousticness",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": False,
+    },
+    {
+        "key": "instrumentalness",
+        "label": "Instrumentalness",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": False,
+    },
+    {
+        "key": "loudness",
+        "label": "Loudness",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": False,
+    },
+    {
+        "key": "speechiness",
+        "label": "Speechiness",
+        "type": "number",
+        "source": "audio_features",
+        "requires_hydration": True,
+        "group": "Audio features",
+        "default": False,
+    },
     # --- Last.fm (requires hydration; tier-gated at runtime) ---
-    {"key": "lastfm_playcount",      "label": "Last.fm play count (global)", "type": "number", "source": "lastfm", "requires_hydration": True, "group": "Last.fm", "default": True},
-    {"key": "lastfm_listeners",      "label": "Last.fm listeners",           "type": "number", "source": "lastfm", "requires_hydration": True, "group": "Last.fm", "default": False},
-    {"key": "lastfm_user_playcount", "label": "Your Last.fm play count",     "type": "number", "source": "lastfm", "requires_hydration": True, "group": "Last.fm", "default": False},
+    {
+        "key": "lastfm_playcount",
+        "label": "Last.fm play count (global)",
+        "type": "number",
+        "source": "lastfm",
+        "requires_hydration": True,
+        "group": "Last.fm",
+        "default": True,
+    },
+    {
+        "key": "lastfm_listeners",
+        "label": "Last.fm listeners",
+        "type": "number",
+        "source": "lastfm",
+        "requires_hydration": True,
+        "group": "Last.fm",
+        "default": False,
+    },
+    {
+        "key": "lastfm_user_playcount",
+        "label": "Your Last.fm play count",
+        "type": "number",
+        "source": "lastfm",
+        "requires_hydration": True,
+        "group": "Last.fm",
+        "default": False,
+    },
 ]
 
 

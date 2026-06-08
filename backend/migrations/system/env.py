@@ -11,9 +11,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from backend.app.db.base import SystemBase
-from backend.app.db.models import system  # noqa: F401  (register tables)
-from backend.app.db.paths import system_db_url
+from app.db.base import SystemBase
+from app.db.models import system  # noqa: F401  (register tables)
+from app.db.paths import system_db_url
 
 config = context.config
 

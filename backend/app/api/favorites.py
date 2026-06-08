@@ -2,7 +2,7 @@
 Favorites / likes sync API.
 
 Endpoints:
-  GET  /api/favorites/status           - connection state, last sync, conflicts, settings
+  GET  /api/favorites/status           - connection state, last sync, conflicts
   GET  /api/favorites/check            - per-track loved state across services
   POST /api/favorites/love             - write-through love
   POST /api/favorites/unlove           - write-through unlove
@@ -10,12 +10,11 @@ Endpoints:
   POST /api/favorites/resolve-conflict - apply a chosen resolution
   PUT  /api/favorites/settings         - configure background interval
 """
-from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from backend.app.models.favorites import (
+from app.models.favorites import (
     Conflict,
     Favorite,
     FavoritesStatus,
@@ -23,9 +22,9 @@ from backend.app.models.favorites import (
     TrackIdentity,
     WriteThroughResult,
 )
-from backend.app.services import lastfm as lastfm_module
-from backend.app.services.favorites import FavoritesService
-from backend.app.services.spotify import SpotifyService
+from app.services import lastfm as lastfm_module
+from app.services.favorites import FavoritesService
+from app.services.spotify import SpotifyService
 
 router = APIRouter()
 
@@ -42,7 +41,7 @@ def _services(request: Request) -> FavoritesService:
     )
 
 
-def _last_sync_from_session(request: Request) -> Optional[SyncSummary]:
+def _last_sync_from_session(request: Request) -> SyncSummary | None:
     raw = request.session.get("favorites_last_sync")
     if not raw:
         return None
@@ -52,9 +51,9 @@ def _last_sync_from_session(request: Request) -> Optional[SyncSummary]:
         return None
 
 
-def _conflicts_from_session(request: Request) -> List[Conflict]:
+def _conflicts_from_session(request: Request) -> list[Conflict]:
     raw = request.session.get("favorites_conflicts") or []
-    out: List[Conflict] = []
+    out: list[Conflict] = []
     for r in raw:
         try:
             out.append(Conflict.model_validate(r))
@@ -63,7 +62,7 @@ def _conflicts_from_session(request: Request) -> List[Conflict]:
     return out
 
 
-def _save_conflicts(request: Request, conflicts: List[Conflict]) -> None:
+def _save_conflicts(request: Request, conflicts: list[Conflict]) -> None:
     request.session["favorites_conflicts"] = [c.model_dump() for c in conflicts]
 
 
@@ -80,12 +79,12 @@ async def get_status(request: Request):
     )
 
 
-@router.get("/check", response_model=List[Favorite])
+@router.get("/check", response_model=list[Favorite])
 async def check(
     request: Request,
-    track_id: List[str] = Query(default=[], alias="track_id"),
-    name: List[str] = Query(default=[]),
-    artist: List[str] = Query(default=[]),
+    track_id: list[str] = Query(default=[], alias="track_id"),
+    name: list[str] = Query(default=[]),
+    artist: list[str] = Query(default=[]),
 ):
     """
     Bulk loved-state check. Pass parallel arrays of track_id/name/artist.
@@ -98,17 +97,21 @@ async def check(
         return []
 
     # Spotify bulk check
-    spotify_states: List[Optional[bool]] = [None] * n
-    ids_with_idx = [(i, track_id[i]) for i in range(n) if i < len(track_id) and track_id[i]]
+    spotify_states: list[bool | None] = [None] * n
+    ids_with_idx = [
+        (i, track_id[i]) for i in range(n) if i < len(track_id) and track_id[i]
+    ]
     if ids_with_idx:
         try:
-            states = await svc.spotify.check_saved_tracks([tid for _, tid in ids_with_idx])
-            for (i, _), s in zip(ids_with_idx, states):
+            states = await svc.spotify.check_saved_tracks(
+                [tid for _, tid in ids_with_idx]
+            )
+            for (i, _), s in zip(ids_with_idx, states, strict=False):
                 spotify_states[i] = s
         except Exception:
             pass
 
-    out: List[Favorite] = []
+    out: list[Favorite] = []
     for i in range(n):
         ti = TrackIdentity(
             spotify_id=track_id[i] if i < len(track_id) else None,
@@ -127,12 +130,12 @@ async def check(
 
 
 class WriteBody(BaseModel):
-    spotify_id: Optional[str] = None
-    spotify_uri: Optional[str] = None
+    spotify_id: str | None = None
+    spotify_uri: str | None = None
     name: str
     artist: str
-    album: Optional[str] = None
-    image_url: Optional[str] = None
+    album: str | None = None
+    image_url: str | None = None
 
 
 @router.post("/love", response_model=WriteThroughResult)
@@ -152,7 +155,7 @@ class SyncBody(BaseModel):
 
 
 @router.post("/sync", response_model=SyncSummary)
-async def sync(request: Request, body: SyncBody = SyncBody()):
+async def sync(request: Request, body: SyncBody = SyncBody()):  # noqa: B008
     svc = _services(request)
     summary = await svc.reconcile(max_tracks=body.max_tracks)
     request.session["favorites_last_sync"] = summary.model_dump()

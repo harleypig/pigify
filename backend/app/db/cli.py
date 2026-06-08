@@ -1,18 +1,19 @@
 """CLI for applying migrations manually.
 
 Usage:
-  python -m backend.app.db.cli upgrade            # system + every known user
-  python -m backend.app.db.cli upgrade-system
-  python -m backend.app.db.cli upgrade-user <spotify_id>
-  python -m backend.app.db.cli list-users
+  python -m app.db.cli upgrade            # system + every known user
+  python -m app.db.cli upgrade-system
+  python -m app.db.cli upgrade-user <spotify_id>
+  python -m app.db.cli list-users
 """
+
 from __future__ import annotations
 
 import argparse
 import asyncio
 import sys
 
-from backend.app.db.bootstrap import (
+from app.db.bootstrap import (
     apply_all_known_user_migrations,
     apply_system_migrations,
     apply_user_migrations,

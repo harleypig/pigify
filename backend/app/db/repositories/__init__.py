@@ -1,5 +1,6 @@
 """Thin data-access modules so feature code never writes raw SQL inline."""
-from backend.app.db.repositories import (
+
+from app.db.repositories import (
     enrichment_cache,
     saved_filters,
     saved_sorts,

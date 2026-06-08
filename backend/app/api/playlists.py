@@ -1,7 +1,7 @@
 """
 Playlist-related API endpoints, including the sort/reorder/undo flow.
 
-Sorting design (see `backend/app/services/sort_fields.py` for the registry):
+Sorting design (see `app/services/sort_fields.py` for the registry):
   - The frontend owns the comparator; the backend is the data source.
   - `GET /tracks?all=true` returns every track in the playlist (paginated
     internally) so the client has the full set to sort.
@@ -16,27 +16,29 @@ Saved sort presets live in the per-user DB (`saved_sorts` table) so they
 persist across logout, cookie expiry, and devices. Legacy session-stored
 presets are migrated into the DB on first authenticated access.
 """
+
 import asyncio
 import time
 from bisect import bisect_left
 from collections import defaultdict
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
-from backend.app.services.spotify import SpotifyService
-from backend.app.services.sort_fields import SORT_FIELDS, SORT_FIELD_KEYS
-from backend.app.services import lastfm
-from backend.app.services.connections import get_connection
-from backend.app.models.playlist import Playlist, Track
-from backend.app.db.repositories import saved_sorts as saved_sorts_repo
-from backend.app.db.session import user_session_scope
+from app.db.repositories import saved_sorts as saved_sorts_repo
+from app.db.session import user_session_scope
+from app.models.playlist import Playlist, Track
+from app.services import lastfm
+from app.services.connections import get_connection
+from app.services.sort_fields import SORT_FIELD_KEYS, SORT_FIELDS
+from app.services.spotify import SpotifyService
 
 router = APIRouter()
 
 
 # --------------------------------- Helpers ----------------------------------
+
 
 def _require_token(request: Request) -> str:
     token = request.session.get("access_token")
@@ -58,6 +60,7 @@ async def list_sort_fields():
 
 # ----- Saved sort presets (session-scoped) --------------------------------
 
+
 class SortKeySpec(BaseModel):
     field: str
     direction: str = Field("asc", pattern="^(asc|desc)$")
@@ -73,18 +76,19 @@ class SortPreset(BaseModel):
     `keys` via the model validator below. The serialized output always
     uses `keys`.
     """
+
     name: str = Field(..., min_length=1, max_length=80)
-    keys: List[SortKeySpec] = Field(..., min_length=1, max_length=8)
+    keys: list[SortKeySpec] = Field(..., min_length=1, max_length=8)
 
     @model_validator(mode="before")
     @classmethod
     def _coerce_legacy(cls, data: Any) -> Any:
         if not isinstance(data, dict):
             return data
-        if "keys" in data and data["keys"]:
+        if data.get("keys"):
             return data
         # Legacy primary/secondary -> keys
-        legacy_keys: List[Any] = []
+        legacy_keys: list[Any] = []
         if data.get("primary"):
             legacy_keys.append(data["primary"])
         if data.get("secondary"):
@@ -95,7 +99,7 @@ class SortPreset(BaseModel):
         return data
 
 
-def _validate_sort_keys(keys: List[SortKeySpec]) -> None:
+def _validate_sort_keys(keys: list[SortKeySpec]) -> None:
     if not keys:
         raise HTTPException(400, "At least one sort key is required")
     for k in keys:
@@ -108,6 +112,7 @@ def _validate_sort_keys(keys: List[SortKeySpec]) -> None:
 # ordered list of sort keys in `keys`; the wire shape is `{name, keys}` (with
 # legacy `primary`/`secondary` accepted on input by the SortPreset validator).
 
+
 def _require_spotify_user(request: Request) -> str:
     sid = request.session.get("spotify_user_id")
     if not sid:
@@ -115,7 +120,7 @@ def _require_spotify_user(request: Request) -> str:
     return sid
 
 
-def _clean_key(k: Dict[str, Any]) -> Dict[str, Any]:
+def _clean_key(k: dict[str, Any]) -> dict[str, Any]:
     """Forward only the known sort-key fields so DB extras don't leak."""
     return {
         "field": k.get("field"),
@@ -138,7 +143,7 @@ def _preset_to_keys(preset: SortPreset) -> list[dict]:
     return [{"field": k.field, "direction": k.direction} for k in preset.keys]
 
 
-def _entry_to_keys(entry: Dict[str, Any]) -> list[dict]:
+def _entry_to_keys(entry: dict[str, Any]) -> list[dict]:
     """Pull the ordered keys list out of a legacy session-cookie entry.
 
     Accepts both the new shape (`keys: [...]`) and the original
@@ -150,24 +155,30 @@ def _entry_to_keys(entry: Dict[str, Any]) -> list[dict]:
         out = []
         for k in raw:
             if isinstance(k, dict) and k.get("field"):
-                out.append({
-                    "field": k["field"],
-                    "direction": k.get("direction") or "asc",
-                })
+                out.append(
+                    {
+                        "field": k["field"],
+                        "direction": k.get("direction") or "asc",
+                    }
+                )
         return out
     out = []
     primary = entry.get("primary") or {}
     if primary.get("field"):
-        out.append({
-            "field": primary["field"],
-            "direction": primary.get("direction") or "asc",
-        })
+        out.append(
+            {
+                "field": primary["field"],
+                "direction": primary.get("direction") or "asc",
+            }
+        )
     secondary = entry.get("secondary")
     if secondary and secondary.get("field"):
-        out.append({
-            "field": secondary["field"],
-            "direction": secondary.get("direction") or "asc",
-        })
+        out.append(
+            {
+                "field": secondary["field"],
+                "direction": secondary.get("direction") or "asc",
+            }
+        )
     return out
 
 
@@ -213,7 +224,7 @@ async def _find_row_ci(session, name: str):
     return None
 
 
-@router.get("/sort/presets", response_model=List[SortPreset])
+@router.get("/sort/presets", response_model=list[SortPreset])
 async def list_sort_presets(request: Request):
     spotify_id = _require_spotify_user(request)
     async with user_session_scope(spotify_id) as session:
@@ -223,7 +234,7 @@ async def list_sort_presets(request: Request):
     return [_row_to_preset(r) for r in rows]
 
 
-@router.post("/sort/presets", response_model=List[SortPreset])
+@router.post("/sort/presets", response_model=list[SortPreset])
 async def save_sort_preset(request: Request, preset: SortPreset):
     _validate_sort_keys(preset.keys)
     spotify_id = _require_spotify_user(request)
@@ -243,7 +254,7 @@ async def save_sort_preset(request: Request, preset: SortPreset):
     return [_row_to_preset(r) for r in rows]
 
 
-@router.delete("/sort/presets/{name}", response_model=List[SortPreset])
+@router.delete("/sort/presets/{name}", response_model=list[SortPreset])
 async def delete_sort_preset(request: Request, name: str):
     spotify_id = _require_spotify_user(request)
     async with user_session_scope(spotify_id) as session:
@@ -259,13 +270,15 @@ async def delete_sort_preset(request: Request, name: str):
 # =========================== Playlist list / detail =========================
 
 
-@router.get("", response_model=List[Playlist])
+@router.get("", response_model=list[Playlist])
 async def get_playlists(request: Request, limit: int = 50, offset: int = 0):
     spotify = SpotifyService(_require_token(request))
     try:
         return await spotify.get_user_playlists(limit=limit, offset=offset)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get playlists: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get playlists: {e!s}"
+        ) from e
 
 
 @router.get("/{playlist_id}", response_model=Playlist)
@@ -274,10 +287,12 @@ async def get_playlist(request: Request, playlist_id: str):
     try:
         return await spotify.get_playlist(playlist_id)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get playlist: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get playlist: {e!s}"
+        ) from e
 
 
-@router.get("/{playlist_id}/tracks", response_model=List[Track])
+@router.get("/{playlist_id}/tracks", response_model=list[Track])
 async def get_playlist_tracks(
     request: Request,
     playlist_id: str,
@@ -290,21 +305,27 @@ async def get_playlist_tracks(
     try:
         if all:
             return await spotify.get_all_playlist_tracks(playlist_id)
-        return await spotify.get_playlist_tracks(playlist_id, limit=limit, offset=offset)
+        return await spotify.get_playlist_tracks(
+            playlist_id, limit=limit, offset=offset
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get playlist tracks: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get playlist tracks: {e!s}"
+        ) from e
 
 
 # ================================ Hydration =================================
 
 
 class HydrateRequest(BaseModel):
-    track_ids: List[str]
+    track_ids: list[str]
     # Per-track artist+title hint avoids a round-trip back to /tracks/{id}
     # for the Last.fm lookup. `name` is the track title; `artist` is the
     # primary artist string.
-    track_meta: Optional[List[Dict[str, str]]] = None
-    sources: List[str] = Field(default_factory=list)  # subset of {"audio_features","lastfm"}
+    track_meta: list[dict[str, str]] | None = None
+    sources: list[str] = Field(
+        default_factory=list
+    )  # subset of {"audio_features","lastfm"}
 
 
 @router.post("/{playlist_id}/hydrate")
@@ -326,7 +347,7 @@ async def hydrate_tracks(
     _require_token(request)
     spotify = SpotifyService(request.session["access_token"])
 
-    out: Dict[str, Any] = {"audio_features": {}, "lastfm": {}, "warnings": []}
+    out: dict[str, Any] = {"audio_features": {}, "lastfm": {}, "warnings": []}
     sources = set(body.sources or [])
     track_ids = [tid for tid in (body.track_ids or []) if tid]
 
@@ -342,18 +363,23 @@ async def hydrate_tracks(
             out["warnings"].append(f"audio_features: {e}")
         if not features:
             out["warnings"].append(
-                "audio_features unavailable (Spotify may not expose this endpoint for this app)"
+                "audio_features unavailable "
+                "(Spotify may not expose this endpoint for this app)"
             )
         # Project just the numeric fields the registry uses.
         keep = (
-            "tempo", "energy", "danceability", "valence",
-            "acousticness", "instrumentalness", "loudness", "speechiness",
+            "tempo",
+            "energy",
+            "danceability",
+            "valence",
+            "acousticness",
+            "instrumentalness",
+            "loudness",
+            "speechiness",
         )
         for tid in track_ids:
             f = features.get(tid)
-            out["audio_features"][tid] = (
-                {k: f.get(k) for k in keep} if f else None
-            )
+            out["audio_features"][tid] = {k: f.get(k) for k in keep} if f else None
 
     # ----- Last.fm --------------------------------------------------------
     if "lastfm" in sources:
@@ -361,20 +387,18 @@ async def hydrate_tracks(
         if conn.tier == "none":
             out["warnings"].append("lastfm not configured")
         else:
-            username = (
-                conn.connected_account if conn.tier == "authenticated" else None
-            )
-            meta_by_id: Dict[str, Dict[str, str]] = {
-                m.get("id"): m for m in (body.track_meta or []) if m.get("id")
+            username = conn.connected_account if conn.tier == "authenticated" else None
+            meta_by_id: dict[str, dict[str, str]] = {
+                m["id"]: m for m in (body.track_meta or []) if m.get("id")
             }
 
-            async def fetch_one(tid: str) -> tuple[str, Optional[Dict]]:
+            async def fetch_one(tid: str) -> tuple[str, dict | None]:
                 m = meta_by_id.get(tid) or {}
                 artist = (m.get("artist") or "").strip()
                 title = (m.get("name") or "").strip()
                 if not artist or not title:
                     return tid, None
-                info, err = await lastfm.safe_call(
+                info, _err = await lastfm.safe_call(
                     lastfm.get_track_info(artist, title, username=username)
                 )
                 if not info:
@@ -405,7 +429,7 @@ async def hydrate_tracks(
                 *(guarded(tid) for tid in track_ids), return_exceptions=True
             )
             for r in results:
-                if isinstance(r, Exception):
+                if isinstance(r, BaseException):
                     continue
                 tid, payload = r
                 out["lastfm"][tid] = payload
@@ -417,10 +441,10 @@ async def hydrate_tracks(
 
 
 class ReorderRequest(BaseModel):
-    target_uris: List[str]
+    target_uris: list[str]
 
 
-def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str, int]]:
+def _compute_reorder_ops(current: list[str], target: list[str]) -> list[dict[str, int]]:
     """Decompose ``current -> target`` into a minimal sequence of single-item
     Spotify reorder ops.
 
@@ -458,23 +482,23 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
 
     # ---- Step 1: assign each target position a current index via LIS ----
     # For each URI, list of indices where it appears in `current` (ascending).
-    cur_positions_by_uri: Dict[str, List[int]] = defaultdict(list)
+    cur_positions_by_uri: dict[str, list[int]] = defaultdict(list)
     for i, u in enumerate(current):
         cur_positions_by_uri[u].append(i)
 
     # Expanded sequence: for each target position t, push the cur indices for
     # target[t] in DESCENDING order. Strict-increasing LIS over this picks at
     # most one entry per target position, which is exactly the multiset LCS.
-    expanded_cur_idx: List[int] = []
-    expanded_target_idx: List[int] = []
+    expanded_cur_idx: list[int] = []
+    expanded_target_idx: list[int] = []
     for t, u in enumerate(target):
         for p in reversed(cur_positions_by_uri[u]):
             expanded_cur_idx.append(p)
             expanded_target_idx.append(t)
 
     # Patience-sort LIS (strict) with parent pointers for reconstruction.
-    tails: List[int] = []          # smallest tail value per LIS length
-    tails_idx: List[int] = []      # index in `expanded_cur_idx` of that tail
+    tails: list[int] = []  # smallest tail value per LIS length
+    tails_idx: list[int] = []  # index in `expanded_cur_idx` of that tail
     parent = [-1] * len(expanded_cur_idx)
     for i, x in enumerate(expanded_cur_idx):
         k = bisect_left(tails, x)
@@ -487,7 +511,7 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
             tails_idx[k] = i
 
     # Reconstruct LIS as ordered list of expanded indices.
-    lis_path: List[int] = []
+    lis_path: list[int] = []
     if tails_idx:
         i = tails_idx[-1]
         while i != -1:
@@ -496,7 +520,7 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
         lis_path.reverse()
 
     # kept_assignment: target_idx -> current_idx for the LIS-chosen pairs.
-    kept_assignment: Dict[int, int] = {}
+    kept_assignment: dict[int, int] = {}
     for ei in lis_path:
         kept_assignment[expanded_target_idx[ei]] = expanded_cur_idx[ei]
     kept_target_idxs = set(kept_assignment.keys())
@@ -506,11 +530,11 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
     # For each URI, walk remaining (non-kept) current positions in order and
     # match them to remaining (non-kept) target occurrences in order. This
     # well-defined assignment is what each emitted move actually transports.
-    remaining_cur_by_uri: Dict[str, List[int]] = defaultdict(list)
+    remaining_cur_by_uri: dict[str, list[int]] = defaultdict(list)
     for i, u in enumerate(current):
         if i not in kept_cur_idxs:
             remaining_cur_by_uri[u].append(i)
-    full_assignment: Dict[int, int] = dict(kept_assignment)
+    full_assignment: dict[int, int] = dict(kept_assignment)
     for t, u in enumerate(target):
         if t in kept_target_idxs:
             continue
@@ -523,24 +547,21 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
     pos = {i: i for i in range(n)}
 
     # Precompute, for each target position, the next kept target index > t.
-    next_kept: List[Optional[int]] = [None] * (n + 1)
-    nxt: Optional[int] = None
+    next_kept: list[int | None] = [None] * (n + 1)
+    nxt: int | None = None
     for t in range(n - 1, -1, -1):
         next_kept[t] = nxt
         if t in kept_target_idxs:
             nxt = t
 
-    ops: List[Dict[str, int]] = []
+    ops: list[dict[str, int]] = []
     for t in range(n):
         if t in kept_target_idxs:
             continue
         moved_id = full_assignment[t]
         j = pos[moved_id]
         nk = next_kept[t]
-        if nk is None:
-            insert_before = n
-        else:
-            insert_before = pos[kept_assignment[nk]]
+        insert_before = n if nk is None else pos[kept_assignment[nk]]
 
         # Skip no-ops: moving an item to its own slot or to immediately
         # after itself does not change the list.
@@ -570,7 +591,7 @@ def _compute_reorder_ops(current: List[str], target: List[str]) -> List[Dict[str
     return _coalesce_reorder_ops(ops)
 
 
-def _coalesce_reorder_ops(ops: List[Dict[str, int]]) -> List[Dict[str, int]]:
+def _coalesce_reorder_ops(ops: list[dict[str, int]]) -> list[dict[str, int]]:
     """Merge runs of single-item moves whose source/destination are
     contiguous into a single ``range_length>1`` reorder op.
 
@@ -589,7 +610,7 @@ def _coalesce_reorder_ops(ops: List[Dict[str, int]]) -> List[Dict[str, int]]:
     so the replay still reproduces the target order — it just uses fewer
     HTTP calls.
     """
-    out: List[Dict[str, int]] = []
+    out: list[dict[str, int]] = []
     for op in ops:
         if not out:
             out.append(dict(op))
@@ -598,14 +619,14 @@ def _coalesce_reorder_ops(ops: List[Dict[str, int]]) -> List[Dict[str, int]]:
         if op.get("range_length", 1) != 1:
             out.append(dict(op))
             continue
-        R, I, L = last["range_start"], last["insert_before"], last["range_length"]
+        R, Ib, L = last["range_start"], last["insert_before"], last["range_length"]
         r, i = op["range_start"], op["insert_before"]
-        # Rightward run: identical (R, I) repeated.
-        if R < I and r == R and i == I:
+        # Rightward run: identical (R, Ib) repeated.
+        if Ib > R and r == R and i == Ib:
             last["range_length"] = L + 1
             continue
-        # Leftward run: each subsequent op shifts both R and I by +1.
-        if R > I and r == R + L and i == I + L:
+        # Leftward run: each subsequent op shifts both R and Ib by +1.
+        if Ib < R and r == R + L and i == Ib + L:
             last["range_length"] = L + 1
             continue
         out.append(dict(op))
@@ -628,7 +649,7 @@ async def reorder_playlist(request: Request, playlist_id: str, body: ReorderRequ
     target_uris = list(body.target_uris or [])
 
     ops = _compute_reorder_ops(current_uris, target_uris)
-    snapshot_id: Optional[str] = None
+    snapshot_id: str | None = None
     for op in ops:
         snapshot_id = await spotify.reorder_playlist_item(
             playlist_id,
@@ -670,7 +691,7 @@ async def undo_reorder(request: Request, playlist_id: str):
         raise HTTPException(404, "Nothing to undo for this playlist")
 
     spotify = SpotifyService(_require_token(request))
-    previous_uris: List[str] = list(undo.get("previous_uris") or [])
+    previous_uris: list[str] = list(undo.get("previous_uris") or [])
 
     # Restore by replacing playlist contents with the saved URI list.
     await spotify.replace_playlist_uris(playlist_id, previous_uris)

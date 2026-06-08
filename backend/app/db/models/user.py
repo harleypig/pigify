@@ -4,24 +4,24 @@ Designed to be portable to Postgres: no SQLite-only column types or
 features. JSON payloads use SQLAlchemy's generic JSON type which maps to
 TEXT on SQLite and JSONB-compatible JSON on Postgres.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     DateTime,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.base import TimestampMixin, UserBase
+from app.db.base import TimestampMixin, UserBase
 
 
 class ServiceConnection(UserBase, TimestampMixin):
@@ -30,14 +30,14 @@ class ServiceConnection(UserBase, TimestampMixin):
     __tablename__ = "service_connections"
 
     service: Mapped[str] = mapped_column(String(64), primary_key=True)
-    account_name: Mapped[Optional[str]] = mapped_column(String(255))
+    account_name: Mapped[str | None] = mapped_column(String(255))
     # Opaque per-service auth payload (session keys, refresh tokens, ...).
     # Treated as a secret; never logged.
-    credentials: Mapped[Optional[dict]] = mapped_column(JSON)
+    credentials: Mapped[dict | None] = mapped_column(JSON)
     # Free-form per-service preferences (scrobble enabled, etc.).
-    preferences: Mapped[Optional[dict]] = mapped_column(JSON)
-    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    last_error: Mapped[Optional[str]] = mapped_column(Text)
+    preferences: Mapped[dict | None] = mapped_column(JSON)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
 
 
 class ScrobbleQueueEntry(UserBase, TimestampMixin):
@@ -52,40 +52,30 @@ class ScrobbleQueueEntry(UserBase, TimestampMixin):
     """
 
     __tablename__ = "scrobble_queue"
-    __table_args__ = (
-        Index("ix_scrobble_queue_next_attempt_at", "next_attempt_at"),
-    )
+    __table_args__ = (Index("ix_scrobble_queue_next_attempt_at", "next_attempt_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     artist: Mapped[str] = mapped_column(String(512), nullable=False)
     track: Mapped[str] = mapped_column(String(512), nullable=False)
-    album: Mapped[Optional[str]] = mapped_column(String(512))
-    duration_sec: Mapped[Optional[int]] = mapped_column(Integer)
+    album: Mapped[str | None] = mapped_column(String(512))
+    duration_sec: Mapped[int | None] = mapped_column(Integer)
     timestamp: Mapped[int] = mapped_column(Integer, nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    next_attempt_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
-    )
-    last_error: Mapped[Optional[str]] = mapped_column(Text)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
 
 
 class TrackStat(UserBase, TimestampMixin):
     """Pigify-local play/skip counters per Spotify track."""
 
     __tablename__ = "track_stats"
-    __table_args__ = (
-        Index("ix_track_stats_last_played_at", "last_played_at"),
-    )
+    __table_args__ = (Index("ix_track_stats_last_played_at", "last_played_at"),)
 
     spotify_track_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     play_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     skip_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_played_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
-    )
-    last_skipped_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True)
-    )
+    last_played_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_skipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EnrichmentCache(UserBase, TimestampMixin):
@@ -98,15 +88,13 @@ class EnrichmentCache(UserBase, TimestampMixin):
     """
 
     __tablename__ = "enrichment_cache"
-    __table_args__ = (
-        Index("ix_enrichment_cache_expires_at", "expires_at"),
-    )
+    __table_args__ = (Index("ix_enrichment_cache_expires_at", "expires_at"),)
 
     provider: Mapped[str] = mapped_column(String(32), primary_key=True)
     kind: Mapped[str] = mapped_column(String(64), primary_key=True)
     key: Mapped[str] = mapped_column(String(512), primary_key=True)
-    payload: Mapped[Optional[dict]] = mapped_column(JSON)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    payload: Mapped[dict | None] = mapped_column(JSON)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SavedSort(UserBase, TimestampMixin):
@@ -117,7 +105,7 @@ class SavedSort(UserBase, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     # Ordered list of {field, direction, options} dicts.
     keys: Mapped[list] = mapped_column(JSON, nullable=False)
 
@@ -130,7 +118,7 @@ class SavedFilter(UserBase, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     # The recipe itself: source playlist(s), predicates, sort, limit, etc.
     definition: Mapped[dict] = mapped_column(JSON, nullable=False)
     is_temporary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -142,25 +130,23 @@ class SyncState(UserBase, TimestampMixin):
     __tablename__ = "sync_state"
 
     domain: Mapped[str] = mapped_column(String(64), primary_key=True)
-    cursor: Mapped[Optional[str]] = mapped_column(Text)
-    last_run_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    last_status: Mapped[Optional[str]] = mapped_column(String(32))
-    last_summary: Mapped[Optional[dict]] = mapped_column(JSON)
+    cursor: Mapped[str | None] = mapped_column(Text)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status: Mapped[str | None] = mapped_column(String(32))
+    last_summary: Mapped[dict | None] = mapped_column(JSON)
 
 
 class SyncLog(UserBase):
     """Append-only log of sync attempts for diagnostics."""
 
     __tablename__ = "sync_log"
-    __table_args__ = (
-        Index("ix_sync_log_domain_started_at", "domain", "started_at"),
-    )
+    __table_args__ = (Index("ix_sync_log_domain_started_at", "domain", "started_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     domain: Mapped[str] = mapped_column(String(64), nullable=False)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(32), nullable=False)
-    detail: Mapped[Optional[dict]] = mapped_column(JSON)
+    detail: Mapped[dict | None] = mapped_column(JSON)

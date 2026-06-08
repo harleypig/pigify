@@ -22,25 +22,25 @@ lives in the per-user DB:
 Failures (rate-limit, network, missing API key) are caught — never
 block playback.
 """
+
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.config import settings
-from backend.app.db.repositories import scrobble_queue as queue_repo
-from backend.app.db.repositories import sync_state as sync_repo
-from backend.app.db.session import user_session_scope
-from backend.app.services import lastfm
-from backend.app.services.connections import (
+from app.config import settings
+from app.db.repositories import scrobble_queue as queue_repo
+from app.db.repositories import sync_state as sync_repo
+from app.db.session import user_session_scope
+from app.services import lastfm
+from app.services.connections import (
     flag_lastfm_needs_reconnect,
     get_lastfm_credentials,
 )
-
 
 _SCROBBLER_DOMAIN = "scrobbler"
 
@@ -79,7 +79,7 @@ def _is_auth_fatal(error: str) -> bool:
     return False
 
 
-def _track_summary(item: Dict[str, Any]) -> Dict[str, Any]:
+def _track_summary(item: dict[str, Any]) -> dict[str, Any]:
     artists = item.get("artists") or []
     artist = ", ".join(a.get("name", "") for a in artists) or ""
     return {
@@ -91,7 +91,7 @@ def _track_summary(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _should_scrobble(track_meta: Dict[str, Any], played_sec: float) -> bool:
+def _should_scrobble(track_meta: dict[str, Any], played_sec: float) -> bool:
     dur = track_meta.get("duration_sec") or 0
     if dur < settings.SCROBBLE_MIN_TRACK_SEC:
         return False
@@ -99,7 +99,7 @@ def _should_scrobble(track_meta: Dict[str, Any], played_sec: float) -> bool:
     return played_sec >= threshold
 
 
-async def _load_state(session: AsyncSession) -> Dict[str, Any]:
+async def _load_state(session: AsyncSession) -> dict[str, Any]:
     row = await sync_repo.get_state(session, _SCROBBLER_DOMAIN)
     if row is None or not row.last_summary:
         return {}
@@ -110,7 +110,7 @@ async def _load_state(session: AsyncSession) -> Dict[str, Any]:
 async def _save_state(
     session: AsyncSession,
     *,
-    summary: Dict[str, Any],
+    summary: dict[str, Any],
     status: str,
 ) -> None:
     await sync_repo.upsert_state(
@@ -123,7 +123,7 @@ async def _save_state(
 
 async def _flush_queue(
     session: AsyncSession, session_key: str
-) -> tuple[int, Optional[int]]:
+) -> tuple[int, int | None]:
     """Try to deliver every due queued scrobble.
 
     Returns ``(succeeded_count, last_success_ts)``. ``last_success_ts``
@@ -133,7 +133,7 @@ async def _flush_queue(
     backoff transitions don't get miscounted as successes.
     """
     succeeded = 0
-    last_success_ts: Optional[int] = None
+    last_success_ts: int | None = None
     auth_fatal_seen = False
     due = await queue_repo.list_due(session)
     for entry in due:
@@ -146,15 +146,14 @@ async def _flush_queue(
                 album=entry.album,
                 duration_sec=entry.duration_sec,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             err = str(exc)
             attempts_after = (entry.attempts or 0) + 1
             await queue_repo.mark_failed(
                 session,
                 entry.id,
                 error=err,
-                next_attempt_at=datetime.now(timezone.utc)
-                + _next_backoff(attempts_after),
+                next_attempt_at=datetime.now(UTC) + _next_backoff(attempts_after),
             )
             # Persist the failure bookkeeping immediately so a crash
             # before the outer commit doesn't reset the backoff and
@@ -187,7 +186,7 @@ async def _flush_queue(
     return succeeded, last_success_ts
 
 
-async def process_state(request: Request, state: Optional[Dict[str, Any]]) -> None:
+async def process_state(request: Request, state: dict[str, Any] | None) -> None:
     """
     Called from /api/player/state. Updates internal scrobble bookkeeping
     and fires any pending Last.fm calls. Never raises.
@@ -213,7 +212,7 @@ async def process_state(request: Request, state: Optional[Dict[str, Any]]) -> No
 async def _process_state_locked(
     session: AsyncSession,
     session_key: str,
-    state: Optional[Dict[str, Any]],
+    state: dict[str, Any] | None,
 ) -> None:
     s = await _load_state(session)
     s.setdefault("current", None)
@@ -222,7 +221,7 @@ async def _process_state_locked(
 
     # First, try to flush any queued scrobbles (offline retry).
     _flushed_count, flushed_ts = await _flush_queue(session, session_key)
-    last_success_ts: Optional[int] = flushed_ts
+    last_success_ts: int | None = flushed_ts
 
     item = state.get("item") if state else None
     is_playing = bool(state and state.get("is_playing"))
@@ -235,8 +234,7 @@ async def _process_state_locked(
         s["status"] = {
             "now_playing": None,
             "queued": queued,
-            "last_scrobble_at": last_success_ts
-            or prev_status.get("last_scrobble_at"),
+            "last_scrobble_at": last_success_ts or prev_status.get("last_scrobble_at"),
         }
         await _save_state(session, summary=s, status="idle")
         return
@@ -285,9 +283,7 @@ async def _process_state_locked(
     # Scrobble when threshold met. Dedup is per *play instance* (the
     # current play), not per track ID — so replays of the same song
     # are scrobbled.
-    if not current["scrobbled"] and _should_scrobble(
-        track_meta, current["played_sec"]
-    ):
+    if not current["scrobbled"] and _should_scrobble(track_meta, current["played_sec"]):
         entry = {
             "artist": track_meta["artist"],
             "track": track_meta["track"],
@@ -300,7 +296,7 @@ async def _process_state_locked(
             await lastfm.scrobble(session_key, **entry)
             scrobble_succeeded = True
             last_success_ts = int(time.time())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Persist for durable retry on the next poll.
             await queue_repo.enqueue(session, **entry)
             await record_lastfm_error_safely(session, str(exc))
@@ -321,16 +317,14 @@ async def _process_state_locked(
     await _save_state(session, summary=s, status="ok")
 
 
-async def record_lastfm_error_safely(
-    session: AsyncSession, error: str
-) -> None:
+async def record_lastfm_error_safely(session: AsyncSession, error: str) -> None:
     """Best-effort write of last_error onto the lastfm connection row.
 
     We're already inside a `user_session_scope`, so we update through
     the same session rather than opening a new one.
     """
-    from backend.app.db.repositories import service_connections as conn_repo
-    from backend.app.services.connections import LASTFM_SERVICE
+    from app.db.repositories import service_connections as conn_repo
+    from app.services.connections import LASTFM_SERVICE
 
     row = await conn_repo.get(session, LASTFM_SERVICE)
     if row is None:
@@ -338,7 +332,7 @@ async def record_lastfm_error_safely(
     row.last_error = error[:1024]
 
 
-def _entry_to_dict(entry: Any) -> Dict[str, Any]:
+def _entry_to_dict(entry: Any) -> dict[str, Any]:
     return {
         "id": entry.id,
         "artist": entry.artist,
@@ -355,7 +349,7 @@ def _entry_to_dict(entry: Any) -> Dict[str, Any]:
     }
 
 
-async def list_pending(spotify_id: str) -> list[Dict[str, Any]]:
+async def list_pending(spotify_id: str) -> list[dict[str, Any]]:
     """Return every queued scrobble for the user (oldest first)."""
     async with user_session_scope(spotify_id) as session:
         rows = await queue_repo.list_all(session)
@@ -364,7 +358,7 @@ async def list_pending(spotify_id: str) -> list[Dict[str, Any]]:
 
 async def delete_entry(spotify_id: str, entry_id: int) -> bool:
     """Remove one queued scrobble. Returns True if it existed."""
-    from backend.app.db.models.user import ScrobbleQueueEntry
+    from app.db.models.user import ScrobbleQueueEntry
 
     async with user_session_scope(spotify_id) as session:
         row = await session.get(ScrobbleQueueEntry, entry_id)
@@ -376,8 +370,8 @@ async def delete_entry(spotify_id: str, entry_id: int) -> bool:
 
 
 async def clear_queue(
-    spotify_id: str, entry_ids: Optional[list[int]] = None
-) -> Dict[str, Any]:
+    spotify_id: str, entry_ids: list[int] | None = None
+) -> dict[str, Any]:
     """Bulk-delete queued scrobbles.
 
     If `entry_ids` is None, the entire queue is wiped. Otherwise only the
@@ -405,7 +399,7 @@ async def clear_queue(
     return {"deleted": deleted, "remaining": remaining}
 
 
-async def flush_now(spotify_id: str) -> Dict[str, Any]:
+async def flush_now(spotify_id: str) -> dict[str, Any]:
     """Force a retry of every queued scrobble, ignoring backoff windows.
 
     Returns a small summary the UI can display: how many succeeded,
@@ -423,7 +417,7 @@ async def flush_now(spotify_id: str) -> Dict[str, Any]:
 
     succeeded = 0
     attempted = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
     auth_fatal_seen = False
 
     async with user_session_scope(spotify_id) as session:
@@ -439,15 +433,14 @@ async def flush_now(spotify_id: str) -> Dict[str, Any]:
                     album=entry.album,
                     duration_sec=entry.duration_sec,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 last_error = str(exc)
                 attempts_after = (entry.attempts or 0) + 1
                 await queue_repo.mark_failed(
                     session,
                     entry.id,
                     error=last_error,
-                    next_attempt_at=datetime.now(timezone.utc)
-                    + _next_backoff(attempts_after),
+                    next_attempt_at=datetime.now(UTC) + _next_backoff(attempts_after),
                 )
                 await session.commit()
                 if _is_auth_fatal(last_error):
@@ -488,7 +481,7 @@ async def flush_now(spotify_id: str) -> Dict[str, Any]:
     }
 
 
-async def get_status(spotify_id: str) -> Dict[str, Any]:
+async def get_status(spotify_id: str) -> dict[str, Any]:
     """Return the persisted scrobbler status for the UI."""
     async with user_session_scope(spotify_id) as session:
         s = await _load_state(session)
@@ -502,7 +495,7 @@ async def reset_for_user(spotify_id: str) -> None:
     """Forget all scrobbler bookkeeping (called on disconnect)."""
     from sqlalchemy import delete as sql_delete
 
-    from backend.app.db.models.user import ScrobbleQueueEntry
+    from app.db.models.user import ScrobbleQueueEntry
 
     async with user_session_scope(spotify_id) as session:
         # Drop every pending scrobble — they require a session_key to send.
@@ -516,11 +509,11 @@ async def reset_for_user(spotify_id: str) -> None:
 
 
 __all__ = [
-    "process_state",
-    "get_status",
-    "reset_for_user",
-    "list_pending",
-    "delete_entry",
     "clear_queue",
+    "delete_entry",
     "flush_now",
+    "get_status",
+    "list_pending",
+    "process_state",
+    "reset_for_user",
 ]

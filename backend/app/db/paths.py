@@ -1,10 +1,11 @@
 """Filesystem paths for the SQLite-backed default deployment."""
+
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
-from backend.app.config import settings
+from app.config import settings
 
 # Spotify user IDs are alphanumeric + a few separators. We refuse anything
 # else so a malicious id cannot escape the data directory.

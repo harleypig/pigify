@@ -9,24 +9,24 @@ many users doesn't accumulate engines (and the file descriptors / SQLite
 connections they hold) without limit. Evicted engines are disposed in the
 background.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import time
 from collections import OrderedDict
-from typing import Dict, Optional
 
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from backend.app.config import settings
-from backend.app.db.paths import is_sqlite_url, system_db_url, user_db_url
+from app.config import settings
+from app.db.paths import is_sqlite_url, system_db_url, user_db_url
 
 log = logging.getLogger(__name__)
 
-_system_engine: Optional[AsyncEngine] = None
-_user_engines: "OrderedDict[str, AsyncEngine]" = OrderedDict()
+_system_engine: AsyncEngine | None = None
+_user_engines: OrderedDict[str, AsyncEngine] = OrderedDict()
 _lock = asyncio.Lock()
 
 
@@ -85,7 +85,7 @@ def get_system_engine() -> AsyncEngine:
     return _system_engine
 
 
-def _evict_if_needed() -> Optional[AsyncEngine]:
+def _evict_if_needed() -> AsyncEngine | None:
     """If the cache is over capacity, pop and return the LRU engine.
 
     The caller is responsible for disposing the returned engine (we don't do
@@ -121,12 +121,12 @@ async def get_user_engine(spotify_id: str) -> AsyncEngine:
     if evicted is not None:
         try:
             await evicted.dispose()
-        except Exception:  # noqa: BLE001
+        except Exception:
             log.exception("failed to dispose evicted user engine")
     return eng
 
 
-def known_user_engines() -> Dict[str, AsyncEngine]:
+def known_user_engines() -> dict[str, AsyncEngine]:
     return dict(_user_engines)
 
 

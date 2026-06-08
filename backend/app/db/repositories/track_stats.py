@@ -1,23 +1,23 @@
 """Per-user track statistics (Pigify-local play counts)."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.models.user import TrackStat
+from app.db.models.user import TrackStat
 
 
-async def get(session: AsyncSession, spotify_track_id: str) -> Optional[TrackStat]:
+async def get(session: AsyncSession, spotify_track_id: str) -> TrackStat | None:
     return await session.get(TrackStat, spotify_track_id)
 
 
 async def increment_play(
-    session: AsyncSession, spotify_track_id: str, *, at: Optional[datetime] = None
+    session: AsyncSession, spotify_track_id: str, *, at: datetime | None = None
 ) -> TrackStat:
-    when = at or datetime.now(timezone.utc)
+    when = at or datetime.now(UTC)
     row = await get(session, spotify_track_id)
     if row is None:
         row = TrackStat(
@@ -32,9 +32,9 @@ async def increment_play(
 
 
 async def increment_skip(
-    session: AsyncSession, spotify_track_id: str, *, at: Optional[datetime] = None
+    session: AsyncSession, spotify_track_id: str, *, at: datetime | None = None
 ) -> TrackStat:
-    when = at or datetime.now(timezone.utc)
+    when = at or datetime.now(UTC)
     row = await get(session, spotify_track_id)
     if row is None:
         row = TrackStat(
@@ -48,14 +48,16 @@ async def increment_skip(
     return row
 
 
-async def get_many(
-    session: AsyncSession, ids: list[str]
-) -> dict[str, TrackStat]:
+async def get_many(session: AsyncSession, ids: list[str]) -> dict[str, TrackStat]:
     if not ids:
         return {}
     rows = (
-        await session.execute(
-            select(TrackStat).where(TrackStat.spotify_track_id.in_(ids))
+        (
+            await session.execute(
+                select(TrackStat).where(TrackStat.spotify_track_id.in_(ids))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return {r.spotify_track_id: r for r in rows}
