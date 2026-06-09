@@ -98,10 +98,12 @@ class Settings(BaseSettings):
     USER_ENGINE_CACHE_MAX: int = 256
 
     # Persistent storage configuration.
-    # In Docker this should be a mounted volume (e.g. /data). Locally we
-    # default to ./docker/data under the project root so dev runs don't
-    # pollute the system (gitignored; grouped with the other docker assets).
-    DATA_DIR: str = "./docker/data"
+    # In Docker this is a mounted volume set via the DATA_DIR env var
+    # (e.g. /data). Locally we default to <repo>/docker/data — resolved from
+    # this file's location (backend/app/config.py -> repo root), NOT the
+    # current working directory, so it lands in the same gitignored place no
+    # matter where uvicorn is launched from.
+    DATA_DIR: str = str(Path(__file__).resolve().parents[2] / "docker" / "data")
     # Override the system-DB URL (e.g. to point at Postgres). When unset
     # the system DB is a SQLite file `pigify.db` inside DATA_DIR.
     SYSTEM_DATABASE_URL: str = ""
