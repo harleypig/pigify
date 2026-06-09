@@ -124,6 +124,8 @@ The app will automatically request these scopes during authentication:
 - `user-modify-playback-state` - Control playback (play/pause)
 - `playlist-read-private` - Read your private playlists
 - `user-read-private` - Get your profile information
+- `user-library-read` - Read your Saved/Liked tracks (favorites sync)
+- `user-library-modify` - Love/unlove Saved tracks (favorites sync)
 
 These scopes are requested programmatically during the OAuth flow - no manual
 configuration needed in the dashboard.
