@@ -49,7 +49,7 @@ interface WaveformBarProps {
   onSeek: (fraction: number) => void;
 }
 
-/** SVG waveform — played portion in green, unplayed in dim gray. Click to seek. */
+/** SVG waveform — played portion electric blue, unplayed dim navy. Click to seek. */
 function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
   if (bars.length === 0) return null;
   const n = bars.length;
@@ -94,7 +94,7 @@ function WaveformBar({ bars, progress, onSeek }: WaveformBarProps) {
             y={y}
             width={barW}
             height={h}
-            fill={played ? "#1db954" : "#444"}
+            className={played ? "wave-bar wave-bar--played" : "wave-bar"}
           />
         );
       })}
