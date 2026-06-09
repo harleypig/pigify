@@ -1,0 +1,42 @@
+/*
+ * Brand & theme tokens — the single source of truth for pigify's look.
+ * Re-skinning or white-labelling the app should be a matter of swapping
+ * the values here (see TODO.md "Theming & branding"); components reference
+ * these custom properties rather than hard-coding colours or fonts.
+ *
+ * Current identity: "day-glo console" — jet-black panels with a navy
+ * structural tint, lit by fluorescent electric blue (primary) and a
+ * blood-red alert, echoing the blues of the pig medallion.
+ */
+:root {
+  /* ---- Brand palette ----
+     Darks: jet-black base + a navy structural mid-tone. Day-glo accents:
+     electric blue (primary) and blood red (alerts / second accent). The
+     _rgb triplets feed rgba() glows. */
+  --brand-bg: #121212; /* app base (unchanged for now; theming-ready) */
+  --brand-ink: #eaf1ff; /* cool off-white — primary text */
+  --brand-ink-dim: #8c93a8; /* muted blue-grey captions */
+
+  --brand-navy: #141b3a; /* navy structural mid-tone */
+
+  --brand-accent: #3a78ff; /* day-glo electric blue (primary) */
+  --brand-accent-bright: #6aa0ff; /* brighter blue for glows / LEDs */
+  --brand-accent-rgb: 58, 120, 255;
+
+  --brand-red: #ff2a45; /* fluorescent blood red (alerts / 2nd accent) */
+  --brand-red-bright: #ff5a6e;
+  --brand-red-rgb: 255, 42, 69;
+
+  /* ---- Brand type ----
+     Display: Bricolage Grotesque (the wordmark). Mono: Space Mono (the
+     "equipment label" voice). Both self-hosted via Fontsource so they load
+     same-origin under the app's CSP. */
+  --brand-font-display:
+    "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --brand-font-mono:
+    "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* ---- Shape ---- */
+  --brand-radius: 16px;
+  --brand-radius-sm: 9px;
+}

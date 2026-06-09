@@ -14,7 +14,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Bring docs/ current with built-in auth and recent changes.",
+      "Redesign as a day-glo console with the pig medallion.",
+      "Roadmap + TODO cleanup, qa-check DAST allowlist step.",
+      "Consolidate docker assets under docker/, add deployment examples/.",
+      "Bring docs/ current with built-in auth.",
       "Built-in auth, phase 3: demo invites.",
       "Built-in auth, phase 2: Spotify-ID access gate.",
       "Built-in auth, phase 1: session seam + dev login bypass.",
@@ -36,10 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Add TODO for jsdom component render testing.",
       "Upgrade to React 19.",
       "Upgrade backend image to Python 3.14 + add test matrix.",
-      "Upgrade to Vite 8 + Vitest 4.",
-      "Bump @types/node from 22.19.20 to 25.9.2 in /frontend.",
-      "Bump node from 20-alpine to 26-alpine in /frontend.",
-      "…and 120 earlier changes."
+      "…and 123 earlier changes."
     ]
   },
   {
