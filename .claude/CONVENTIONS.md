@@ -136,3 +136,26 @@ dimension:
 For the conventions tooling can't enforce (naming, paragraph spacing,
 section/function separators, comment wrap, Rule of Three, efficiency),
 audit against the global `code-style.md`.
+
+### DAST allowlist reconciliation (repo qa-check step)
+
+A change to the HTTP surface can change what the ZAP baseline reports and
+leave `.zap/baseline-rules.tsv` stale. As part of qa-check, when the diff
+touches any of the following, reconcile the allowlist **in the same PR**:
+
+- response headers, CSP, or cookies,
+- a new or changed endpoint / route,
+- `frontend/nginx.conf` (or the reverse-proxy variant),
+- frontend changes that alter the emitted HTML/markup.
+
+Reconcile means:
+
+- a previously-allowlisted finding no longer fires → remove its line;
+- a new finding appears → fix it, or add an `IGNORE`/`WARN`/`FAIL` line
+  **with a justification** (never a bare entry);
+- an allowlist note that points elsewhere (e.g. "tracked in TODO.md") →
+  keep that reference valid.
+
+CI's DAST job is the backstop, but the allowlist is reconciled by hand
+alongside the change. Run the baseline locally when unsure (the ZAP step in
+`.github/workflows/ci.yml`).
