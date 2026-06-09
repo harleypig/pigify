@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Carry the day-glo console brand into the app chrome.",
+      "Anchor DATA_DIR to repo root and ignore SQLite WAL/SHM sidecars.",
       "Redesign as a day-glo console with the pig medallion.",
       "Roadmap + TODO cleanup, qa-check DAST allowlist step.",
       "Consolidate docker assets under docker/, add deployment examples/.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Make DAST a blocking gate (allowlist deliberate warns, skip docs-only).",
       "Make Semgrep a blocking gate (triage findings, skip docs-only).",
       "Add TODO for jsdom component render testing.",
-      "Upgrade to React 19.",
-      "Upgrade backend image to Python 3.14 + add test matrix.",
-      "…and 123 earlier changes."
+      "…and 125 earlier changes."
     ]
   },
   {
