@@ -31,7 +31,7 @@ body {
    custom one. Uses :focus-visible so mouse clicks don't show the ring,
    only keyboard navigation does. Per-component CSS may override this. */
 :focus-visible {
-  outline: 2px solid #1db954;
+  outline: 2px solid var(--brand-accent, #3a78ff);
   outline-offset: 2px;
   border-radius: 2px;
 }
