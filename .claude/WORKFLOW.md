@@ -49,11 +49,14 @@ normal login flow, set `DEV_AUTH_BYPASS=false`.
 ## Full stack in Docker (HTTPS)
 
 ```bash
-./scripts/setup-ssl.sh                 # generate local mkcert certs -> certs/
+./scripts/setup-ssl.sh                 # generate local mkcert certs -> docker/certs/
 cp .env.example .env                   # then fill SPOTIFY_CLIENT_ID etc.
-printf '%s' "<client-secret>" > secrets/spotify_client_secret.txt
-printf '%s' "<random-strong-key>" > secrets/secret_key.txt
-docker compose up --build
+printf '%s' "<client-secret>" > docker/secrets/spotify_client_secret.txt
+printf '%s' "<random-strong-key>" > docker/secrets/secret_key.txt
+# Optional Last.fm (set LASTFM_*_FILE in .env to use these):
+#   printf '%s' "<lastfm-key>"    > docker/secrets/lastfm_api_key.txt
+#   printf '%s' "<lastfm-secret>" > docker/secrets/lastfm_shared_secret.txt
+docker compose up --build              # root .env sets COMPOSE_FILE=docker/...
 ```
 
 - Frontend (HTTPS, the app): <https://localhost:8080>

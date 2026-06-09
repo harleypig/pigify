@@ -135,6 +135,6 @@ async with user_session_scope(spotify_id) as session:
 - Slow queries (≥ `DB_SLOW_QUERY_MS`, default 250ms) are logged at
   WARNING.
 - `DATA_DIR` should be a mounted volume in Docker (the default
-  `docker-compose.yml` mounts `./data:/data`).
+  `docker/docker-compose.yml` mounts the `pigify-data` volume at `/data`).
 - WAL + foreign keys + `synchronous=NORMAL` are enabled on every SQLite
   connection.

@@ -52,6 +52,24 @@ class TestSecretFileOverride(unittest.TestCase):
         s = Settings(_env_file=None, SECRET_KEY_FILE=path)
         self.assertEqual(s.SECRET_KEY, "file-provided-secret-key")
 
+    def test_lastfm_files_override_values(self):
+        key_path = self._write_secret("file-provided-api-key\n")
+        secret_path = self._write_secret("file-provided-shared-secret\n")
+        s = Settings(
+            _env_file=None,
+            LASTFM_API_KEY_FILE=key_path,
+            LASTFM_SHARED_SECRET_FILE=secret_path,
+        )
+        self.assertEqual(s.LASTFM_API_KEY, "file-provided-api-key")
+        self.assertEqual(s.LASTFM_SHARED_SECRET, "file-provided-shared-secret")
+
+    def test_empty_lastfm_file_leaves_feature_off(self):
+        # The optional Last.fm secrets default to an empty placeholder
+        # (e.g. /dev/null); an empty file must not enable the feature.
+        path = self._write_secret("")
+        s = Settings(_env_file=None, LASTFM_API_KEY_FILE=path)
+        self.assertEqual(s.LASTFM_API_KEY, "")
+
     def test_empty_file_does_not_override(self):
         # read_secret_file returns "" (falsy) for an empty file, so the
         # original value is kept.

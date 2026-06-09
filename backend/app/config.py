@@ -30,9 +30,13 @@ class Settings(BaseSettings):
 
     # Docker-secrets support: when a *_FILE path is set and readable, its
     # contents override the matching value above (so the secret stays out of
-    # the environment / process listing). See docker-compose.yml.
+    # the environment / process listing). See docker/docker-compose.yml.
+    # The Last.fm pair is optional — left unset (empty placeholder secret)
+    # the feature simply stays off.
     SPOTIFY_CLIENT_SECRET_FILE: str = ""
     SECRET_KEY_FILE: str = ""
+    LASTFM_API_KEY_FILE: str = ""
+    LASTFM_SHARED_SECRET_FILE: str = ""
 
     # Last.fm API Configuration (optional)
     # When unset, Last.fm features are hidden entirely (per the graceful
@@ -95,9 +99,9 @@ class Settings(BaseSettings):
 
     # Persistent storage configuration.
     # In Docker this should be a mounted volume (e.g. /data). Locally we
-    # default to ./data under the project root so dev runs don't pollute
-    # the system.
-    DATA_DIR: str = "./data"
+    # default to ./docker/data under the project root so dev runs don't
+    # pollute the system (gitignored; grouped with the other docker assets).
+    DATA_DIR: str = "./docker/data"
     # Override the system-DB URL (e.g. to point at Postgres). When unset
     # the system DB is a SQLite file `pigify.db` inside DATA_DIR.
     SYSTEM_DATABASE_URL: str = ""
@@ -129,16 +133,26 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _load_secret_files(self) -> "Settings":
-        # Runs before _require_secret_key_in_prod so a file-provided SECRET_KEY
-        # satisfies the production check.
-        if self.SPOTIFY_CLIENT_SECRET_FILE:
-            value = read_secret_file(self.SPOTIFY_CLIENT_SECRET_FILE)
+        # A *_FILE path (Docker secret) overrides the matching plain value
+        # when the file exists and is non-empty. Runs before
+        # _require_secret_key_in_prod so a file-provided SECRET_KEY satisfies
+        # the production check.
+        file_backed = (
+            ("SPOTIFY_CLIENT_SECRET_FILE", "SPOTIFY_CLIENT_SECRET"),
+            ("SECRET_KEY_FILE", "SECRET_KEY"),
+            ("LASTFM_API_KEY_FILE", "LASTFM_API_KEY"),
+            ("LASTFM_SHARED_SECRET_FILE", "LASTFM_SHARED_SECRET"),
+        )
+
+        for file_attr, target_attr in file_backed:
+            file_path = getattr(self, file_attr)
+            if not file_path:
+                continue
+
+            value = read_secret_file(file_path)
             if value:
-                self.SPOTIFY_CLIENT_SECRET = value
-        if self.SECRET_KEY_FILE:
-            value = read_secret_file(self.SECRET_KEY_FILE)
-            if value:
-                self.SECRET_KEY = value
+                setattr(self, target_attr, value)
+
         return self
 
     @model_validator(mode="after")

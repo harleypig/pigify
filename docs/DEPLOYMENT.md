@@ -4,6 +4,27 @@ pigify is deliberately **deployment- and auth-agnostic** — download it and
 fit it into whatever setup you run. There are two moving parts to decide:
 how TLS is terminated, and how access to the app is controlled.
 
+## Getting pigify (no checkout needed)
+
+You do **not** need this repository cloned to run pigify. The two images are
+published to GHCR on every release:
+
+- `ghcr.io/harleypig/pigify-backend`
+- `ghcr.io/harleypig/pigify-frontend`
+
+Copy [`examples/docker-compose.yml`][user-compose] into a directory of its
+own — that file pulls the images, so it is self-contained. Beside it create
+your `.env`, a `secrets/` directory (`spotify_client_secret.txt`,
+`secret_key.txt`), and, for standalone TLS, a `certs/` directory with your
+cert + key. Then `docker compose up -d`. Pin `PIGIFY_VERSION` in `.env` to a
+released tag rather than running `:latest`.
+
+(The build-based `docker/docker-compose.yml` in this repo is for
+**developing** pigify — it compiles the images from `../backend` and
+`../frontend` and is not what you deploy with.)
+
+[user-compose]: ../examples/docker-compose.yml
+
 ## TLS / how it's served
 
 pigify ships as two containers (see `docs/ARCHITECTURE.md`): a FastAPI
@@ -11,28 +32,32 @@ backend (plain HTTP, internal) and an nginx frontend that serves the SPA
 and proxies `/api` to the backend. Spotify OAuth requires HTTPS, so TLS has
 to terminate *somewhere*. Two options:
 
-1. **Standalone (the frontend terminates TLS).** The default image config
-   (`frontend/nginx.conf`) serves HTTPS on 8080 using mounted certs. This
-   is what `docker compose up` does locally (with mkcert certs from
-   `scripts/setup-ssl.sh`); it also works in production with real certs.
+1. **Standalone (the frontend terminates TLS).** The frontend image serves
+   HTTPS on 8080 using mounted certs (this is the default in
+   `examples/docker-compose.yml`). For local development the same is true of
+   `docker/docker-compose.yml`, with mkcert certs from
+   `scripts/setup-ssl.sh`; in production you mount real certs.
 
 2. **Behind a reverse proxy (the proxy terminates TLS).** If you already
    run a TLS-terminating proxy (Traefik, Caddy, nginx, an ingress
    controller, …), let it own public TLS and have the frontend container
-   serve plain HTTP. Mount the provided plain-HTTP config over the image's
-   default:
+   serve plain HTTP. Copy [`examples/reverse-proxy.nginx.conf`][rp-nginx]
+   beside your compose file and mount it over the image's default (and drop
+   the `certs` mount):
 
    ```yaml
    # compose override for the frontend service
    services:
      frontend:
        volumes:
-         - ./deploy/reverse-proxy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+         - ./reverse-proxy.nginx.conf:/etc/nginx/conf.d/default.conf:ro
        # no cert mount needed; the proxy terminates TLS in front of :8080
    ```
 
    Point your proxy at the frontend container's port 8080 and route the
    public hostname to it.
+
+[rp-nginx]: ../examples/reverse-proxy.nginx.conf
 
 In both cases the backend stays internal; the frontend reaches it as
 `http://backend:8000` on the compose network.
@@ -131,7 +156,7 @@ nicety.
 ## Configuration
 
 Set the runtime config via env / Docker secrets (see `.env.example` and
-`docker-compose.yml`):
+`docker/docker-compose.yml`):
 
 - `SPOTIFY_REDIRECT_URI` / `FRONTEND_URL` must match your public origin.
 - `SPOTIFY_CLIENT_SECRET` + `SECRET_KEY` via files (Docker secrets).
