@@ -28,14 +28,23 @@ Generate a secure secret key using:
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
+### lastfm_api_key.txt / lastfm_shared_secret.txt (optional)
+
+Only needed if you use Last.fm (scrobbling + enrichment). Create these two
+files with your Last.fm API key and shared secret, then point
+`LASTFM_API_KEY_FILE` / `LASTFM_SHARED_SECRET_FILE` (in `.env`) at them. If
+you don't use Last.fm, leave them out — the compose defaults the mounts to
+an empty placeholder and the feature stays off.
+
 ## Security
 
 - These files are excluded from git (via .gitignore)
 - Never commit secrets to version control
 - In production, use Docker Swarm secrets or a secrets management service
-- Set appropriate file permissions: `chmod 600 secrets/*.txt`
+- Set appropriate file permissions: `chmod 600 docker/secrets/*.txt`
 
 ## Docker Compose
 
-The docker-compose.yml file is configured to load these secrets automatically.
-Make sure the files exist before running `docker-compose up`.
+The docker/docker-compose.yml file is configured to load these secrets
+automatically. Make sure the files exist before running `docker compose up`.
+Override `SECRETS_DIR` in the root `.env` to keep them outside the repo.

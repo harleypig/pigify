@@ -110,10 +110,11 @@ instead. See `DATABASE.md`.
 pigify is deployment- and auth-agnostic — see `docs/DEPLOYMENT.md` for the
 full guide. In short:
 
-- **Standalone:** `docker compose up --build` (self-contained; the frontend
-  terminates TLS with mounted certs).
+- **Deploy (no checkout):** copy `examples/docker-compose.yml`, which pulls
+  the published images; the frontend terminates TLS with mounted certs. (The
+  build-based `docker/docker-compose.yml` is the local-dev path.)
 - **Behind a reverse proxy:** let your proxy (Traefik, Caddy, nginx,
-  ingress, …) terminate TLS and mount `deploy/reverse-proxy/nginx.conf` so
+  ingress, …) terminate TLS and mount `examples/reverse-proxy.nginx.conf` so
   the frontend serves plain HTTP on 8080.
 - **Access control:** pigify is not meant to be public. Its built-in access
   gate is **on by default and fail-closed** (allowlist Spotify ids to let

@@ -216,6 +216,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    env:
+      # The compose file lives under docker/; this lets the bare
+      # `docker compose` calls below find it without -f (CI has no .env).
+      COMPOSE_FILE: docker/docker-compose.yml
     steps:
       - uses: actions/checkout@v6.0.3
 
@@ -226,7 +230,7 @@ jobs:
             src:
               - 'backend/**'
               - 'frontend/**'
-              - 'docker-compose.yml'
+              - 'docker/**'
               - '.zap/**'
               - '.github/workflows/ci.yml'
 
@@ -234,12 +238,12 @@ jobs:
         if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes \
-            -keyout certs/localhost+2-key.pem -out certs/localhost+2.pem \
+            -keyout docker/certs/localhost+2-key.pem -out docker/certs/localhost+2.pem \
             -days 2 -subj "/CN=localhost" \
             -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
-          chmod 644 certs/localhost+2-key.pem
-          printf 'ci-not-a-real-secret' > secrets/spotify_client_secret.txt
-          printf 'ci-not-a-real-secret-key' > secrets/secret_key.txt
+          chmod 644 docker/certs/localhost+2-key.pem
+          printf 'ci-not-a-real-secret' > docker/secrets/spotify_client_secret.txt
+          printf 'ci-not-a-real-secret-key' > docker/secrets/secret_key.txt
 
       - name: Bring up the stack
         if: ${{ steps.changes.outputs.src == 'true' }}

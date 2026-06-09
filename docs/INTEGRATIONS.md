@@ -21,9 +21,16 @@ The tier per service is exposed at `GET /api/integrations/connections`.
 - **Public methods used**: `track.getInfo` (global playcount, listeners,
   tags, wiki summary), `track.getSimilar`, `artist.getTopTags`.
 - **Authenticated methods used**: `track.updateNowPlaying`, `track.scrobble`.
-- **Required secrets**:
+- **Secrets** (all optional — without them Last.fm is hidden):
   - `LASTFM_API_KEY` — obtain from <https://www.last.fm/api/account/create>.
   - `LASTFM_SHARED_SECRET` — provided alongside the API key.
+
+  In Docker these two are supplied as **Docker secret files** rather than
+  plain env: create `lastfm_api_key.txt` / `lastfm_shared_secret.txt` and
+  point `LASTFM_API_KEY_FILE` / `LASTFM_SHARED_SECRET_FILE` at them (the
+  compose defaults the mounts to an empty placeholder, so the feature is
+  simply off when unset). For local non-Docker dev you can set the plain
+  `LASTFM_API_KEY` / `LASTFM_SHARED_SECRET` directly.
   - `LASTFM_CALLBACK_URI` — must match the public URL of the backend's
     `/api/integrations/lastfm/callback` route.
 - **Scrobbling thresholds** (configurable via `SCROBBLE_MIN_TRACK_SEC` /

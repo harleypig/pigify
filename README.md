@@ -40,8 +40,8 @@ Pigify is a custom Spotify web app for playlist management and playback. Built w
 
 # 2. Config + secrets
 cp .env.example .env                      # fill SPOTIFY_CLIENT_ID, etc.
-printf '%s' "<spotify client secret>" > secrets/spotify_client_secret.txt
-python3 -c "import secrets;print(secrets.token_urlsafe(32))" > secrets/secret_key.txt
+printf '%s' "<spotify client secret>" > docker/secrets/spotify_client_secret.txt
+python3 -c "import secrets;print(secrets.token_urlsafe(32))" > docker/secrets/secret_key.txt
 
 # 3. Run
 docker compose up --build

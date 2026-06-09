@@ -135,7 +135,7 @@ configuration needed in the dashboard.
 After creating the app, you'll get:
 
 - **Client ID** - Add to your `.env` file
-- **Client Secret** - Add to `secrets/spotify_client_secret.txt`
+- **Client Secret** - Add to `docker/secrets/spotify_client_secret.txt`
 
 ## Adding More Features Later
 

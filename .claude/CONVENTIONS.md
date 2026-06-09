@@ -29,9 +29,11 @@ backend/        Poetry project; package `app`, run as `uvicorn app.main:app`
   tests/        pytest suite
 frontend/       React 18 + Vite 5 SPA (TypeScript), nginx-served in prod
 docs/           ARCHITECTURE / DATABASE / INTEGRATIONS / SPOTIFY_SETUP / DEVELOP
-deploy/         compose overlay(s) for real deployment
-certs/          local mkcert certs (gitignored; see scripts/setup-ssl.sh)
-secrets/        Docker secret files (gitignored)
+docker/         dev/build docker-compose.yml (builds images from source), plus
+  certs/        local mkcert certs (gitignored; see scripts/setup-ssl.sh)
+  secrets/      Docker secret files (gitignored)
+examples/       user-facing copy-paste: image-based docker-compose.yml
+                (ghcr.io images) + reverse-proxy.nginx.conf
 ```
 
 ## Backend
@@ -96,7 +98,7 @@ secrets/        Docker secret files (gitignored)
 ## HTTPS / OAuth
 
 Spotify OAuth requires HTTPS. In the docker-compose stack, **TLS
-terminates at the frontend nginx** (mounting mkcert certs from `certs/`);
+terminates at the frontend nginx** (mounting mkcert certs from `docker/certs/`);
 the backend stays plain HTTP on the internal network. The web redirect
 URI is `https://localhost:8080/api/auth/spotify/callback`. Generate local
 certs with `scripts/setup-ssl.sh`.

@@ -1,0 +1,89 @@
+# Full-stack DEV/BUILD run — builds the images from ../backend and
+# ../frontend. From the repo root:  docker compose up --build
+# (the root .env sets COMPOSE_FILE=docker/docker-compose.yml, so plain
+# `docker compose` finds this file). The FastAPI backend runs plain HTTP
+# internally; the nginx frontend terminates TLS (HTTPS on 8080). Spotify
+# OAuth requires HTTPS, so generate the local certs first with
+# ./scripts/setup-ssl.sh and point your Spotify app's redirect URI at
+# https://localhost:8080/api/auth/spotify/callback.
+#
+# App config comes from the root .env (env_file: ../.env). The environment:
+# block below only sets container-internal values that must NOT come from
+# .env: the secret-file mount pointers and the in-container data path.
+# To deploy from pre-built images instead, use examples/docker-compose.yml.
+---
+name: pigify
+
+volumes:
+  pigify-data:
+
+secrets:
+  # ---- required ----
+  spotify_client_secret:
+    file: ${SECRETS_DIR:-./secrets}/spotify_client_secret.txt
+  secret_key:
+    file: ${SECRETS_DIR:-./secrets}/secret_key.txt
+  # ---- optional: Last.fm ----
+  # Default to /dev/null (empty) so the stack runs without Last.fm. To
+  # enable it, set LASTFM_API_KEY_FILE / LASTFM_SHARED_SECRET_FILE in .env
+  # to the host files holding your key / shared secret.
+  lastfm_api_key:
+    file: ${LASTFM_API_KEY_FILE:-/dev/null}
+  lastfm_shared_secret:
+    file: ${LASTFM_SHARED_SECRET_FILE:-/dev/null}
+
+services:
+  backend:
+    build:
+      context: ../backend
+      args:
+        GIT_HASH: ${GIT_HASH:-}
+        APP_VERSION: ${APP_VERSION:-}
+    # Everything the app reads comes from the root .env (if present;
+    # absent, the app falls back to its defaults + the secret files)...
+    env_file:
+      - path: ../.env
+        required: false
+    # ...except these container-internal values, which override .env.
+    environment:
+      # Required secrets are delivered as Docker secret files (the values
+      # never enter the container env); point the app at the mounts.
+      - SPOTIFY_CLIENT_SECRET_FILE=/run/secrets/spotify_client_secret
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      # In-container data path (the named volume mount below).
+      - DATA_DIR=/data
+      # Optional: Last.fm secret-file mounts (empty placeholder => off).
+      - LASTFM_API_KEY_FILE=/run/secrets/lastfm_api_key
+      - LASTFM_SHARED_SECRET_FILE=/run/secrets/lastfm_shared_secret
+    secrets:
+      - spotify_client_secret
+      - secret_key
+      - lastfm_api_key
+      - lastfm_shared_secret
+    volumes:
+      # Persistent storage for the system DB and per-user SQLite files.
+      # A named volume (not a host bind mount) so Docker initialises it from
+      # the image's app-owned /data — avoids host/container uid mismatches
+      # that make SQLite see a read-only database. Local non-docker dev still
+      # uses ./docker/data (DATA_DIR default).
+      - pigify-data:/data
+    ports:
+      # Optional: direct backend access for debugging. The SPA reaches it
+      # through the frontend's /api proxy, not this port.
+      - "${BACKEND_PORT:-8000}:8000"
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        GIT_HASH: ${GIT_HASH:-}
+        APP_VERSION: ${APP_VERSION:-}
+    depends_on:
+      - backend
+    volumes:
+      # mkcert localhost certs for TLS termination (read-only).
+      - ${CERTS_DIR:-./certs}:/certs:ro
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    restart: ${RESTART_POLICY:-unless-stopped}

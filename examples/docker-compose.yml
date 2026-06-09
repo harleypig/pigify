@@ -1,0 +1,86 @@
+# pigify — deployment compose (pre-built images, no source checkout).
+#
+# This is the file to copy if you are RUNNING pigify rather than developing
+# it. It pulls the published images from GHCR — you do NOT need this repo
+# cloned. Drop this file in a directory of its own and beside it create:
+#
+#   .env                          # config (see .env.example + docs/DEPLOYMENT.md)
+#   secrets/spotify_client_secret.txt
+#   secrets/secret_key.txt        # python3 -c "import secrets;print(secrets.token_urlsafe(32))"
+#   certs/localhost+2.pem         # TLS cert + key the frontend serves with
+#   certs/localhost+2-key.pem     # (real certs in prod)
+#
+# Last.fm is optional: leave it alone and the stack runs without it. To
+# enable it, drop your key/secret in files and point LASTFM_API_KEY_FILE /
+# LASTFM_SHARED_SECRET_FILE (in .env) at them.
+#
+# then run:  docker compose up -d
+#
+# TLS terminates at the frontend (HTTPS on 8080). To instead sit behind a
+# TLS-terminating reverse proxy, see examples/reverse-proxy.nginx.conf and
+# docs/DEPLOYMENT.md (drop the certs mount; the proxy owns TLS).
+---
+name: pigify
+
+volumes:
+  pigify-data:
+
+secrets:
+  # ---- required ----
+  spotify_client_secret:
+    file: ${SECRETS_DIR:-./secrets}/spotify_client_secret.txt
+  secret_key:
+    file: ${SECRETS_DIR:-./secrets}/secret_key.txt
+  # ---- optional: Last.fm ----
+  # Default to /dev/null (empty) so the stack runs without Last.fm. To
+  # enable it, set LASTFM_API_KEY_FILE / LASTFM_SHARED_SECRET_FILE in .env
+  # to the host files holding your key / shared secret.
+  lastfm_api_key:
+    file: ${LASTFM_API_KEY_FILE:-/dev/null}
+  lastfm_shared_secret:
+    file: ${LASTFM_SHARED_SECRET_FILE:-/dev/null}
+
+services:
+  backend:
+    # Pin PIGIFY_VERSION to a released tag (e.g. 0.1.0) in your .env once
+    # releases exist; :latest is convenient but unpinned.
+    image: ghcr.io/harleypig/pigify-backend:${PIGIFY_VERSION:-latest}
+    # App config comes from your .env (if present; absent, the app falls
+    # back to its defaults + the secret files)...
+    env_file:
+      - path: .env
+        required: false
+    # ...except these container-internal values, which override .env.
+    environment:
+      # A deployment always runs in production mode — left here on purpose
+      # so a blind copy is safe. Experienced users already know to change it.
+      - ENVIRONMENT=production
+      # Required secrets are delivered as Docker secret files.
+      - SPOTIFY_CLIENT_SECRET_FILE=/run/secrets/spotify_client_secret
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      # In-container data path (the named volume mount below).
+      - DATA_DIR=/data
+      # Optional: Last.fm secret-file mounts (empty placeholder => off).
+      - LASTFM_API_KEY_FILE=/run/secrets/lastfm_api_key
+      - LASTFM_SHARED_SECRET_FILE=/run/secrets/lastfm_shared_secret
+    secrets:
+      - spotify_client_secret
+      - secret_key
+      - lastfm_api_key
+      - lastfm_shared_secret
+    volumes:
+      # Persistent storage for the system DB and per-user SQLite files.
+      - pigify-data:/data
+    restart: ${RESTART_POLICY:-unless-stopped}
+
+  frontend:
+    image: ghcr.io/harleypig/pigify-frontend:${PIGIFY_VERSION:-latest}
+    depends_on:
+      - backend
+    volumes:
+      # TLS certs the frontend serves HTTPS with. Omit this mount and mount
+      # examples/reverse-proxy.nginx.conf instead when a proxy terminates TLS.
+      - ${CERTS_DIR:-./certs}:/certs:ro
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    restart: ${RESTART_POLICY:-unless-stopped}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generate local HTTPS certificates with mkcert. Spotify OAuth requires
 # HTTPS, and in the docker-compose stack TLS terminates at the frontend
-# nginx, which mounts these certs from ./certs.
+# nginx, which mounts these certs from docker/certs.
 #
 # WSL note: run this *inside* your WSL distro (not the Windows host).
 # Install the Linux mkcert binary + libnss3-tools there; generating the
@@ -42,30 +42,30 @@ if [[ ! -d $(mkcert -CAROOT) ]]; then
   mkcert -install
 fi
 
-mkdir -p certs
+mkdir -p docker/certs
 
 echo "Generating SSL certificates for localhost..."
 mkcert \
-  -cert-file certs/localhost+2.pem \
-  -key-file certs/localhost+2-key.pem \
+  -cert-file docker/certs/localhost+2.pem \
+  -key-file docker/certs/localhost+2-key.pem \
   localhost 127.0.0.1 ::1
 
 # The nginx-unprivileged container runs as uid 101 and must read the key
 # through the read-only bind mount. mkcert writes the key 0600 by default,
 # which that uid can't read. These are throwaway local-dev certs, so make
 # the key world-readable. Do NOT do this for production keys.
-chmod 644 certs/localhost+2-key.pem
+chmod 644 docker/certs/localhost+2-key.pem
 
 cat <<'EOF'
 
 ✓ SSL certificates generated successfully!
 
-Certificates are in the certs/ directory:
-  - certs/localhost+2.pem      (certificate)
-  - certs/localhost+2-key.pem  (private key)
+Certificates are in the docker/certs/ directory:
+  - docker/certs/localhost+2.pem      (certificate)
+  - docker/certs/localhost+2-key.pem  (private key)
 
-docker-compose.yml mounts these into the frontend container automatically.
-Start the stack with:  docker compose up --build
+docker/docker-compose.yml mounts these into the frontend container
+automatically. Start the stack with:  docker compose up --build
 Then open:             https://localhost:8080
 
 Set your Spotify app's redirect URI to:
