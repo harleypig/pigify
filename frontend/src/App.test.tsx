@@ -29,7 +29,7 @@ describe("App (mount smoke)", () => {
 
     // App rendered under React 19 + jsdom, ran its mount-time auth check,
     // and fell back to the login screen.
-    expect(await screen.findByText("Login with Spotify")).toBeInTheDocument();
+    expect(await screen.findByText("Connect Spotify")).toBeInTheDocument();
     expect(getCurrentUser).toHaveBeenCalled();
   });
 });

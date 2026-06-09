@@ -120,7 +120,23 @@ function App() {
     };
   }, [isAuthenticated]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
+    // Probe the backend before navigating. A hard redirect to a dead
+    // backend lands the browser on the proxy's error page; instead, throw
+    // so the Login screen can surface the error and stay put. A 200/401
+    // (or any non-5xx) means the API answered.
+    let reachable = false;
+    try {
+      const res = await fetch("/api/auth/me");
+      reachable = res.status < 500;
+    } catch {
+      reachable = false;
+    }
+
+    if (!reachable) {
+      throw new Error("Can't reach the server — is the backend running?");
+    }
+
     window.location.href = "/api/auth/spotify/login";
   };
 

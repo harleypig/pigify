@@ -17,6 +17,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.2.10",
+    "@fontsource/space-mono": "^5.2.9",
     "axios": "^1.6.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
