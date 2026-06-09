@@ -2,14 +2,15 @@
 
 Pigify ships its own persistent storage for everything Spotify can't (or
 won't) keep for us: per-user play counts, cached enrichment from
-Last.fm/MusicBrainz/Songfacts, saved sort definitions, saved filtered-
+Last.fm/MusicBrainz/Wikipedia, saved sort definitions, saved filtered-
 playlist recipes, sync state, and so on.
 
 ## Topology
 
 - **System DB** — one shared SQLite file, by default `$DATA_DIR/pigify.db`.
-  Holds `users` (Spotify id → internal id, db path), instance `settings`,
-  and a `schema_version` row.
+  Holds `users` (Spotify id → internal id, db path), instance `settings`, a
+  `schema_version` row, and `invites` (demo-invite codes — see
+  `DEPLOYMENT.md`).
 - **Per-user DB** — one SQLite file per Spotify user, by default
   `$DATA_DIR/users/<spotify_id>.db`. Holds the user's `service_connections`,
   `track_stats`, `enrichment_cache`, `saved_sorts`, `saved_filters`,
@@ -90,14 +91,20 @@ poetry run python -m app.db.cli list-users
 
 ## Auth integration
 
-On Spotify OAuth callback (`/api/auth/spotify/callback`):
+Establishing any session provisions the user's per-user DB through one
+shared path (`app.auth.provisioning.provision_user`), so the OAuth callback,
+the dev bypass, and demo invites can't drift. On Spotify OAuth callback
+(`/api/auth/spotify/callback`):
 
 1. The Spotify profile is fetched.
-2. `users.upsert(...)` records the user in the system DB.
-3. The per-user DB file is created (if missing) and migrated to head.
-4. `request.session["spotify_user_id"]` and `pigify_user_id` are set, so
-   any handler depending on `UserSession`/`CurrentUserId` immediately
-   resolves to the right per-user DB.
+2. The access gate is consulted; a disallowed id is rejected before any
+   storage is touched (see `DEPLOYMENT.md`).
+3. `users.upsert(...)` records the user in the system DB.
+4. The per-user DB file is created (if missing) and migrated to head.
+5. The session is published via the auth seam
+   (`app.auth.session.establish_session`), setting `spotify_user_id` /
+   `pigify_user_id`, so any handler depending on `UserSession` /
+   `CurrentUserId` immediately resolves to the right per-user DB.
 
 ## FastAPI usage
 

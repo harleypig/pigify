@@ -16,8 +16,8 @@ The tier per service is exposed at `GET /api/integrations/connections`.
 - **Auth flow**: Web auth (`https://www.last.fm/api/auth/?api_key=…&cb=…`).
   Callback hits `/api/integrations/lastfm/callback?token=…`, which exchanges
   the token for a permanent session key via `auth.getSession` (signed with
-  the shared secret). Session keys are stored in the user's encrypted
-  Starlette session cookie — no DB row required for v1.
+  the shared secret). Session keys are persisted in the per-user DB
+  (`service_connections`), so they survive logout and cookie expiry.
 - **Public methods used**: `track.getInfo` (global playcount, listeners,
   tags, wiki summary), `track.getSimilar`, `artist.getTopTags`.
 - **Authenticated methods used**: `track.updateNowPlaying`, `track.scrobble`.
@@ -84,6 +84,6 @@ than replacing Wikipedia — the two are complementary.
    `backend/app/api/integrations.py` and have them call into the combined
    `/api/integrations/track-detail/{id}` aggregator if the provider
    contributes track-level data.
-4. Update `frontend/src/components/SettingsModal.tsx` and
-   `frontend/src/components/TrackDetailModal.tsx` to render the new section
+4. Update `frontend/src/components/SettingsPanel.tsx` and
+   `frontend/src/components/TrackInfoPanel.tsx` to render the new section
    gated on `connection.tier !== 'none'`.

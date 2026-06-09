@@ -146,6 +146,15 @@ Docker stack:
 docker compose up --build      # rebuilds images after code changes
 ```
 
+### Skipping login while iterating
+
+To avoid logging in (and the HTTPS/OAuth requirement) every time you check
+something locally, set `DEV_AUTH_BYPASS=true` in `backend/.env` — the app
+loads logged-in automatically. It's development-only and fail-closed (the
+backend refuses to boot if it's set outside `development`). Placeholder mode
+needs no setup; for real data, add a `DEV_SPOTIFY_REFRESH_TOKEN`. Full
+details (and the dev refresh-token helper) are in `.claude/WORKFLOW.md`.
+
 ## Restart Policy
 
 The `RESTART_POLICY` environment variable controls container restart
