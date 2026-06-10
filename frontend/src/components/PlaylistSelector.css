@@ -1,3 +1,11 @@
+/*
+ * Playlist selector — the "SOURCES" module of the sidebar rack: your Spotify
+ * library as a channel list. The header reads as a lit equipment label; the
+ * active playlist lights up like a selected channel (left accent bar + a
+ * blue-tinted row), and hover gives a faint blue wash. Colour and type come
+ * from the brand tokens in theme.css (the "day-glo console" identity).
+ */
+
 .playlist-selector {
   height: 100%;
   display: flex;
@@ -5,13 +13,30 @@
 }
 
 .playlist-selector-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #333;
+  padding: 1.1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.14);
 }
 
+/* Rack-module label: mono "equipment label" voice with a lit blue tick. */
 .playlist-selector-header h2 {
-  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.72rem;
   font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
+}
+
+.playlist-selector-header h2::before {
+  content: "";
+  width: 3px;
+  height: 0.85em;
+  border-radius: 1px;
+  background: var(--brand-accent);
+  box-shadow: 0 0 8px rgba(var(--brand-accent-rgb), 0.6);
 }
 
 .playlist-list {
@@ -22,27 +47,33 @@
 .playlist-item {
   /* Rendered as a real <button> for keyboard/screen-reader semantics; the
      overrides below strip the native button chrome so it still looks like
-     a list row. */
+     a channel row. The always-present (transparent) left border is the
+     channel LED strip — it lights blue when the row is selected, without
+     shifting the row's content. */
   display: flex;
   align-items: center;
   width: 100%;
   text-align: left;
   background: transparent;
   border: none;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.08);
+  border-left: 2px solid transparent;
   color: inherit;
   font: inherit;
-  padding: 1rem 1.5rem;
+  padding: 0.85rem 1.25rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition:
+    background-color 0.18s,
+    border-left-color 0.18s;
 }
 
 .playlist-item:hover {
-  background-color: #282828;
+  background-color: rgba(var(--brand-accent-rgb), 0.07);
 }
 
 .playlist-item.selected {
-  background-color: #333;
+  background-color: rgba(var(--brand-accent-rgb), 0.13);
+  border-left-color: var(--brand-accent);
 }
 
 .playlist-image {
@@ -62,13 +93,14 @@
 .playlist-placeholder {
   width: 100%;
   height: 100%;
-  background-color: #333;
+  background-color: var(--brand-navy);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.15);
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  color: #666;
+  color: var(--brand-ink-dim);
 }
 
 .playlist-info {
@@ -77,25 +109,30 @@
 }
 
 .playlist-name {
-  font-weight: 500;
+  font-weight: 600;
   margin-bottom: 0.25rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--brand-ink);
 }
 
+/* Track count is a small readout — mono, dimmed. */
 .playlist-meta {
-  font-size: 0.875rem;
-  color: #b3b3b3;
+  font-family: var(--brand-font-mono);
+  font-size: 0.7rem;
+  color: var(--brand-ink-dim);
 }
 
 .loading,
 .error {
   padding: 2rem;
   text-align: center;
-  color: #b3b3b3;
+  font-family: var(--brand-font-mono);
+  font-size: 0.75rem;
+  color: var(--brand-ink-dim);
 }
 
 .error {
-  color: #e22134;
+  color: var(--brand-red);
 }
