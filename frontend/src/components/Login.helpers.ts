@@ -1,7 +1,8 @@
 // Pure helper for Login: map the URL query string to an auth message.
 
 const AUTH_MESSAGES: Record<string, string> = {
-  not_authorized: "This Spotify account isn't allowed to use this instance.",
+  not_authorized:
+    "You're not authorized to use this instance of Pigify — this Spotify account isn't on its allowlist. Ask the instance owner to add you.",
   demo_invalid: "This demo link is invalid, expired, or already used.",
   demo_failed: "Something went wrong starting the demo. Try again later.",
 };
