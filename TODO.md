@@ -88,6 +88,17 @@ Recipes sidebar, Playlist selector.
       supported, but only SQLite is exercised today. Verify whether Postgres
       actually works (engine + migrations) and document accurately — note
       SQLite-only if it isn't wired, or confirm and cover Postgres if it is.
+- [ ] **Document the demo-invite flow.** Explain the two invite kinds —
+      `real` (carries a refresh token the *owner* supplies at creation, so the
+      demo browses the **owner's** Spotify account, never the visitor's) and
+      `placeholder` (a synthetic UI-only `demo-<id>` identity) — plus creation
+      (`python -m app.auth.invites_cli create`), redemption
+      (`/api/demo/redeem`), single-use + TTL/expiry, and revocation. Make
+      clear demos **bypass `ALLOWED_SPOTIFY_IDS`** (the invite code is the
+      authorization; the gate only guards normal OAuth login), and how this
+      relates to Spotify's dev-mode **User Management** limit (the owner's
+      account must be a registered user there; demo visitors never OAuth).
+      Likely a `docs/DEMO.md` or a section in `docs/DEPLOYMENT.md`.
 
 ## Tests
 
