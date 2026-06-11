@@ -23,7 +23,7 @@ tests/          # pytest suite
 
 ```bash
 poetry install
-poetry run uvicorn app.main:app --reload   # http://localhost:8000
+poetry run uvicorn app.main:app --reload   # http://127.0.0.1:8000
 poetry run pytest
 poetry run ruff check app tests
 poetry run pyright app

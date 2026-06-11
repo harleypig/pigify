@@ -44,30 +44,30 @@ fi
 
 mkdir -p docker/certs
 
-echo "Generating SSL certificates for localhost..."
+echo "Generating SSL certificates for local development..."
 mkcert \
-  -cert-file docker/certs/localhost+2.pem \
-  -key-file docker/certs/localhost+2-key.pem \
-  localhost 127.0.0.1 ::1
+  -cert-file docker/certs/dev-cert.pem \
+  -key-file docker/certs/dev-key.pem \
+  127.0.0.1 ::1
 
 # The nginx-unprivileged container runs as uid 101 and must read the key
 # through the read-only bind mount. mkcert writes the key 0600 by default,
 # which that uid can't read. These are throwaway local-dev certs, so make
 # the key world-readable. Do NOT do this for production keys.
-chmod 644 docker/certs/localhost+2-key.pem
+chmod 644 docker/certs/dev-key.pem
 
 cat <<'EOF'
 
 ✓ SSL certificates generated successfully!
 
 Certificates are in the docker/certs/ directory:
-  - docker/certs/localhost+2.pem      (certificate)
-  - docker/certs/localhost+2-key.pem  (private key)
+  - docker/certs/dev-cert.pem      (certificate)
+  - docker/certs/dev-key.pem  (private key)
 
 docker/docker-compose.yml mounts these into the frontend container
 automatically. Start the stack with:  docker compose up --build
-Then open:             https://localhost:8080
+Then open:             https://127.0.0.1:8080
 
 Set your Spotify app's redirect URI to:
-  https://localhost:8080/api/auth/spotify/callback
+  https://127.0.0.1:8080/api/auth/spotify/callback
 EOF

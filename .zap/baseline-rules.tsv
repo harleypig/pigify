@@ -5,6 +5,6 @@
 10049	IGNORE	Static assets are intentionally cacheable
 10109	IGNORE	Informational: this is a single-page app (modern web app)
 10015	IGNORE	Cache-control: hashed static assets are cacheable; the SPA shell is small (informational)
-10035	IGNORE	HSTS is set by the TLS-terminating reverse proxy in deployment; the local-dev HTTPS server omits it to avoid pinning localhost to HTTPS for other local services
+10035	IGNORE	HSTS is set by the TLS-terminating reverse proxy in deployment; the local-dev HTTPS server omits it to avoid pinning 127.0.0.1 to HTTPS for other local services
 10055	IGNORE	CSP style-src 'unsafe-inline' is required for the app inline styles; tightening tracked in TODO.md
 90004	IGNORE	Cross-Origin-Embedder-Policy deliberately unset (no cross-origin isolation need; avoids breaking Spotify SDK iframe/resource loads)

@@ -100,7 +100,7 @@ examples/       user-facing copy-paste: image-based docker-compose.yml
 Spotify OAuth requires HTTPS. In the docker-compose stack, **TLS
 terminates at the frontend nginx** (mounting mkcert certs from `docker/certs/`);
 the backend stays plain HTTP on the internal network. The web redirect
-URI is `https://localhost:8080/api/auth/spotify/callback`. Generate local
+URI is `https://127.0.0.1:8080/api/auth/spotify/callback`. Generate local
 certs with `scripts/setup-ssl.sh`.
 
 ## Versioning

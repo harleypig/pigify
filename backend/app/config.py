@@ -26,7 +26,10 @@ class Settings(BaseSettings):
     # Spotify API Configuration
     SPOTIFY_CLIENT_ID: str = ""
     SPOTIFY_CLIENT_SECRET: str = ""
-    SPOTIFY_REDIRECT_URI: str = "https://localhost:8080/api/auth/spotify/callback"
+    # Use the loopback IP 127.0.0.1, NOT localhost: Spotify rejects
+    # localhost redirect URIs as insecure (policy enforced since
+    # 2025-04). Must match the URI registered in the Spotify dashboard.
+    SPOTIFY_REDIRECT_URI: str = "https://127.0.0.1:8080/api/auth/spotify/callback"
 
     # Docker-secrets support: when a *_FILE path is set and readable, its
     # contents override the matching value above (so the secret stays out of
@@ -45,7 +48,7 @@ class Settings(BaseSettings):
     # methods (tags / similar / global playcounts) are available.
     LASTFM_API_KEY: str = ""
     LASTFM_SHARED_SECRET: str = ""
-    LASTFM_CALLBACK_URI: str = "https://localhost:8080/api/integrations/lastfm/callback"
+    LASTFM_CALLBACK_URI: str = "https://127.0.0.1:8080/api/integrations/lastfm/callback"
 
     # Scrobbling thresholds (Last.fm spec):
     # scrobble after the track has played for >= 50% of its length OR >= 4 minutes,
@@ -63,8 +66,8 @@ class Settings(BaseSettings):
 
     # Application Configuration
     SECRET_KEY: str = _INSECURE_SECRET_KEY
-    BACKEND_URL: str = "http://localhost:8000"
-    FRONTEND_URL: str = "https://localhost:8080"
+    BACKEND_URL: str = "http://127.0.0.1:8000"
+    FRONTEND_URL: str = "https://127.0.0.1:8080"
     ENVIRONMENT: str = "development"
 
     # Local-development auth bypass. Skips the Spotify OAuth round-trip so
@@ -115,13 +118,12 @@ class Settings(BaseSettings):
     # Log a warning when a query takes longer than this many milliseconds.
     DB_SLOW_QUERY_MS: int = 250
 
-    # CORS Configuration. The https://localhost:8080 origin is the nginx
-    # frontend (same-origin in the container setup); the http://localhost:5000
-    # origins cover local `vite` dev where the SPA and API are on separate
+    # CORS Configuration. The https://127.0.0.1:8080 origin is the nginx
+    # frontend (same-origin in the container setup); the http://127.0.0.1:5000
+    # origin covers local `vite` dev where the SPA and API are on separate
     # ports.
     CORS_ORIGINS: list[str] = [
-        "https://localhost:8080",
-        "http://localhost:5000",
+        "https://127.0.0.1:8080",
         "http://127.0.0.1:5000",
     ]
     # Optional regex for additional allowed origins (matched with re.fullmatch

@@ -53,8 +53,8 @@ app = FastAPI(
 # `same_site="lax"` is the right default: the Spotify OAuth round-trip is a
 # top-level navigation (302 GETs), and lax cookies are sent on those, so the
 # OAuth flow still works while CSRF risk on POST/PUT/DELETE drops to zero.
-# Outside dev we also force `https_only`; in dev we relax it so localhost
-# (which is plain http) still works.
+# Outside dev we also force `https_only`; in dev we relax it so a
+# plain-HTTP loopback dev server (e.g. Vite) still works.
 _secure_cookies = settings.ENVIRONMENT.lower() != "development"
 app.add_middleware(
     SessionMiddleware,
