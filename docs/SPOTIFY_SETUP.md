@@ -149,7 +149,6 @@ additional scopes:
   playlists
 - `playlist-modify-public` - If you want to modify public playlists
 - `playlist-modify-private` - If you want to modify private playlists
-- `user-read-email` - If you need the user's email address
 
 These can be added to the `scopes` list in `backend/app/api/auth.py` when
 needed.
