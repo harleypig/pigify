@@ -3,7 +3,9 @@ import { authMessageFromSearch } from "./Login.helpers";
 
 describe("authMessageFromSearch", () => {
   it("returns a message when the access gate rejected the login", () => {
-    expect(authMessageFromSearch("?error=not_authorized")).toContain("allowed");
+    const msg = authMessageFromSearch("?error=not_authorized");
+    expect(msg).toContain("not authorized");
+    expect(msg).toContain("Pigify");
   });
 
   it("returns null with no error param", () => {
