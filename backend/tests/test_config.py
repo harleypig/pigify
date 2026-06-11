@@ -200,5 +200,52 @@ class TestCorsDefaults(unittest.TestCase):
         self.assertEqual(s.CORS_ORIGIN_REGEX, "")
 
 
+class TestHostUrlDerivation(unittest.TestCase):
+    # Arbitrary ports — deliberately NOT the 8080/8000 defaults and NOT any
+    # real .env value — so the derivation is proven, not coincidental.
+    FE = 19443
+    BE = 19000
+
+    def test_default_ports_derive_8080_8000(self):
+        # No ports set -> the documented defaults.
+        s = Settings(_env_file=None)
+        self.assertEqual(s.FRONTEND_PORT, 8080)
+        self.assertEqual(s.BACKEND_PORT, 8000)
+        self.assertEqual(s.FRONTEND_URL, "https://127.0.0.1:8080")
+        self.assertEqual(
+            s.SPOTIFY_REDIRECT_URI,
+            "https://127.0.0.1:8080/api/auth/spotify/callback",
+        )
+        self.assertEqual(s.BACKEND_URL, "http://127.0.0.1:8000")
+        self.assertIn("https://127.0.0.1:8080", s.CORS_ORIGINS)
+
+    def test_custom_ports_drive_every_url(self):
+        # Setting only the ports drives every host-facing URL — the fix for a
+        # redirect that ignored a custom FRONTEND_PORT.
+        s = Settings(_env_file=None, FRONTEND_PORT=self.FE, BACKEND_PORT=self.BE)
+        self.assertEqual(s.FRONTEND_URL, f"https://127.0.0.1:{self.FE}")
+        self.assertEqual(
+            s.SPOTIFY_REDIRECT_URI,
+            f"https://127.0.0.1:{self.FE}/api/auth/spotify/callback",
+        )
+        self.assertEqual(
+            s.LASTFM_CALLBACK_URI,
+            f"https://127.0.0.1:{self.FE}/api/integrations/lastfm/callback",
+        )
+        self.assertEqual(s.BACKEND_URL, f"http://127.0.0.1:{self.BE}")
+        self.assertIn(f"https://127.0.0.1:{self.FE}", s.CORS_ORIGINS)
+
+    def test_explicit_url_overrides_derivation(self):
+        # An explicit URL wins over the port-derived default.
+        s = Settings(
+            _env_file=None,
+            FRONTEND_PORT=self.FE,
+            FRONTEND_URL="https://pigify.example.com",
+            SPOTIFY_REDIRECT_URI="https://pigify.example.com/cb",
+        )
+        self.assertEqual(s.FRONTEND_URL, "https://pigify.example.com")
+        self.assertEqual(s.SPOTIFY_REDIRECT_URI, "https://pigify.example.com/cb")
+
+
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
