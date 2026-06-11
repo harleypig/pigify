@@ -76,6 +76,25 @@ services:
       # through the frontend's /api proxy, not this port.
       - "${BACKEND_PORT:-8000}:8000"
     restart: ${RESTART_POLICY:-unless-stopped}
+    # `docker compose watch` live-updates this service on file changes. The
+    # prod CMD runs uvicorn without --reload, so source edits sync in and
+    # restart the process; dependency changes trigger a full image rebuild.
+    develop:
+      watch:
+        - action: sync+restart
+          path: ../backend/app
+          target: /app/app
+          ignore:
+            - "**/__pycache__/"
+        - action: sync+restart
+          path: ../backend/migrations
+          target: /app/migrations
+          ignore:
+            - "**/__pycache__/"
+        - action: rebuild
+          path: ../backend/pyproject.toml
+        - action: rebuild
+          path: ../backend/poetry.lock
 
   frontend:
     build:
@@ -91,3 +110,21 @@ services:
     ports:
       - "${FRONTEND_PORT:-8080}:8080"
     restart: ${RESTART_POLICY:-unless-stopped}
+    # `docker compose watch` rebuilds this service on frontend changes. The
+    # SPA is a static vite -> nginx build, so there's no in-place sync — any
+    # source change rebuilds the image. For a fast HMR loop, run the Vite dev
+    # server instead:  cd frontend && npm run dev
+    develop:
+      watch:
+        - action: rebuild
+          path: ../frontend/src
+        - action: rebuild
+          path: ../frontend/index.html
+        - action: rebuild
+          path: ../frontend/package.json
+        - action: rebuild
+          path: ../frontend/package-lock.json
+        - action: rebuild
+          path: ../frontend/vite.config.ts
+        - action: rebuild
+          path: ../frontend/nginx.conf
