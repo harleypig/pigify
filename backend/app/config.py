@@ -26,10 +26,14 @@ class Settings(BaseSettings):
     # Spotify API Configuration
     SPOTIFY_CLIENT_ID: str = ""
     SPOTIFY_CLIENT_SECRET: str = ""
-    # Use the loopback IP 127.0.0.1, NOT localhost: Spotify rejects
-    # localhost redirect URIs as insecure (policy enforced since
-    # 2025-04). Must match the URI registered in the Spotify dashboard.
-    SPOTIFY_REDIRECT_URI: str = "https://127.0.0.1:8080/api/auth/spotify/callback"
+    # The host-facing URLs (Spotify redirect, frontend, backend, Last.fm
+    # callback) are DERIVED from FRONTEND_PORT / BACKEND_PORT when left
+    # empty — see _derive_host_urls — so changing the .env port updates
+    # them all. Set any explicitly to override (e.g. a real domain in
+    # prod). Use 127.0.0.1, NOT localhost: Spotify rejects localhost
+    # redirect URIs as insecure (policy since 2025-04); the result must
+    # match the URI registered in the Spotify dashboard.
+    SPOTIFY_REDIRECT_URI: str = ""
 
     # Docker-secrets support: when a *_FILE path is set and readable, its
     # contents override the matching value above (so the secret stays out of
@@ -48,7 +52,7 @@ class Settings(BaseSettings):
     # methods (tags / similar / global playcounts) are available.
     LASTFM_API_KEY: str = ""
     LASTFM_SHARED_SECRET: str = ""
-    LASTFM_CALLBACK_URI: str = "https://127.0.0.1:8080/api/integrations/lastfm/callback"
+    LASTFM_CALLBACK_URI: str = ""
 
     # Scrobbling thresholds (Last.fm spec):
     # scrobble after the track has played for >= 50% of its length OR >= 4 minutes,
@@ -66,8 +70,14 @@ class Settings(BaseSettings):
 
     # Application Configuration
     SECRET_KEY: str = _INSECURE_SECRET_KEY
-    BACKEND_URL: str = "http://127.0.0.1:8000"
-    FRONTEND_URL: str = "https://127.0.0.1:8080"
+    # Host-side ports the browser reaches the stack on; the Compose port
+    # mappings use them too. The host-facing URLs above default to
+    # https://127.0.0.1:<FRONTEND_PORT> (see _derive_host_urls), so the
+    # redirect follows the .env port instead of a hard-coded value.
+    FRONTEND_PORT: int = 8080
+    BACKEND_PORT: int = 8000
+    BACKEND_URL: str = ""
+    FRONTEND_URL: str = ""
     ENVIRONMENT: str = "development"
 
     # Local-development auth bypass. Skips the Spotify OAuth round-trip so
@@ -118,12 +128,11 @@ class Settings(BaseSettings):
     # Log a warning when a query takes longer than this many milliseconds.
     DB_SLOW_QUERY_MS: int = 250
 
-    # CORS Configuration. The https://127.0.0.1:8080 origin is the nginx
-    # frontend (same-origin in the container setup); the http://127.0.0.1:5000
-    # origin covers local `vite` dev where the SPA and API are on separate
-    # ports.
+    # CORS Configuration. The nginx frontend origin
+    # (https://127.0.0.1:<FRONTEND_PORT>) is added by _derive_host_urls and is
+    # same-origin in the container setup; the http://127.0.0.1:5000 origin
+    # covers local `vite` dev where the SPA and API are on separate ports.
     CORS_ORIGINS: list[str] = [
-        "https://127.0.0.1:8080",
         "http://127.0.0.1:5000",
     ]
     # Optional regex for additional allowed origins (matched with re.fullmatch
@@ -135,6 +144,25 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
         extra = "allow"
+
+    @model_validator(mode="after")
+    def _derive_host_urls(self) -> "Settings":
+        # Build the host URLs from FRONTEND_PORT / BACKEND_PORT unless set
+        # explicitly, so changing the .env port updates the OAuth redirect,
+        # the post-login redirect, the Last.fm callback, and CORS origin
+        # together instead of hard-coding the port in each.
+        frontend = f"https://127.0.0.1:{self.FRONTEND_PORT}"
+        if not self.FRONTEND_URL:
+            self.FRONTEND_URL = frontend
+        if not self.SPOTIFY_REDIRECT_URI:
+            self.SPOTIFY_REDIRECT_URI = f"{frontend}/api/auth/spotify/callback"
+        if not self.LASTFM_CALLBACK_URI:
+            self.LASTFM_CALLBACK_URI = f"{frontend}/api/integrations/lastfm/callback"
+        if not self.BACKEND_URL:
+            self.BACKEND_URL = f"http://127.0.0.1:{self.BACKEND_PORT}"
+        if frontend not in self.CORS_ORIGINS:
+            self.CORS_ORIGINS = [frontend, *self.CORS_ORIGINS]
+        return self
 
     @model_validator(mode="after")
     def _load_secret_files(self) -> "Settings":
