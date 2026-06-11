@@ -8,8 +8,8 @@
 #   secrets/spotify_client_id.txt
 #   secrets/spotify_client_secret.txt
 #   secrets/secret_key.txt        # python3 -c "import secrets;print(secrets.token_urlsafe(32))"
-#   certs/localhost+2.pem         # TLS cert + key the frontend serves with
-#   certs/localhost+2-key.pem     # (real certs in prod)
+#   certs/dev-cert.pem         # TLS cert + key the frontend serves with
+#   certs/dev-key.pem     # (real certs in prod)
 #
 # Last.fm is optional: leave it alone and the stack runs without it. To
 # enable it, drop your key/secret in files and point LASTFM_API_KEY_FILE /

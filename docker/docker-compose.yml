@@ -5,7 +5,7 @@
 # internally; the nginx frontend terminates TLS (HTTPS on 8080). Spotify
 # OAuth requires HTTPS, so generate the local certs first with
 # ./scripts/setup-ssl.sh and point your Spotify app's redirect URI at
-# https://localhost:8080/api/auth/spotify/callback.
+# https://127.0.0.1:8080/api/auth/spotify/callback.
 #
 # App config comes from the root .env (env_file: ../.env). The environment:
 # block below only sets container-internal values that must NOT come from
@@ -86,7 +86,7 @@ services:
     depends_on:
       - backend
     volumes:
-      # mkcert localhost certs for TLS termination (read-only).
+      # mkcert dev certs for TLS termination (read-only).
       - ${CERTS_DIR:-./certs}:/certs:ro
     ports:
       - "${FRONTEND_PORT:-8080}:8080"

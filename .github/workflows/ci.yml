@@ -238,10 +238,10 @@ jobs:
         if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes \
-            -keyout docker/certs/localhost+2-key.pem -out docker/certs/localhost+2.pem \
-            -days 2 -subj "/CN=localhost" \
-            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
-          chmod 644 docker/certs/localhost+2-key.pem
+            -keyout docker/certs/dev-key.pem -out docker/certs/dev-cert.pem \
+            -days 2 -subj "/CN=127.0.0.1" \
+            -addext "subjectAltName=IP:127.0.0.1"
+          chmod 644 docker/certs/dev-key.pem
           printf 'ci-not-a-real-id' > docker/secrets/spotify_client_id.txt
           printf 'ci-not-a-real-secret' > docker/secrets/spotify_client_secret.txt
           printf 'ci-not-a-real-secret-key' > docker/secrets/secret_key.txt
@@ -254,8 +254,8 @@ jobs:
         if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           for i in $(seq 1 40); do
-            fe=$(curl -sk -o /dev/null -w '%{http_code}' https://localhost:8080/ || true)
-            be=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health || true)
+            fe=$(curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:8080/ || true)
+            be=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/health || true)
             if [ "$fe" = "200" ] && [ "$be" = "200" ]; then echo "ready"; exit 0; fi
             sleep 3
           done
@@ -265,7 +265,7 @@ jobs:
         if: ${{ steps.changes.outputs.src == 'true' }}
         run: |
           docker run --rm --network host --volume "$PWD/.zap:/zap/wrk:rw" \
-            "$ZAP_IMAGE" zap-baseline.py -t https://localhost:8080 -c baseline-rules.tsv
+            "$ZAP_IMAGE" zap-baseline.py -t https://127.0.0.1:8080 -c baseline-rules.tsv
 
       - name: Tear down
         if: ${{ always() && steps.changes.outputs.src == 'true' }}

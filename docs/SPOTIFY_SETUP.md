@@ -12,8 +12,8 @@ Dashboard for Pigify.
 3. Fill in:
    - **App name**: Pigify
    - **App description**: (Use the description from README.md)
-   - **Website**: (Your deployment URL or localhost for development)
-   - **Redirect URI**: `https://localhost:8080/api/auth/spotify/callback`
+   - **Website**: (Your deployment URL or 127.0.0.1 for development)
+   - **Redirect URI**: `https://127.0.0.1:8080/api/auth/spotify/callback`
      (See "Understanding Redirect URI" below)
    - **App or Website**: Select "Website"
 
@@ -67,29 +67,29 @@ If you change the `PORT` environment variable in your `.env` file (e.g., to
 
 1. **Spotify Developer Dashboard**: Update the Redirect URI to match your new
    port:
-   - Example: `http://localhost:8080/api/auth/spotify/callback`
+   - Example: `http://127.0.0.1:8080/api/auth/spotify/callback`
 2. **Your `.env` file**: Update `SPOTIFY_REDIRECT_URI` to match:
 
    ```bash
    PORT=8080
-   SPOTIFY_REDIRECT_URI=http://localhost:8080/api/auth/spotify/callback
-   BACKEND_URL=http://localhost:8080
+   SPOTIFY_REDIRECT_URI=http://127.0.0.1:8080/api/auth/spotify/callback
+   BACKEND_URL=http://127.0.0.1:8080
    ```
 
 **Default Configuration:**
 
 - Default port: `8000`
-- Default Redirect URI: `https://localhost:8080/api/auth/spotify/callback`
+- Default Redirect URI: `https://127.0.0.1:8080/api/auth/spotify/callback`
 
 If you're using the default port, you don't need to change anything. Only
 modify these values if you need to use a different port.
 
 **Production Configuration:**
 
-In production, use your actual domain name instead of `localhost`. For
+In production, use your actual domain name instead of `127.0.0.1`. For
 example:
 
-- **Development**: `https://localhost:8080/api/auth/spotify/callback`
+- **Development**: `https://127.0.0.1:8080/api/auth/spotify/callback`
 - **Production**: `https://your-domain.com:PORT/api/auth/spotify/callback`
   (replace `your-domain.com` with your actual domain and `PORT` with your
   port, or use `https://your-domain.com/api/auth/spotify/callback` if using
