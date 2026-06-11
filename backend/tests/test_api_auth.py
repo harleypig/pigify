@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import parse_qs, urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -83,6 +84,14 @@ class AuthApiTest(unittest.TestCase):
         self.assertTrue(location.startswith("https://accounts.spotify.com/authorize?"))
         self.assertIn("response_type=code", location)
         self.assertIn("state=", location)
+
+        # The Web Playback SDK (in-browser playback) requires the `streaming`
+        # scope and its `user-read-email` companion; guard against their
+        # removal from the requested scope set.
+        query = parse_qs(urlparse(location).query)
+        requested_scopes = query["scope"][0].split(" ")
+        self.assertIn("streaming", requested_scopes)
+        self.assertIn("user-read-email", requested_scopes)
 
     # ----- callback -------------------------------------------------------
 

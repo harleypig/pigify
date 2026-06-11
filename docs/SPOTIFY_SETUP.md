@@ -126,9 +126,12 @@ The app will automatically request these scopes during authentication:
 - `user-read-private` - Get your profile information
 - `user-library-read` - Read your Saved/Liked tracks (favorites sync)
 - `user-library-modify` - Love/unlove Saved tracks (favorites sync)
+- `streaming` - Required by the Web Playback SDK (in-browser playback)
+- `user-read-email` - Companion scope the Web Playback SDK requires
 
 These scopes are requested programmatically during the OAuth flow - no manual
-configuration needed in the dashboard.
+configuration needed in the dashboard. The Web Playback SDK additionally
+requires a Spotify Premium account.
 
 ## What You'll Need
 
@@ -146,7 +149,6 @@ additional scopes:
   playlists
 - `playlist-modify-public` - If you want to modify public playlists
 - `playlist-modify-private` - If you want to modify private playlists
-- `user-read-email` - If you need the user's email address
 
 These can be added to the `scopes` list in `backend/app/api/auth.py` when
 needed.
