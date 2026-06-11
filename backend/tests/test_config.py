@@ -38,6 +38,15 @@ class TestSecretFileOverride(unittest.TestCase):
         self.addCleanup(os.unlink, path)
         return path
 
+    def test_spotify_client_id_file_overrides_value(self):
+        path = self._write_secret("file-provided-spotify-id\n")
+        s = Settings(
+            _env_file=None,
+            SPOTIFY_CLIENT_ID="env-value",
+            SPOTIFY_CLIENT_ID_FILE=path,
+        )
+        self.assertEqual(s.SPOTIFY_CLIENT_ID, "file-provided-spotify-id")
+
     def test_spotify_client_secret_file_overrides_value(self):
         path = self._write_secret("file-provided-spotify-secret\n")
         s = Settings(

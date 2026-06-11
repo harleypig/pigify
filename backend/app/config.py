@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # the environment / process listing). See docker/docker-compose.yml.
     # The Last.fm pair is optional — left unset (empty placeholder secret)
     # the feature simply stays off.
+    SPOTIFY_CLIENT_ID_FILE: str = ""
     SPOTIFY_CLIENT_SECRET_FILE: str = ""
     SECRET_KEY_FILE: str = ""
     LASTFM_API_KEY_FILE: str = ""
@@ -140,6 +141,7 @@ class Settings(BaseSettings):
         # _require_secret_key_in_prod so a file-provided SECRET_KEY satisfies
         # the production check.
         file_backed = (
+            ("SPOTIFY_CLIENT_ID_FILE", "SPOTIFY_CLIENT_ID"),
             ("SPOTIFY_CLIENT_SECRET_FILE", "SPOTIFY_CLIENT_SECRET"),
             ("SECRET_KEY_FILE", "SECRET_KEY"),
             ("LASTFM_API_KEY_FILE", "LASTFM_API_KEY"),

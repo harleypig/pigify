@@ -38,8 +38,9 @@ Pigify is a custom Spotify web app for playlist management and playback. Built w
 # 1. Local TLS certs (Spotify OAuth needs HTTPS). WSL: run this inside WSL.
 ./scripts/setup-ssl.sh
 
-# 2. Config + secrets
-cp .env.example .env                      # fill SPOTIFY_CLIENT_ID, etc.
+# 2. Config + secrets (Spotify client ID and secret are both secret files)
+cp .env.example .env                      # fill SPOTIFY_REDIRECT_URI, allowlist, etc.
+printf '%s' "<spotify client id>"     > docker/secrets/spotify_client_id.txt
 printf '%s' "<spotify client secret>" > docker/secrets/spotify_client_secret.txt
 python3 -c "import secrets;print(secrets.token_urlsafe(32))" > docker/secrets/secret_key.txt
 

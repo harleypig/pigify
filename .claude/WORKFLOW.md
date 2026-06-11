@@ -19,10 +19,13 @@ npm install
 npm run dev
 ```
 
-Set `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` (and optionally
-`LASTFM_*`) in `backend/.env`. Note: local non-Docker dev is plain HTTP;
-Spotify OAuth needs HTTPS, so for the real OAuth flow use the Docker
-stack below (or front the dev server with your own TLS).
+The Spotify client ID + secret are secret files
+(`docker/secrets/spotify_client_{id,secret}.txt`), read via the `*_FILE`
+pointers; for local uvicorn, point `SPOTIFY_CLIENT_ID_FILE` /
+`SPOTIFY_CLIENT_SECRET_FILE` (and optionally `LASTFM_*_FILE`) at them in
+`backend/.env`. Note: local non-Docker dev is plain HTTP; Spotify OAuth
+needs HTTPS, so for the real OAuth flow use the Docker stack below (or
+front the dev server with your own TLS).
 
 ### Skipping login while iterating (dev auth bypass)
 
@@ -50,7 +53,8 @@ normal login flow, set `DEV_AUTH_BYPASS=false`.
 
 ```bash
 ./scripts/setup-ssl.sh                 # generate local mkcert certs -> docker/certs/
-cp .env.example .env                   # then fill SPOTIFY_CLIENT_ID etc.
+cp .env.example .env                   # then fill SPOTIFY_REDIRECT_URI, allowlist, etc.
+printf '%s' "<client-id>"     > docker/secrets/spotify_client_id.txt
 printf '%s' "<client-secret>" > docker/secrets/spotify_client_secret.txt
 printf '%s' "<random-strong-key>" > docker/secrets/secret_key.txt
 # Optional Last.fm (set LASTFM_*_FILE in .env to use these):

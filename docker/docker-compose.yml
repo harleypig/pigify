@@ -19,6 +19,8 @@ volumes:
 
 secrets:
   # ---- required ----
+  spotify_client_id:
+    file: ${SECRETS_DIR:-./secrets}/spotify_client_id.txt
   spotify_client_secret:
     file: ${SECRETS_DIR:-./secrets}/spotify_client_secret.txt
   secret_key:
@@ -48,6 +50,7 @@ services:
     environment:
       # Required secrets are delivered as Docker secret files (the values
       # never enter the container env); point the app at the mounts.
+      - SPOTIFY_CLIENT_ID_FILE=/run/secrets/spotify_client_id
       - SPOTIFY_CLIENT_SECRET_FILE=/run/secrets/spotify_client_secret
       - SECRET_KEY_FILE=/run/secrets/secret_key
       # In-container data path (the named volume mount below).
@@ -56,6 +59,7 @@ services:
       - LASTFM_API_KEY_FILE=/run/secrets/lastfm_api_key
       - LASTFM_SHARED_SECRET_FILE=/run/secrets/lastfm_shared_secret
     secrets:
+      - spotify_client_id
       - spotify_client_secret
       - secret_key
       - lastfm_api_key
