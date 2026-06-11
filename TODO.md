@@ -85,3 +85,8 @@ See `docs/ROADMAP.md`. High-level outstanding:
 - [ ] Unified YAML rules + mixes DSL (the recipe filter DSL exists; the full
       YAML rule/mix system does not).
 - [ ] Expand the visual recipe/mix builder.
+- [ ] **Evaluate the Spotify Ads API.** Currently unused and left unchecked
+      in the developer dashboard. It targets advertisers (Ad Studio
+      campaigns), so it's most likely out of scope for a playback/curation
+      app — confirm that and record the decision, or capture the use case if
+      one turns up.
