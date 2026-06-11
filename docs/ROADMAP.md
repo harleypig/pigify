@@ -188,7 +188,7 @@ The recipe builder is the start; grow it into a full rules/mixes editor.
 
 Open questions from the original concept, now settled by the current build:
 
-- **Spotify scopes** — the six required scopes are documented in
+- **Spotify scopes** — the required scopes are documented in
   `SPOTIFY_SETUP.md`.
 - **Token storage** — signed session cookies; the per-user refresh token is
   held server-side via the session seam (`app/auth/session.py`).

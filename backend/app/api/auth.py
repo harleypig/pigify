@@ -91,6 +91,10 @@ async def spotify_login(request: Request):
     # - user-modify-playback-state: Control playback (play/pause)
     # - playlist-read-private: Read user's private playlists
     # - user-read-private: Get user profile information
+    # - user-library-read: Read Saved/Liked tracks (favorites sync)
+    # - user-library-modify: Love/unlove Saved tracks (favorites sync)
+    # - streaming: Required by the Web Playback SDK (in-browser playback)
+    # - user-read-email: Companion scope the Web Playback SDK requires
     scopes = [
         "user-read-playback-state",
         "user-modify-playback-state",
@@ -98,6 +102,8 @@ async def spotify_login(request: Request):
         "user-read-private",
         "user-library-read",
         "user-library-modify",
+        "streaming",
+        "user-read-email",
     ]
 
     # Build authorization URL
