@@ -88,6 +88,23 @@ Recipes sidebar, Playlist selector.
       supported, but only SQLite is exercised today. Verify whether Postgres
       actually works (engine + migrations) and document accurately — note
       SQLite-only if it isn't wired, or confirm and cover Postgres if it is.
+- [ ] **Document the access / onboarding model.** It spans two independent
+      gates and is Spotify-policy-dependent, so it is non-obvious:
+      - **Spotify dashboard _User Management_** (Spotify-side; blocks OAuth
+        itself in Development Mode): add each user manually with **Full Name**
+        (just a label) + their **Spotify-account email** — the email MUST
+        match the email on their Spotify account, or they hit "not registered
+        in the developer dashboard" at login. Dev Mode caps at **≤5 users**,
+        requires Premium, and has **no API** (manual entry only). Extended
+        Quota Mode lifts the cap but needs a registered business + ~250k MAU,
+        so a personal deploy stays in Dev Mode.
+      - **pigify `ALLOWED_SPOTIFY_IDS`** (pigify-side; the `not_authorized`
+        check after OAuth) is layered on top — a real login must pass **both**
+        gates. Note the identifier mismatch: the dashboard keys on **email**,
+        the allowlist on the **Spotify user ID**, so onboarding a user needs
+        both values.
+      - Cover the per-user onboarding steps and where access config lives;
+        pairs with the demo-invite doc below (likely one `docs/ACCESS.md`).
 - [ ] **Document the demo-invite flow.** Explain the two invite kinds —
       `real` (carries a refresh token the *owner* supplies at creation, so the
       demo browses the **owner's** Spotify account, never the visitor's) and
