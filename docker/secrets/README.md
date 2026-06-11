@@ -6,6 +6,14 @@ This directory contains sensitive configuration files that are loaded via Docker
 
 Create the following files in this directory:
 
+### spotify_client_id.txt
+
+Contains your Spotify Client ID (one line, no quotes):
+
+```text
+your_spotify_client_id_here
+```
+
 ### spotify_client_secret.txt
 
 Contains your Spotify Client Secret (one line, no quotes):

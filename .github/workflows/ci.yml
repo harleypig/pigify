@@ -242,6 +242,7 @@ jobs:
             -days 2 -subj "/CN=localhost" \
             -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
           chmod 644 docker/certs/localhost+2-key.pem
+          printf 'ci-not-a-real-id' > docker/secrets/spotify_client_id.txt
           printf 'ci-not-a-real-secret' > docker/secrets/spotify_client_secret.txt
           printf 'ci-not-a-real-secret-key' > docker/secrets/secret_key.txt
 
