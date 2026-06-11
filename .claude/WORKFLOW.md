@@ -8,12 +8,12 @@ and `TESTS.md` for the test layout.
 Two processes; Vite proxies `/api` to the backend so there's no CORS.
 
 ```bash
-# Backend (terminal 1) — http://localhost:8000
+# Backend (terminal 1) — http://127.0.0.1:8000
 cd backend
 poetry install
 poetry run uvicorn app.main:app --reload
 
-# Frontend (terminal 2) — http://localhost:5000
+# Frontend (terminal 2) — http://127.0.0.1:5000
 cd frontend
 npm install
 npm run dev
@@ -63,10 +63,10 @@ printf '%s' "<random-strong-key>" > docker/secrets/secret_key.txt
 docker compose up --build              # root .env sets COMPOSE_FILE=docker/...
 ```
 
-- Frontend (HTTPS, the app): <https://localhost:8080>
-- Backend (direct, debugging only): <http://localhost:8000>
+- Frontend (HTTPS, the app): <https://127.0.0.1:8080>
+- Backend (direct, debugging only): <http://127.0.0.1:8000>
 - Set the Spotify app redirect URI to
-  `https://localhost:8080/api/auth/spotify/callback`.
+  `https://127.0.0.1:8080/api/auth/spotify/callback`.
 
 Persistent data lives in the `pigify-data` named volume (not a host bind
 mount — see `CONVENTIONS.md` for why).

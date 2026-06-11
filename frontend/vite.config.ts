@@ -31,7 +31,7 @@ export default defineConfig({
       // Backend routes live under /api/*, so no path rewrite. Target is
       // overridable for non-default local backends.
       "/api": {
-        target: process.env.VITE_API_PROXY ?? "http://localhost:8000",
+        target: process.env.VITE_API_PROXY ?? "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },

@@ -19,7 +19,7 @@ This script will:
 
 - Check if mkcert is installed (install if needed)
 - Create a local Certificate Authority
-- Generate SSL certificates for localhost
+- Generate SSL certificates for local development
 - Place them in the `docker/certs/` directory
 
 ### Manual SSL Setup Options
@@ -48,15 +48,15 @@ without security warnings:
    mkcert -install
    ```
 
-3. Generate certificates for localhost:
+3. Generate certificates for 127.0.0.1:
 
    ```bash
    mkdir -p docker/certs
-   mkcert -cert-file docker/certs/localhost+2.pem -key-file docker/certs/localhost+2-key.pem localhost 127.0.0.1 ::1
+   mkcert -cert-file docker/certs/dev-cert.pem -key-file docker/certs/dev-key.pem 127.0.0.1 ::1
    ```
 
-   This creates `docker/certs/localhost+2.pem` (certificate) and
-   `docker/certs/localhost+2-key.pem` (private key).
+   This creates `docker/certs/dev-cert.pem` (certificate) and
+   `docker/certs/dev-key.pem` (private key).
 
 4. The frontend nginx container mounts `docker/certs/` and uses these to serve
    HTTPS on port 8080 (TLS terminates there; the backend stays plain HTTP
@@ -66,12 +66,12 @@ without security warnings:
 5. Update your `.env` file to use HTTPS URLs:
 
    ```bash
-   SPOTIFY_REDIRECT_URI=https://localhost:8080/api/auth/spotify/callback
-   BACKEND_URL=https://localhost:8080
-   FRONTEND_URL=https://localhost:8080
+   SPOTIFY_REDIRECT_URI=https://127.0.0.1:8080/api/auth/spotify/callback
+   BACKEND_URL=https://127.0.0.1:8080
+   FRONTEND_URL=https://127.0.0.1:8080
    ```
 
-6. Access your app at `https://localhost:8080` (you may need to accept the
+6. Access your app at `https://127.0.0.1:8080` (you may need to accept the
    certificate warning the first time)
 
 #### Option 2: Using ngrok (Quick Testing)
@@ -98,8 +98,8 @@ server configuration.
 
 **SSL Certificate Requirement:**
 
-The frontend nginx container needs `docker/certs/localhost+2.pem` and
-`docker/certs/localhost+2-key.pem` to be present (it serves HTTPS). Generate them
+The frontend nginx container needs `docker/certs/dev-cert.pem` and
+`docker/certs/dev-key.pem` to be present (it serves HTTPS). Generate them
 with `scripts/setup-ssl.sh` before `docker compose up`. Spotify requires
 HTTPS for redirect URIs, so the app cannot run without them.
 
@@ -111,13 +111,13 @@ you change `FRONTEND_PORT`, update the URLs and the Spotify redirect URI:
 
 ```bash
 FRONTEND_PORT=9443
-SPOTIFY_REDIRECT_URI=https://localhost:9443/api/auth/spotify/callback
-FRONTEND_URL=https://localhost:9443
+SPOTIFY_REDIRECT_URI=https://127.0.0.1:9443/api/auth/spotify/callback
+FRONTEND_URL=https://127.0.0.1:9443
 ```
 
 **Production Deployment:**
 
-In production, use your actual domain name instead of `localhost`:
+In production, use your actual domain name instead of `127.0.0.1`:
 
 ```bash
 SPOTIFY_REDIRECT_URI=https://your-domain.com/api/auth/spotify/callback

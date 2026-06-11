@@ -48,10 +48,10 @@ python3 -c "import secrets;print(secrets.token_urlsafe(32))" > docker/secrets/se
 docker compose up --build
 ```
 
-- App (HTTPS): <https://localhost:8080>
-- Backend (direct, debugging): <http://localhost:8000>
+- App (HTTPS): <https://127.0.0.1:8080>
+- Backend (direct, debugging): <http://127.0.0.1:8000>
 - Set the Spotify app redirect URI to
-  `https://localhost:8080/api/auth/spotify/callback`
+  `https://127.0.0.1:8080/api/auth/spotify/callback`
 
 See `docs/SPOTIFY_SETUP.md` for the dashboard setup and OAuth scopes.
 
