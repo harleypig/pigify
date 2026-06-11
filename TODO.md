@@ -9,6 +9,15 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       `'unsafe-inline'` for inline styles; the ZAP baseline allowlists the
       finding (`.zap/baseline-rules.tsv`, rule `10055`). Remove the inline
       styles (or move to nonces/hashes) and drop that allowlist line.
+- [ ] **Uniform file-or-env sourcing for sensitive config.** Several values
+      support only one source today; allow either, with a consistent
+      precedence (file wins, like the existing `*_FILE` secret pattern):
+      `ALLOWED_SPOTIFY_IDS` and the dev `DEV_SPOTIFY_ID` /
+      `DEV_SPOTIFY_REFRESH_TOKEN` should also be readable from a file, and the
+      Spotify client id/secret (currently Docker-secret files, required by
+      compose) should also be settable directly in `.env`. Extend the
+      `read_secret_file` / `_load_secret_files` mechanism in
+      `backend/app/config.py` to cover them.
 
 ## Build, release & infra
 
@@ -71,6 +80,14 @@ Recipes sidebar, Playlist selector.
       schema reference from `docs/ROADMAP.md` Milestone 4 — to a
       readthedocs.io page: pick the generator (MkDocs vs Sphinx), add a
       `.readthedocs.yaml`, and link the site from the README.
+- [ ] **Document obtaining Last.fm credentials.** Add how to get a Last.fm
+      API key + shared secret to `.env.example` and/or the integrations/setup
+      docs, so the optional scrobbling/enrichment setup is self-serve.
+- [ ] **Clarify database support.** `.env.example` says `SYSTEM_DATABASE_URL`
+      can point at Postgres and `docs/ROADMAP.md` states Postgres is already
+      supported, but only SQLite is exercised today. Verify whether Postgres
+      actually works (engine + migrations) and document accurately — note
+      SQLite-only if it isn't wired, or confirm and cover Postgres if it is.
 
 ## Tests
 
