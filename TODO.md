@@ -348,6 +348,8 @@ See `docs/ROADMAP.md`. High-level outstanding:
       3. NowPlayingBar **device popup**: a devices button listing
          `/me/player/devices` (incl. "This browser"), active one highlighted,
          transfer on select; day-glo styled.
+      4. Once it works, **remove the now-dead `Player.tsx` / `.css` /
+         `.test.tsx`** (keep `spotifyService`, which this feature reuses).
       Caveats: Premium-only; first play needs a user gesture; the access
       token is exposed to the browser (inherent to the SDK; `/api/auth/token`
       already does this). Supersedes the standalone `Player` component
