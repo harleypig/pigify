@@ -94,6 +94,57 @@
   text-decoration: underline;
 }
 
+/* Playlist actions: a lit-blue "Play" LED + a ghost "Queue" control. */
+.track-list-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.track-list-play,
+.track-list-queue {
+  font-family: var(--brand-font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s,
+    color 0.15s;
+}
+
+.track-list-play {
+  border: none;
+  background: var(--brand-accent);
+  color: #07080d;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(var(--brand-accent-rgb), 0.35);
+}
+.track-list-play:hover:not(:disabled) {
+  background: var(--brand-accent-bright);
+  box-shadow: 0 0 14px rgba(var(--brand-accent-rgb), 0.5);
+}
+
+.track-list-queue {
+  background: transparent;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.5);
+  color: var(--brand-accent-bright);
+}
+.track-list-queue:hover:not(:disabled) {
+  background: rgba(var(--brand-accent-rgb), 0.12);
+  border-color: var(--brand-accent);
+}
+
+.track-list-play:disabled,
+.track-list-queue:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+
 /* ── Column header row: mono labels aligned to the rows via --tl-cols ── */
 .track-list-columns {
   display: grid;

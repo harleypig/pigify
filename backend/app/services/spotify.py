@@ -293,6 +293,14 @@ class SpotifyService:
         body = {"uris": uris[:500]}
         await self._put("/me/player/play", body=body, params=params)
 
+    async def play_context(
+        self, context_uri: str, device_id: str | None = None
+    ) -> None:
+        """Start playback of a context (album/playlist/artist) by its URI."""
+        params = {"device_id": device_id} if device_id else None
+        body = {"context_uri": context_uri}
+        await self._put("/me/player/play", body=body, params=params)
+
     async def add_to_queue(self, uri: str, device_id: str | None = None) -> None:
         """Append a single URI to the user's playback queue."""
         params: dict[str, str] = {"uri": uri}

@@ -116,6 +116,7 @@ function TrackList({
   const [tracks, setTracks] = useState<Track[]>([]);
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [editing, setEditing] = useState(false);
+  const [queuing, setQueuing] = useState(false);
   // Row selection (mouse): a plain click single-selects, Ctrl toggles one
   // row, Shift selects a range. Queuing the selection will be drag-and-drop
   // to the queue display later (TODO) — this only tracks selection for now.
@@ -454,6 +455,34 @@ function TrackList({
     return hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
   };
 
+  const handlePlayPlaylist = async () => {
+    try {
+      await apiService.playPlaylist(playlistId);
+    } catch (e) {
+      console.error("Play playlist failed:", e);
+      alert("Couldn't start playback. Make sure Spotify is open on a device.");
+    }
+  };
+
+  const handleQueuePlaylist = async () => {
+    if (queuing || !sortedTracks.length) return;
+    try {
+      setQueuing(true);
+      const uris = sortedTracks.map((t) => t.uri);
+      const r = await apiService.queuePlaylist(playlistId, uris);
+      alert(
+        r.truncated
+          ? `Queued the first ${r.queued} of ${r.total} tracks.`
+          : `Queued ${r.queued} tracks.`,
+      );
+    } catch (e) {
+      console.error("Queue playlist failed:", e);
+      alert("Couldn't queue tracks. Make sure Spotify is open on a device.");
+    } finally {
+      setQueuing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="track-list-loading">
@@ -498,6 +527,26 @@ function TrackList({
                 Edit
               </button>
             )}
+            <div className="track-list-actions">
+              <button
+                type="button"
+                className="track-list-play"
+                onClick={handlePlayPlaylist}
+                disabled={!sortedTracks.length}
+                title="Play this playlist"
+              >
+                ▶ Play
+              </button>
+              <button
+                type="button"
+                className="track-list-queue"
+                onClick={handleQueuePlaylist}
+                disabled={queuing || !sortedTracks.length}
+                title="Add this playlist to the queue"
+              >
+                {queuing ? "Queuing…" : "＋ Queue"}
+              </button>
+            </div>
           </div>
         </div>
         <SortMenu

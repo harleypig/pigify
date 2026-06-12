@@ -299,6 +299,54 @@ async def update_playlist(
         ) from e
 
 
+# Spotify's queue API takes one URI per call, so enqueuing a whole playlist is
+# N sequential requests. Cap it so the call stays responsive and within rate
+# limits; anything beyond is reported as truncated. (Full/background queueing
+# of very large playlists is future work — see TODO.)
+QUEUE_CAP = 50
+
+
+@router.post("/{playlist_id}/play")
+async def play_playlist(
+    request: Request, playlist_id: str, device_id: str | None = None
+):
+    """Start playback of the whole playlist in its native Spotify context."""
+    spotify = SpotifyService(_require_token(request))
+    try:
+        await spotify.play_context(f"spotify:playlist:{playlist_id}", device_id)
+        return {"status": "playing"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to start playback: {e!s}"
+        ) from e
+
+
+class QueueRequest(BaseModel):
+    """Track URIs to append to the playback queue, in the order given."""
+
+    uris: list[str]
+    device_id: str | None = None
+
+
+@router.post("/{playlist_id}/queue")
+async def queue_playlist(request: Request, playlist_id: str, body: QueueRequest):
+    """Append the given track URIs to the playback queue (capped)."""
+    spotify = SpotifyService(_require_token(request))
+    to_queue = body.uris[:QUEUE_CAP]
+    try:
+        for uri in to_queue:
+            await spotify.add_to_queue(uri, body.device_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to queue tracks: {e!s}"
+        ) from e
+    return {
+        "queued": len(to_queue),
+        "total": len(body.uris),
+        "truncated": len(body.uris) > QUEUE_CAP,
+    }
+
+
 @router.get("/{playlist_id}/tracks", response_model=list[Track])
 async def get_playlist_tracks(
     request: Request,

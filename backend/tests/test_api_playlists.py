@@ -176,6 +176,63 @@ class PlaylistsApiTest(unittest.TestCase):
 
         self.assertEqual(resp.status_code, 500)
 
+    # ----- play / queue ---------------------------------------------------
+
+    def test_play_playlist_uses_context(self) -> None:
+        play = AsyncMock()
+        cls, _ = _make_spotify(play_context=play)
+
+        with (
+            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(playlists_mod, "SpotifyService", cls),
+            TestClient(_build_db_app()) as client,
+        ):
+            resp = client.post("/api/playlists/p1/play")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["status"], "playing")
+        play.assert_awaited_once_with("spotify:playlist:p1", None)
+
+    def test_queue_playlist_enqueues_uris(self) -> None:
+        add = AsyncMock()
+        cls, _ = _make_spotify(add_to_queue=add)
+
+        with (
+            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(playlists_mod, "SpotifyService", cls),
+            TestClient(_build_db_app()) as client,
+        ):
+            resp = client.post(
+                "/api/playlists/p1/queue",
+                json={"uris": ["spotify:track:a", "spotify:track:b"]},
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["queued"], 2)
+        self.assertEqual(body["total"], 2)
+        self.assertFalse(body["truncated"])
+        self.assertEqual(add.await_count, 2)
+
+    def test_queue_playlist_caps_and_flags_truncation(self) -> None:
+        add = AsyncMock()
+        cls, _ = _make_spotify(add_to_queue=add)
+        uris = [f"spotify:track:{i}" for i in range(playlists_mod.QUEUE_CAP + 5)]
+
+        with (
+            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(playlists_mod, "SpotifyService", cls),
+            TestClient(_build_db_app()) as client,
+        ):
+            resp = client.post("/api/playlists/p1/queue", json={"uris": uris})
+
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["queued"], playlists_mod.QUEUE_CAP)
+        self.assertEqual(body["total"], len(uris))
+        self.assertTrue(body["truncated"])
+        self.assertEqual(add.await_count, playlists_mod.QUEUE_CAP)
+
     # ----- sort fields / presets -----------------------------------------
 
     def test_list_sort_fields(self) -> None:
