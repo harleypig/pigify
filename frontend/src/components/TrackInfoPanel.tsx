@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { apiService, type TrackDetail } from "../services/api";
 import { formatDuration, highlightJson } from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
+
+const PANEL_SIZE_KEY = "pigify.trackInfoPanel.size";
 
 interface Props {
   trackId: string | null;
@@ -31,6 +40,61 @@ function TrackInfoPanel({
   // Wikipedia starts collapsed; opened on demand via the "+" toggle.
   const [wikiOpen, setWikiOpen] = useState(false);
   const reqRef = useRef(0);
+
+  // User-resized panel size (null = the CSS default). Persisted; the panel is
+  // pinned bottom-right, so the grip is the top-left corner (drag to grow).
+  const [size, setSize] = useState<{ w: number; h: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem(PANEL_SIZE_KEY);
+      if (raw) return JSON.parse(raw) as { w: number; h: number };
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
+  const panelRef = useRef<HTMLElement>(null);
+  const dragRef = useRef<{ x: number; y: number; w: number; h: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    try {
+      if (size) localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(size));
+    } catch {
+      /* ignore */
+    }
+  }, [size]);
+
+  const onResizeDown = (e: ReactPointerEvent) => {
+    const el = panelRef.current;
+    if (!el) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      w: el.offsetWidth,
+      h: el.offsetHeight,
+    };
+  };
+  const onResizeMove = (e: ReactPointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    // Pinned bottom-right: dragging up/left (smaller clientX/Y) grows it.
+    const w = Math.max(
+      280,
+      Math.min(window.innerWidth - 32, d.w + d.x - e.clientX),
+    );
+    const h = Math.max(
+      200,
+      Math.min(window.innerHeight - 96, d.h + d.y - e.clientY),
+    );
+    setSize({ w, h });
+  };
+  const onResizeUp = (e: ReactPointerEvent) => {
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
 
   const fetchDetail = useCallback((id: string, refresh: boolean) => {
     const reqId = ++reqRef.current;
@@ -127,7 +191,28 @@ function TrackInfoPanel({
   }
 
   return (
-    <aside className="track-info-panel" aria-label="Track info">
+    <aside
+      className="track-info-panel"
+      aria-label="Track info"
+      ref={panelRef}
+      style={
+        size
+          ? ({
+              width: size.w,
+              height: size.h,
+              maxHeight: "none",
+            } as CSSProperties)
+          : undefined
+      }
+    >
+      {/* Top-left resize grip (panel is pinned bottom-right). Pointer-only. */}
+      <div
+        className="tip-resize"
+        onPointerDown={onResizeDown}
+        onPointerMove={onResizeMove}
+        onPointerUp={onResizeUp}
+        aria-hidden="true"
+      />
       <header className="tip-header">
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">

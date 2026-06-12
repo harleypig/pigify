@@ -33,6 +33,33 @@
   border-radius: var(--brand-radius-sm);
 }
 
+/* Top-left resize grip — the panel is pinned bottom-right, so dragging the
+   top-left corner up/left grows it. */
+.tip-resize {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  z-index: 2;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.tip-resize::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid rgba(var(--brand-accent-rgb), 0.45);
+  border-left: 2px solid rgba(var(--brand-accent-rgb), 0.45);
+  border-radius: 3px 0 0 0;
+}
+.tip-resize:hover::before {
+  border-color: var(--brand-accent-bright);
+}
+
 .tip-header {
   display: flex;
   align-items: center;
