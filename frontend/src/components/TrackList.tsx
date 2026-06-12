@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -368,6 +369,17 @@ function TrackList({
     }
   }, [visibleCols]);
 
+  // Close the column chooser when clicking outside its popover.
+  const columnsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      const el = columnsRef.current;
+      if (el?.open && !el.contains(e.target as Node)) el.open = false;
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
   const toggleColumn = (key: string) => {
     setVisibleCols((prev) => {
       const next = new Set(prev);
@@ -451,7 +463,7 @@ function TrackList({
             {c.label}
           </span>
         ))}
-        <details className="tlc-chooser">
+        <details className="tlc-chooser" ref={columnsRef}>
           <summary
             className="tlc-chooser-btn"
             title="Choose columns"
