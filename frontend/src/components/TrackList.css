@@ -1,31 +1,51 @@
+/*
+ * Track list — the console's "playlist rack": a column of track slots read
+ * out in the day-glo console identity. The header pairs a display-type title
+ * with a mono "equipment label" readout over a faint power rail; each row is
+ * a dark slot that lights electric blue when hovered or focused. All colour
+ * and type come from the brand tokens in theme.css.
+ */
+
 .track-list {
   height: 100%;
   display: flex;
   flex-direction: column;
 }
 
+/* ── Header: title + mono readout, sitting on a thin blue power rail ── */
 .track-list-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.6rem;
   gap: 1rem;
   flex-wrap: wrap;
-}
-
-.hydrating-tag {
-  color: #1db954;
-  font-style: italic;
+  border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.16);
 }
 
 .track-list-header h2 {
-  font-size: 1.5rem;
+  margin: 0;
+  font-family: var(--brand-font-display);
+  font-size: 1.4rem;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--brand-ink);
 }
 
+/* Count: a mono equipment-label readout. */
 .track-count {
-  color: #b3b3b3;
-  font-size: 0.875rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
+}
+
+/* Live "fetching sort data" tag glows electric blue, like a deck readout. */
+.hydrating-tag {
+  color: rgba(var(--brand-accent-rgb), 0.85);
+  font-style: normal;
 }
 
 .track-list-items {
@@ -33,32 +53,46 @@
   overflow-y: auto;
 }
 
+/* ── Track row: a dark rack slot that lights up on hover/focus ── */
 .track-item {
   display: grid;
   grid-template-columns: 40px 60px 1fr 200px 36px 60px;
   gap: 1rem;
   align-items: center;
-  padding: 0.75rem;
-  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--brand-radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.track-heart {
-  display: flex;
-  justify-content: center;
+  /* Lit left edge starts invisible; hover/focus burns it electric blue. */
+  box-shadow: inset 3px 0 0 transparent;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .track-item:hover {
-  background-color: #282828;
+  background-color: rgba(var(--brand-accent-rgb), 0.08);
+  box-shadow: inset 3px 0 0 var(--brand-accent);
 }
 
+.track-item:focus-visible {
+  /* Keyboard focus: the lit edge plus a thin surrounding accent ring. */
+  outline: none;
+  background-color: rgba(var(--brand-accent-rgb), 0.12);
+  box-shadow:
+    inset 3px 0 0 var(--brand-accent),
+    0 0 0 1px rgba(var(--brand-accent-rgb), 0.55);
+}
+
+/* Index: a mono counter. */
 .track-number {
   text-align: center;
-  color: #b3b3b3;
-  font-size: 0.875rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-ink-dim);
 }
 
+/* Album art framed like a small lit monitor in the slot. */
 .track-image {
   width: 50px;
   height: 50px;
@@ -68,19 +102,21 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 5px;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
 }
 
 .track-placeholder {
   width: 100%;
   height: 100%;
-  background-color: #333;
-  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  color: #666;
+  color: rgba(var(--brand-accent-rgb), 0.5);
+  background-color: var(--brand-navy);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
+  border-radius: 5px;
 }
 
 .track-info {
@@ -88,42 +124,56 @@
 }
 
 .track-name {
-  font-weight: 500;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+  color: var(--brand-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .track-artists {
-  font-size: 0.875rem;
-  color: #b3b3b3;
+  font-size: 0.8rem;
+  color: var(--brand-ink-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .track-album {
-  color: #b3b3b3;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
+  color: var(--brand-ink-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.track-duration {
-  text-align: right;
-  color: #b3b3b3;
-  font-size: 0.875rem;
+.track-heart {
+  display: flex;
+  justify-content: center;
 }
 
+/* Duration: a mono rack-meter readout. */
+.track-duration {
+  text-align: right;
+  font-family: var(--brand-font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-ink-dim);
+}
+
+/* ── States: mono "equipment label" voice ── */
 .track-list-loading,
 .track-list-error {
   padding: 2rem;
   text-align: center;
-  color: #b3b3b3;
+  font-family: var(--brand-font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
 }
 
 .track-list-error {
-  color: #e22134;
+  color: var(--brand-red);
 }
