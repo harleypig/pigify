@@ -117,6 +117,29 @@ Recipes sidebar, Playlist selector.
       account must be a registered user there; demo visitors never OAuth).
       Likely a `docs/DEMO.md` or a section in `docs/DEPLOYMENT.md`.
 
+## Access & onboarding
+
+- [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
+      demo page → a form collecting **Name + Email only** (what the Spotify
+      dashboard's User Management needs). Do NOT ask for the Spotify user ID —
+      visitors don't know it and can't OAuth before they're added. Store each
+      submission as a join **request** for the owner to act on (the dashboard
+      add is manual — no Spotify API). On the new user's first login,
+      auto-capture their `spotify_id` (the gate already logs the denied id)
+      and add it to `ALLOWED_SPOTIFY_IDS` on approval.
+- [ ] **Capacity awareness (Spotify Dev-Mode cap).** Infer used slots from
+      `len(ALLOWED_SPOTIFY_IDS)` vs a configurable `MAX_USERS` (default 5,
+      the Dev-Mode limit). When full, the join CTA shows "no spots open" — but
+      do NOT block demos (they run on the owner's token and consume no slot).
+      pigify can't read the real dashboard state (no API), so this is an
+      approximation; keep the allowlist in step with User Management.
+- [ ] **Owner always allowed (admin identity).** An `OWNER_SPOTIFY_ID` setting
+      that bypasses `ALLOWED_SPOTIFY_IDS` so the owner needn't allowlist
+      themselves; also the natural identity for admin actions (creating demo
+      invites, approving join requests). **Sequence: build this AFTER the demo
+      + join flow is built and tested** — keeping the owner on the allowlist
+      meanwhile keeps the deny/join path testable with a real account.
+
 ## Tests
 
 - [ ] **Browser e2e (Playwright).** Pure helpers are extracted into
