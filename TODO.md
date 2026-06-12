@@ -76,8 +76,8 @@ Recipes sidebar, Playlist selector.
 **Remaining (hard-coded colours → day-glo console):**
 
 - [x] **`TrackList`** — the main content list (highest-visibility surface).
-- [ ] **`Player`** — superseded by `NowPlayingBar`; not styled standalone.
-      Its `spotifyService` (Web Playback SDK) layer is reused by the
+- [x] **`Player`** — removed (dead code, superseded by `NowPlayingBar`). Its
+      `spotifyService` (Web Playback SDK) layer lives on, reused by the
       in-browser-playback feature under *Product roadmap*.
 - [x] **`TrackInfoPanel`** — the track-detail panel.
 - [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
@@ -345,7 +345,7 @@ See `docs/ROADMAP.md`. High-level outstanding:
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
       *(Subsumed by the in-browser-playback device popup below — the popup
       shows the active device.)*
-- [ ] **In-browser playback + device popup (meld `Player` into the
+- [x] **In-browser playback + device popup (meld `Player` into the
       NowPlayingBar).** Let pigify play audio in the browser tab itself, not
       only remote-control an existing device, with a **show/select device
       popup** on the NowPlayingBar. Architecture: the Web Playback SDK's role
@@ -365,22 +365,16 @@ See `docs/ROADMAP.md`. High-level outstanding:
       3. NowPlayingBar **device popup**: a devices button listing
          `/me/player/devices` (incl. "This browser"), active one highlighted,
          transfer on select; day-glo styled.
-      4. Once it works, **remove the now-dead `Player.tsx` / `.css` /
-         `.test.tsx`** (keep `spotifyService`, which this feature reuses).
+      4. ✅ Done — dead `Player.tsx` / `.css` / `.test.tsx` removed
+         (`spotifyService` kept; this feature reuses it).
       Caveats: Premium-only; first play needs a user gesture; the access
       token is exposed to the browser (inherent to the SDK; `/api/auth/token`
-      already does this). Supersedes the standalone `Player` component
-      (reuses its `spotifyService` layer).
-      **Status:** code-complete (backend devices/transfer, SDK connect with
-      token refresh, day-glo device popup) and verified doing its part —
-      secure context, token delivered, EME allowed via `Permissions-Policy`.
-      Could **not** be validated on the dev machine: the Web Playback SDK's
-      `connect()` returns false there because **open.spotify.com fails
-      identically** (skips, "can't play right now", ~15s then silence), i.e. a
-      **machine/Chrome DRM** limitation, not a pigify bug. **Validate on a
-      machine/browser where open.spotify.com plays cleanly** (the
-      cross-browser item under *Tests* covers it); then step 4 (remove dead
-      `Player.*`).
+      already does this).
+      **Status: DONE / validated in Brave** — connects, registers
+      "Pigify - Web", transfers and plays. Chrome on the dev machine fails
+      (`connect()` false) but so does **open.spotify.com** there — a
+      machine/Chrome DRM issue, not a pigify bug. Per-browser DRM quirks are
+      tracked by the cross-browser item under *Tests*.
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can
