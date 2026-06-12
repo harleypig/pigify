@@ -175,6 +175,16 @@ Recipes sidebar, Playlist selector.
       while still serving the owner's playlists/library (the point of the
       demo). Decide whether to also suppress the owner's live now-playing
       (a privacy leak) or accept it.
+- [ ] **Remove the placeholder demo kind.** A `placeholder` invite shows the
+      app chrome with no real data — useless as an actual demo (you can't see
+      the playlists/mixes that sell it). Drop `KIND_PLACEHOLDER`: the
+      `invites_cli --kind placeholder` choice, the redeem else-branch, and the
+      constant; make `real` the only demo kind. **Test impact:**
+      `test_api_demo`'s redeem-success test uses a placeholder (needs no
+      token) — reanchor it on a `real` invite with a mocked
+      `SpotifyService.refresh_access_token` / `get_current_user` (respx). The
+      placeholder *grant* stays — `DEV_AUTH_BYPASS` still uses it for UI-only
+      frontend dev.
 
 ## Tests
 
