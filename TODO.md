@@ -66,7 +66,9 @@ Recipes sidebar, Playlist selector.
 **Remaining (hard-coded colours → day-glo console):**
 
 - [x] **`TrackList`** — the main content list (highest-visibility surface).
-- [ ] **`Player`** — the transport / playback-controls surface.
+- [ ] **`Player`** — superseded by `NowPlayingBar`; not styled standalone.
+      Its `spotifyService` (Web Playback SDK) layer is reused by the
+      in-browser-playback feature under *Product roadmap*.
 - [x] **`TrackInfoPanel`** — the track-detail panel.
 - [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
 - [ ] **`SettingsPanel`** — the settings surface.
@@ -324,6 +326,32 @@ See `docs/ROADMAP.md`. High-level outstanding:
 - [ ] **"Playing on device" indicator.** Surface which device playback is
       currently happening on (active device name) somewhere in the UI. Backed
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
+      *(Subsumed by the in-browser-playback device popup below — the popup
+      shows the active device.)*
+- [ ] **In-browser playback + device popup (meld `Player` into the
+      NowPlayingBar).** Let pigify play audio in the browser tab itself, not
+      only remote-control an existing device, with a **show/select device
+      popup** on the NowPlayingBar. Architecture: the Web Playback SDK's role
+      is to **register the browser as a Spotify Connect device** (it then
+      appears in `/me/player/devices`); the actual "play here" is a
+      **transfer** to that `device_id` via the REST API — not the SDK's own
+      play method (which `spotifyService.play()` calls but doesn't exist).
+      Groundwork present: the `streaming` scope, `GET /api/auth/token`,
+      the `spotifyService` SDK wrapper, and device_id-aware play endpoints.
+      Build order:
+      1. Backend: `get_devices()` (`GET /me/player/devices`) +
+         `transfer_playback(device_id, play)` (`PUT /me/player`) on the
+         service, exposed as `/api/player/devices` + `/api/player/transfer`.
+      2. SDK init on auth: load the SDK, register the browser device, and make
+         `getOAuthToken` fetch a **fresh** token from `/api/auth/token` (fix
+         the current always-same-token bug) for refresh.
+      3. NowPlayingBar **device popup**: a devices button listing
+         `/me/player/devices` (incl. "This browser"), active one highlighted,
+         transfer on select; day-glo styled.
+      Caveats: Premium-only; first play needs a user gesture; the access
+      token is exposed to the browser (inherent to the SDK; `/api/auth/token`
+      already does this). Supersedes the standalone `Player` component
+      (reuses its `spotifyService` layer).
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can
