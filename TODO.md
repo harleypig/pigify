@@ -319,6 +319,13 @@ resumable-session item rides along with the safety work.
 - [ ] **Browser e2e (Playwright).** Pure helpers are extracted into
       co-located `*.helpers.ts` modules and unit-tested; full browser e2e
       across the target matrix is still deferred.
+- [ ] **Cross-browser testing (Chrome, Edge, Opera, Brave).** Verify the app
+      across the browsers actually used, paying special attention to
+      **in-browser playback** — the Web Playback SDK depends on Widevine DRM
+      (EME) and `Permissions-Policy`/autoplay handling, which vary by browser
+      (e.g. Brave has Widevine off by default; the EME `Permissions-Policy`
+      delegation to `sdk.scdn.co` was a Chrome gotcha). Document any
+      per-browser caveats or required user settings.
 
 ## Product roadmap
 
