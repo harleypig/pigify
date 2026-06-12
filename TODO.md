@@ -40,6 +40,15 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       streams (`backend/v*` / `frontend/v*`) — pigify currently builds both
       images from one `v*` tag. Then expand the thin `.claude/CONVENTIONS.md`
       "Versioning" section to match.
+- [ ] **nginx rule and/or skill (rule-coverage gap).** This repo configures
+      nginx (`frontend/nginx.conf`: TLS termination, the `/api` proxy, the
+      CSP / Permissions-Policy security headers tuned for the Spotify Web
+      Playback SDK) but there is no `rules/nginx.md` and no nginx skill, so
+      the agent has no codified guidance for editing it. Per the
+      rule-coverage convention in global `CLAUDE.md`, decide scope via the
+      three-tier model: a generally-useful `rules/nginx.md` (header/CSP
+      idioms, proxy hygiene) vs a repo-specific note in `.claude/`.
+      **Flagged for the next `claude-audit`.**
 
 ## Theming & branding
 
