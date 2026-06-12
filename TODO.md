@@ -65,12 +65,12 @@ Recipes sidebar, Playlist selector.
 
 **Remaining (hard-coded colours → day-glo console):**
 
-- [ ] **`TrackList`** — the main content list (highest-visibility surface).
+- [x] **`TrackList`** — the main content list (highest-visibility surface).
 - [ ] **`Player`** — the transport / playback-controls surface.
-- [ ] **`TrackInfoPanel`** — the track-detail panel.
+- [x] **`TrackInfoPanel`** — the track-detail panel.
 - [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
 - [ ] **`SettingsPanel`** — the settings surface.
-- [ ] **`SortMenu`** — the sort control / menu.
+- [x] **`SortMenu`** — the sort control / menu.
 - [ ] **`UserMenu`** — the account menu.
 - [ ] **`HeartButton`** — the like / heart accent control.
 
@@ -90,7 +90,7 @@ multi-select (single / Ctrl / Shift). Remaining:
       opens it on demand.
 - [x] **Remember the last-loaded playlist.** Persist the selected playlist so
       a refresh — or logout then back in — restores the same playlist view.
-- [ ] **Day-glo restyle the `TrackInfoPanel`.** Bring the track-detail panel
+- [x] **Day-glo restyle the `TrackInfoPanel`.** Bring the track-detail panel
       onto the brand (also tracked in the component checklist above).
 - [ ] **Column headers + column chooser.** Add a header row immediately below
       the list's header separator labelling the displayed columns, with a
