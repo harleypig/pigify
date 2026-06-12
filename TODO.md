@@ -99,30 +99,30 @@ multi-select (single / Ctrl / Shift). Remaining:
 **Current batch 2 (track list window).** A second round of TrackList +
 Track Info refinements, ordered simplest → most complex:
 
-- [ ] **Rename "Edit info" to "Edit".** Same size/font, shorter label.
-- [ ] **Halve the track rows' side padding.** The left/right padding on the
+- [x] **Rename "Edit info" to "Edit".** Same size/font, shorter label.
+- [x] **Halve the track rows' side padding.** The left/right padding on the
       track rows themselves is too much — halve it (the panel side padding was
       already halved separately).
-- [ ] **Close the column chooser on outside click.** Clicking anywhere outside
+- [x] **Close the column chooser on outside click.** Clicking anywhere outside
       the open columns popover should dismiss it.
-- [ ] **Click a highlighted row to unhighlight it.** A plain left-click on an
+- [x] **Click a highlighted row to unhighlight it.** A plain left-click on an
       already-selected row clears its highlight (toggle), rather than
       re-selecting it.
-- [ ] **Loved state as a column option.** Make the loved/heart indicator a
+- [x] **Loved state as a column option.** Make the loved/heart indicator a
       toggleable column in the chooser.
-- [ ] **Total playtime beside the track count.** Show the playlist's summed
+- [x] **Total playtime beside the track count.** Show the playlist's summed
       duration next to the track count in the header.
-- [ ] **Loading spinner with the playlist name.** Replace the bare "Loading
+- [x] **Loading spinner with the playlist name.** Replace the bare "Loading
       tracks…" with a spinner + text like "Loading <playlist> …" (large
       playlists take a few seconds).
-- [ ] **Album cover beside the playlist name; per-row art becomes optional.**
+- [x] **Album cover beside the playlist name; per-row art becomes optional.**
       Drop the per-row thumbnails by default and put the playlist's cover
       image next to the playlist name in the header — big enough to see detail
       but not too large. Keep per-row artwork available as a column option
       (off by default).
-- [ ] **Resizable Track Info window.** Let the user resize the track-info
+- [x] **Resizable Track Info window.** Let the user resize the track-info
       panel.
-- [ ] **"Play playlist" + "Add to queue" header buttons.** Add buttons in the
+- [x] **"Play playlist" + "Add to queue" header buttons.** Add buttons in the
       playlist header to start playback of the whole playlist and to enqueue
       all its tracks. (Add-to-queue enqueues every track, so flag progress on
       large playlists.)
@@ -133,6 +133,10 @@ Track Info refinements, ordered simplest → most complex:
       button to the playlist header.
 - [ ] **Search within the playlist.** A box to filter/find a song in the
       loaded playlist.
+- [ ] **Queue large playlists fully (background).** "Add to queue"
+      currently caps at `QUEUE_CAP` (50) tracks because Spotify's queue
+      API takes one URI per call. Queue the rest in a background task
+      with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
 - [ ] **Custom right-click (context) menu.** Hijack the browser context menu
