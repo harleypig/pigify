@@ -312,6 +312,9 @@ See `docs/ROADMAP.md`. High-level outstanding:
       track, etc.) — details TBD. Backed by the Web API
       (`/me/player/queue`, `/me/player/recently-played`); new components in
       the day-glo console style.
+- [ ] **"Playing on device" indicator.** Surface which device playback is
+      currently happening on (active device name) somewhere in the UI. Backed
+      by the Web API (`/me/player` / `/me/player/devices`). Future work.
 - [ ] **Evaluate the Spotify Ads API.** Currently unused and left unchecked
       in the developer dashboard. It targets advertisers (Ad Studio
       campaigns), so it's most likely out of scope for a playback/curation
