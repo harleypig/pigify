@@ -133,6 +133,8 @@ Track Info refinements, ordered simplest → most complex:
       button to the playlist header.
 - [ ] **Search within the playlist.** A box to filter/find a song in the
       loaded playlist.
+- [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
+      badge) when its `explicit` field is true.
 - [ ] **Custom right-click (context) menu.** Hijack the browser context menu
       within the app to offer track/row actions (Play, Add to queue, Track
       info, Open in Spotify). Scope it to specific surfaces (rows), not the
