@@ -129,6 +129,9 @@ Track Info refinements, ordered simplest → most complex:
 
 **Deferred from batch 2 (capture only, build later):**
 
+- [ ] **Persist the sort setup.** The current sort spec (selected fields /
+      order / applied preset) should survive a refresh and logout/login, like
+      the selected playlist and column choices already do (localStorage).
 - [ ] **Shuffle a playlist.** Add a shuffle feature; when built, add a shuffle
       button to the playlist header.
 - [ ] **Search within the playlist.** A box to filter/find a song in the
