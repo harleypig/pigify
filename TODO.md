@@ -154,6 +154,10 @@ Track Info refinements, ordered simplest → most complex:
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Play-button overlay on the playlist cover.** Show a play-button
+      overlay on the playlist cover image (beside the title) — e.g. on hover —
+      that starts playing the playlist when clicked. Reuses the existing
+      Play-playlist action (`playPlaylist`).
 - [ ] **Custom right-click (context) menu.** Hijack the browser context menu
       within the app to offer track/row actions (Play, Add to queue, Track
       info, Open in Spotify). Scope it to specific surfaces (rows), not the
