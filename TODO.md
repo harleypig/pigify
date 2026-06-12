@@ -317,6 +317,14 @@ See `docs/ROADMAP.md`. High-level outstanding:
 - [ ] **"Playing on device" indicator.** Surface which device playback is
       currently happening on (active device name) somewhere in the UI. Backed
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
+- [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
+      issue in a configured repository. Make the destination **configurable**
+      so a third-party deployer points it at **their own** repo (and can
+      forward items upstream to this project if they choose) rather than
+      hard-coding this repo. Implement server-side with an **extremely
+      narrow** GitHub PAT (issue-create on the one target repo only), sourced
+      via the existing file-or-env secret pattern in `config.py`; never expose
+      the token to the client. Future work.
 - [ ] **Evaluate the Spotify Ads API.** Currently unused and left unchecked
       in the developer dashboard. It targets advertisers (Ad Studio
       campaigns), so it's most likely out of scope for a playback/curation
