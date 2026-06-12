@@ -7,9 +7,20 @@ interface Props {
   trackId: string | null;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  // Jump the panel back to the currently-playing track (clears the override
+  // set by clicking/right-clicking a track in the list).
+  onShowNowPlaying?: () => void;
+  // True when there is a now-playing track and the panel isn't showing it.
+  canShowNowPlaying?: boolean;
 }
 
-function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
+function TrackInfoPanel({
+  trackId,
+  collapsed,
+  onToggleCollapsed,
+  onShowNowPlaying,
+  canShowNowPlaying,
+}: Props) {
   const [data, setData] = useState<TrackDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,6 +131,17 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
       <header className="tip-header">
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">
+          {canShowNowPlaying && onShowNowPlaying && (
+            <button
+              type="button"
+              className="tip-toggle tip-nowplaying"
+              onClick={onShowNowPlaying}
+              aria-label="Show the currently playing track"
+              title="Show the currently playing track"
+            >
+              ♪
+            </button>
+          )}
           <button
             type="button"
             className="tip-toggle tip-refresh"

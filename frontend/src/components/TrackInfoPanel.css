@@ -102,6 +102,9 @@
 .tip-refresh {
   font-size: 16px;
 }
+.tip-nowplaying {
+  font-size: 15px;
+}
 
 .tip-body {
   overflow-y: auto;

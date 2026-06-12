@@ -317,6 +317,10 @@ function App() {
         trackId={panelTrackId}
         collapsed={panelCollapsed}
         onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
+        onShowNowPlaying={focusPanelOnNowPlaying}
+        canShowNowPlaying={
+          nowPlayingTrackId !== null && panelTrackId !== nowPlayingTrackId
+        }
       />
     </div>
   );
