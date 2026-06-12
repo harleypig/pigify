@@ -62,14 +62,14 @@ now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
 
 ### High
 
-- [ ] **(High) Verify the missing `playlist-modify` scope.** The requested
-      scopes (`backend/app/api/auth.py:99-107`) omit
-      `playlist-modify-public` / `playlist-modify-private`, yet the app writes
-      playlists: `add_tracks_to_playlist` (`spotify.py:347`),
-      `reorder_playlist_item` (`:548`), recipe materialize (`:560-563`). Those
-      writes **403** without the scope. *rules/spotify.md › Scopes.* Confirm
-      whether applying a reorder / materializing a recipe actually succeeds; if
-      not, add the scope (and force re-consent).
+- [x] **(High) Add the missing `playlist-modify` scopes.** The requested
+      scopes omitted `playlist-modify-public` / `playlist-modify-private`, yet
+      the app writes playlists — `add_tracks_to_playlist` (`spotify.py:347`),
+      `reorder_playlist_item` (`:548`), recipe materialize (`:560-563`) — which
+      403 without them. *rules/spotify.md › Scopes.* Both added to
+      `backend/app/api/auth.py` (+ a regression test guarding them).
+      **Requires a logout/login to re-consent** before the grant includes
+      them; confirm a reorder / recipe-materialize succeeds afterward.
 - [ ] **(High) Add Spotify 429 / `Retry-After` handling.** The HTTP layer
       (`spotify.py` `_get`/`_put`/`_post`/`_delete` + the shared client) has no
       rate-limit branch (the repo's backoff is all Last.fm scrobble-queue).

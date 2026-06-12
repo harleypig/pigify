@@ -94,6 +94,11 @@ class AuthApiTest(unittest.TestCase):
         self.assertIn("streaming", requested_scopes)
         self.assertIn("user-read-email", requested_scopes)
 
+        # Playlist writes (reorder, recipe materialize) need the modify scopes;
+        # without them those endpoints 403. Guard against their removal.
+        self.assertIn("playlist-modify-private", requested_scopes)
+        self.assertIn("playlist-modify-public", requested_scopes)
+
     # ----- callback -------------------------------------------------------
 
     def test_callback_error_param_is_400(self) -> None:
