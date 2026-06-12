@@ -45,7 +45,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_playback_state=AsyncMock(return_value=state))
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
             patch.object(player_mod.scrobbler, "process_state", AsyncMock()),
         ):
@@ -58,7 +58,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_playback_state=AsyncMock(return_value=None))
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
             patch.object(player_mod.scrobbler, "process_state", AsyncMock()),
         ):
@@ -75,7 +75,7 @@ class PlayerApiTest(unittest.TestCase):
         )
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
             patch.object(player_mod.scrobbler, "process_state", AsyncMock()),
         ):
@@ -94,7 +94,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(play_track=play_mock)
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.put(
@@ -109,7 +109,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(pause_playback=AsyncMock())
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.put("/api/player/pause")
@@ -124,7 +124,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_devices=AsyncMock(return_value=devices))
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.get("/api/player/devices")
@@ -137,7 +137,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(transfer_playback=transfer_mock)
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.put(
@@ -152,7 +152,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(next_track=AsyncMock())
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.post("/api/player/next")
@@ -164,7 +164,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(previous_track=AsyncMock())
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.post("/api/player/previous")
@@ -176,7 +176,7 @@ class PlayerApiTest(unittest.TestCase):
         cls, _ = _make_spotify(_put=AsyncMock())
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.put("/api/player/seek?position_ms=1000")
@@ -192,7 +192,7 @@ class PlayerApiTest(unittest.TestCase):
         )
 
         with (
-            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
             patch.object(player_mod, "SpotifyService", cls),
         ):
             resp = self.client.put("/api/player/pause")

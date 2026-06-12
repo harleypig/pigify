@@ -8,7 +8,7 @@ import contextlib
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from app.auth.session import require_token as _get_token
+from app.auth.session import require_fresh_token as _get_token
 from app.services import scrobbler
 from app.services.spotify import SpotifyService
 
@@ -23,7 +23,7 @@ class PlayRequest(BaseModel):
 @router.get("/state")
 async def get_playback_state(request: Request):
     """Get current playback state across all devices."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         state = await spotify.get_playback_state()
         # Hook into the scrobbling pipeline. Never raises.
@@ -39,7 +39,7 @@ async def get_playback_state(request: Request):
 @router.put("/play")
 async def play(request: Request, body: PlayRequest = PlayRequest()):  # noqa: B008
     """Start or resume playback, optionally for a specific track URI."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         await spotify.play_track(track_uri=body.track_uri, device_id=body.device_id)
         return {"status": "playing"}
@@ -51,7 +51,7 @@ async def play(request: Request, body: PlayRequest = PlayRequest()):  # noqa: B0
 async def get_devices(request: Request):
     """List the user's available Spotify Connect devices (incl. this browser
     once the Web Playback SDK has registered it)."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         return {"devices": await spotify.get_devices()}
     except Exception as e:
@@ -66,7 +66,7 @@ class TransferRequest(BaseModel):
 @router.put("/transfer")
 async def transfer(request: Request, body: TransferRequest):
     """Transfer playback to a device (e.g. 'play here' in the browser)."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         await spotify.transfer_playback(body.device_id, body.play)
         return {"status": "transferred"}
@@ -77,7 +77,7 @@ async def transfer(request: Request, body: TransferRequest):
 @router.put("/pause")
 async def pause(request: Request):
     """Pause playback."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         await spotify.pause_playback()
         return {"status": "paused"}
@@ -88,7 +88,7 @@ async def pause(request: Request):
 @router.post("/next")
 async def next_track(request: Request):
     """Skip to next track."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         await spotify.next_track()
         return {"status": "skipped"}
@@ -99,7 +99,7 @@ async def next_track(request: Request):
 @router.post("/previous")
 async def previous_track(request: Request):
     """Skip to previous track."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         await spotify.previous_track()
         return {"status": "rewound"}
@@ -110,7 +110,7 @@ async def previous_track(request: Request):
 @router.put("/seek")
 async def seek(request: Request, position_ms: int = Query(..., ge=0)):
     """Seek to a position in the current track."""
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         await spotify._put("/me/player/seek", params={"position_ms": position_ms})
         return {"status": "ok", "position_ms": position_ms}
@@ -129,7 +129,7 @@ async def get_audio_analysis(
     loudness values (0.0–1.0), bucketed into `bars` slots.
     Falls back to an empty list if analysis is unavailable.
     """
-    spotify = SpotifyService(_get_token(request))
+    spotify = SpotifyService(await _get_token(request))
     try:
         analysis = await spotify.get_audio_analysis(track_id)
         if not analysis:

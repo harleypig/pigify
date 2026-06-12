@@ -26,8 +26,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, model_validator
 
+from app.auth.session import require_fresh_token as _require_token
 from app.auth.session import require_spotify_id as _require_spotify_user
-from app.auth.session import require_token as _require_token
 from app.db.repositories import saved_sorts as saved_sorts_repo
 from app.db.session import user_session_scope
 from app.models.playlist import Playlist, Track
@@ -257,7 +257,7 @@ async def delete_sort_preset(request: Request, name: str):
 
 @router.get("", response_model=list[Playlist])
 async def get_playlists(request: Request, limit: int = 50, offset: int = 0):
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     try:
         return await spotify.get_user_playlists(limit=limit, offset=offset)
     except Exception as e:
@@ -268,7 +268,7 @@ async def get_playlists(request: Request, limit: int = 50, offset: int = 0):
 
 @router.get("/{playlist_id}", response_model=Playlist)
 async def get_playlist(request: Request, playlist_id: str):
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     try:
         return await spotify.get_playlist(playlist_id)
     except Exception as e:
@@ -288,7 +288,7 @@ class PlaylistDetailsUpdate(BaseModel):
 async def update_playlist(
     request: Request, playlist_id: str, body: PlaylistDetailsUpdate
 ):
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     try:
         await spotify.update_playlist_details(playlist_id, body.name, body.description)
         # Return the refreshed playlist so the client gets the new values.
@@ -311,7 +311,7 @@ async def play_playlist(
     request: Request, playlist_id: str, device_id: str | None = None
 ):
     """Start playback of the whole playlist in its native Spotify context."""
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     try:
         await spotify.play_context(f"spotify:playlist:{playlist_id}", device_id)
         return {"status": "playing"}
@@ -331,7 +331,7 @@ class QueueRequest(BaseModel):
 @router.post("/{playlist_id}/queue")
 async def queue_playlist(request: Request, playlist_id: str, body: QueueRequest):
     """Append the given track URIs to the playback queue (capped)."""
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     to_queue = body.uris[:QUEUE_CAP]
     try:
         for uri in to_queue:
@@ -356,7 +356,7 @@ async def get_playlist_tracks(
     all: bool = False,
 ):
     """Get tracks. With ?all=true, paginates through every track."""
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     try:
         if all:
             return await spotify.get_all_playlist_tracks(playlist_id)
@@ -399,7 +399,7 @@ async def hydrate_tracks(
         "warnings":       [str, ...]      # e.g. degraded sources
       }
     """
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
 
     out: dict[str, Any] = {"audio_features": {}, "lastfm": {}, "warnings": []}
     sources = set(body.sources or [])
@@ -696,7 +696,7 @@ async def reorder_playlist(request: Request, playlist_id: str, body: ReorderRequ
     very next call to /undo can revert it (only the most recent apply is
     undoable, per the task's "undo for the most recent apply" rule).
     """
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
 
     current_tracks = await spotify.get_all_playlist_tracks(playlist_id)
     current_uris = [t.uri for t in current_tracks]
@@ -747,7 +747,7 @@ async def undo_reorder(request: Request, playlist_id: str):
     if not undo or undo.get("playlist_id") != playlist_id:
         raise HTTPException(404, "Nothing to undo for this playlist")
 
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     previous_uris: list[str] = list(undo.get("previous_uris") or [])
 
     # Restore by replacing playlist contents with the saved URI list.

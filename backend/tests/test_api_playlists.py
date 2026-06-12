@@ -65,7 +65,9 @@ class PlaylistsApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_user_playlists=AsyncMock(return_value=[playlist]))
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -92,7 +94,9 @@ class PlaylistsApiTest(unittest.TestCase):
         )
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -108,7 +112,9 @@ class PlaylistsApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_playlist=AsyncMock(return_value=playlist))
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -131,7 +137,9 @@ class PlaylistsApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_playlist_tracks=AsyncMock(return_value=[track]))
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -153,7 +161,9 @@ class PlaylistsApiTest(unittest.TestCase):
         cls, _ = _make_spotify(get_all_playlist_tracks=all_mock)
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -168,7 +178,9 @@ class PlaylistsApiTest(unittest.TestCase):
         )
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -183,7 +195,9 @@ class PlaylistsApiTest(unittest.TestCase):
         cls, _ = _make_spotify(play_context=play)
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -198,7 +212,9 @@ class PlaylistsApiTest(unittest.TestCase):
         cls, _ = _make_spotify(add_to_queue=add)
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
@@ -220,7 +236,9 @@ class PlaylistsApiTest(unittest.TestCase):
         uris = [f"spotify:track:{i}" for i in range(playlists_mod.QUEUE_CAP + 5)]
 
         with (
-            patch.object(playlists_mod, "_require_token", lambda r: "tok"),
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
             patch.object(playlists_mod, "SpotifyService", cls),
             TestClient(_build_db_app()) as client,
         ):
