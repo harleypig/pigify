@@ -159,6 +159,20 @@ describe("TrackList", () => {
     expect(onTrackSelect).not.toHaveBeenCalled();
   });
 
+  it("unhighlights a row when its highlighted body is clicked again", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    const row = (await screen.findByText("Artist One")).closest(".track-item");
+    await userEvent.click(row as Element);
+    expect(row).toHaveClass("selected");
+
+    // Clicking the highlighted row again clears its highlight.
+    await userEvent.click(row as Element);
+    expect(row).not.toHaveClass("selected");
+  });
+
   it("hides a column's cells when toggled off in the chooser", async () => {
     getAllPlaylistTracks.mockResolvedValue(TRACKS);
 

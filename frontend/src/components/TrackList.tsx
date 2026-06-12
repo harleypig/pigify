@@ -355,7 +355,16 @@ function TrackList({
       });
       setAnchorIndex(index);
     } else {
-      setSelectedKeys(new Set([key]));
+      // Plain click: single-select — but clicking an already-highlighted row
+      // unhighlights it (removing just that row, keeping any others).
+      setSelectedKeys((prev) => {
+        if (prev.has(key)) {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        }
+        return new Set([key]);
+      });
       setAnchorIndex(index);
     }
   };
