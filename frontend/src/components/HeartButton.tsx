@@ -55,7 +55,9 @@ function HeartButton({
           setLastfmLoved(f.sources.lastfm ?? null);
         }
       })
-      .catch(() => {});
+      // Don't hide the failure: a swallowed error renders the same as an
+      // unloved heart, which is exactly what makes loved-state bugs opaque.
+      .catch((e) => console.warn("Loved-state check failed:", e));
     return () => {
       cancelled = true;
     };

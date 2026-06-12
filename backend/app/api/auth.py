@@ -6,6 +6,7 @@ import logging
 import secrets
 from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -220,6 +221,23 @@ async def get_current_user(request: Request):
         spotify = SpotifyService(require_token(request))
         user = await spotify.get_current_user()
         return user
+    except httpx.HTTPStatusError as e:
+        # A 401 from Spotify means this session's token is no longer usable
+        # (expired, revoked, or its backing store was lost). That is a client
+        # auth condition, not a server fault: drop the dead session and answer
+        # 401 so the frontend treats the user as logged out. Reporting 500
+        # here also trips the login screen's reachability probe (it reads any
+        # 5xx as "backend down"), surfacing a misleading "can't reach the
+        # server" for what is really just an expired session.
+        if e.response.status_code == 401:
+            clear_session(request)
+            raise HTTPException(
+                status_code=401,
+                detail="Spotify session expired; please log in again.",
+            ) from e
+
+        # Any other upstream status is a bad-gateway condition, not ours.
+        raise HTTPException(status_code=502, detail=f"Spotify API error: {e!s}") from e
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get user info: {e!s}"

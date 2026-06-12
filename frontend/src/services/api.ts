@@ -63,6 +63,15 @@ export interface PlaybackItem {
     name?: string;
     images: Array<{ url: string; height?: number; width?: number }>;
   };
+  /**
+   * Present only when Spotify *relinked* this track for the user's market
+   * (common for popular, regionally-licensed songs). It carries the
+   * ORIGINAL track's id/uri, while the top-level `id`/`uri` above is the
+   * relinked, market-playable track. Per Spotify's track-relinking rules,
+   * Library operations — checking Liked Songs and save/unsave — MUST use
+   * the original id from here, not the relinked top-level id.
+   */
+  linked_from?: { id: string; uri: string };
 }
 
 export interface PlaybackState {
