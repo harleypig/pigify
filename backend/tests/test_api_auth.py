@@ -17,6 +17,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -255,6 +256,30 @@ class AuthApiTest(unittest.TestCase):
             resp = client.get("/api/auth/me")
 
         self.assertEqual(resp.status_code, 500)
+
+    def test_me_expired_spotify_token_is_401_and_clears_session(self) -> None:
+        # A stale session whose Spotify token Spotify itself rejects with 401
+        # must surface as 401 (not 500) and drop the dead session — otherwise
+        # the login screen's reachability probe reads the 5xx as "backend
+        # down" and shows a misleading "can't reach the server".
+        client = self._client()
+        client.post("/__test__/session", json={"access_token": "stale"})
+
+        spotify_401 = httpx.HTTPStatusError(
+            "Client error '401 Unauthorized'",
+            request=httpx.Request("GET", "https://api.spotify.com/v1/me"),
+            response=httpx.Response(401),
+        )
+        instance = MagicMock()
+        instance.get_current_user = AsyncMock(side_effect=spotify_401)
+        cls = MagicMock(return_value=instance)
+
+        with patch.object(auth_mod, "SpotifyService", cls):
+            resp = client.get("/api/auth/me")
+
+        self.assertEqual(resp.status_code, 401)
+        # Session was cleared: the token endpoint now reports unauthenticated.
+        self.assertEqual(client.get("/api/auth/token").status_code, 401)
 
     # ----- logout ---------------------------------------------------------
 
