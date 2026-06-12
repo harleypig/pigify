@@ -79,16 +79,16 @@ ordered simplest → most complex. Shipped so far: halved side padding +
 empty-state placeholder; name-only play with right-click-for-info; row
 multi-select (single / Ctrl / Shift). Remaining:
 
-- [ ] **Fix the "show raw" Last.fm leak.** In the Track Info panel, the "show
+- [x] **Fix the "show raw" Last.fm leak.** In the Track Info panel, the "show
       raw" view includes a Last.fm object even when Last.fm is disabled. When
       it's off, that object should be empty or absent entirely.
-- [ ] **Share icon → Spotify link.** Add a share icon to the Track Info panel
+- [x] **Share icon → Spotify link.** Add a share icon to the Track Info panel
       that, for now, is a direct link to the track on Spotify. (Social-media
       sharing is the deferred item under _Track info panel_ below.)
-- [ ] **Collapse the Wikipedia entry behind a `+`.** Don't auto-expand the
+- [x] **Collapse the Wikipedia entry behind a `+`.** Don't auto-expand the
       Wikipedia information; show a `+` next to the Wikipedia header that
       opens it on demand.
-- [ ] **Remember the last-loaded playlist.** Persist the selected playlist so
+- [x] **Remember the last-loaded playlist.** Persist the selected playlist so
       a refresh — or logout then back in — restores the same playlist view.
 - [ ] **Day-glo restyle the `TrackInfoPanel`.** Bring the track-detail panel
       onto the brand (also tracked in the component checklist above).
