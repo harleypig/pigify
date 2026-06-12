@@ -49,6 +49,7 @@ interface SpotifyPlayer {
       | "playback_error",
     cb: (e: SpotifyErrorEvent) => void,
   ): void;
+  addListener(event: "autoplay_failed", cb: () => void): void;
   connect(): Promise<boolean>;
   play(options: { uris: string[] }): Promise<void>;
   pause(): Promise<void>;
@@ -132,6 +133,12 @@ class SpotifyService {
     if (!window.Spotify) {
       throw new Error("Spotify SDK not loaded");
     }
+    console.log(
+      "Web Playback: SDK present:",
+      !!window.Spotify,
+      "| secureContext:",
+      window.isSecureContext,
+    );
     this.onReadyChange = onReadyChange;
 
     if (this.player) {
@@ -143,7 +150,14 @@ class SpotifyService {
       name: "Pigify - Web",
       getOAuthToken: (cb: (token: string) => void) => {
         getToken()
-          .then(cb)
+          .then((t) => {
+            console.log(
+              "Web Playback: delivering token to SDK (length",
+              t?.length,
+              ")",
+            );
+            cb(t);
+          })
           .catch((e) => console.error("Web Playback token fetch failed:", e));
       },
       volume: 0.5,
@@ -171,6 +185,9 @@ class SpotifyService {
       "playback_error",
       ({ message }: { message: string }) =>
         console.error("Web Playback playback error:", message),
+    );
+    this.player.addListener("autoplay_failed", () =>
+      console.warn("Web Playback: autoplay failed — a user gesture is needed"),
     );
 
     this.player.addListener("ready", ({ device_id }: { device_id: string }) => {
