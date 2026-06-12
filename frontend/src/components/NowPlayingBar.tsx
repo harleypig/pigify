@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { apiService, type PlaybackItem } from "../services/api";
+import {
+  apiService,
+  type PlaybackItem,
+  type SpotifyDevice,
+} from "../services/api";
+import { spotifyService } from "../services/spotify";
 import HeartButton from "./HeartButton";
 import { formatMs } from "./NowPlayingBar.helpers";
 import "./NowPlayingBar.css";
@@ -120,6 +125,57 @@ function NowPlayingBar({
 
   const lastUriRef = useRef<string | null>(null);
   const lastTrackIdRef = useRef<string | null>(null);
+
+  // In-browser playback device + the "play on…" device popup.
+  const [browserDeviceId, setBrowserDeviceId] = useState<string | null>(null);
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [devices, setDevices] = useState<SpotifyDevice[]>([]);
+  const devicesRef = useRef<HTMLDivElement>(null);
+
+  // Register this browser as a Spotify Connect device so it can be selected
+  // in the device popup. No-op for non-Premium accounts (ready never fires).
+  useEffect(() => {
+    spotifyService
+      .connect(() => apiService.getAccessToken(), setBrowserDeviceId)
+      .catch((e) => console.error("Web Playback connect failed:", e));
+  }, []);
+
+  // Close the device popup on outside click.
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => {
+      if (
+        devicesRef.current &&
+        !devicesRef.current.contains(e.target as Node)
+      ) {
+        setDevicesOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const toggleDevices = async () => {
+    if (devicesOpen) {
+      setDevicesOpen(false);
+      return;
+    }
+    setDevicesOpen(true);
+    try {
+      setDevices(await apiService.getDevices());
+    } catch (e) {
+      console.error("Failed to list devices:", e);
+    }
+  };
+
+  const handleSelectDevice = async (id: string) => {
+    try {
+      await apiService.transferPlayback(id, isPlaying);
+      setDevicesOpen(false);
+    } catch (e) {
+      console.error("Transfer failed:", e);
+      alert("Couldn't switch playback to that device.");
+    }
+  };
 
   // Trigger playback when a track is selected from the playlist
   useEffect(() => {
@@ -319,6 +375,57 @@ function NowPlayingBar({
               ⓘ
             </button>
           )}
+          <div className="now-playing-devices" ref={devicesRef}>
+            <button
+              type="button"
+              className="now-playing-ctrl-btn"
+              onClick={toggleDevices}
+              aria-label="Playback devices"
+              aria-expanded={devicesOpen}
+              title="Play on…"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+                <line x1="2" y1="20" x2="2.01" y2="20" />
+              </svg>
+            </button>
+            {devicesOpen && (
+              <div className="now-playing-devices-menu">
+                <p className="npd-title">Play on</p>
+                {devices.length === 0 ? (
+                  <p className="npd-empty">No devices found</p>
+                ) : (
+                  devices.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      className={`npd-item${d.is_active ? " active" : ""}`}
+                      onClick={() => handleSelectDevice(d.id)}
+                    >
+                      <span className="npd-name">
+                        {d.id === browserDeviceId
+                          ? `${d.name} (this browser)`
+                          : d.name}
+                      </span>
+                      {d.is_active && (
+                        <span className="npd-dot" aria-hidden="true" />
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

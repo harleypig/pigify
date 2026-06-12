@@ -71,6 +71,15 @@ export interface PlaybackState {
   progress_ms: number | null;
 }
 
+/** A Spotify Connect device (from `/me/player/devices`). */
+export interface SpotifyDevice {
+  id: string;
+  name: string;
+  type: string;
+  is_active: boolean;
+  volume_percent: number | null;
+}
+
 export type SortType = "string" | "number" | "date" | "enum";
 export type SortSource = "spotify_track" | "audio_features" | "lastfm";
 export type SortDirection = "asc" | "desc";
@@ -310,6 +319,18 @@ export const apiService = {
 
   async pausePlayback(): Promise<void> {
     await apiClient.put("/api/player/pause");
+  },
+
+  async getDevices(): Promise<SpotifyDevice[]> {
+    const response = await apiClient.get("/api/player/devices");
+    return response.data.devices;
+  },
+
+  async transferPlayback(deviceId: string, play = true): Promise<void> {
+    await apiClient.put("/api/player/transfer", {
+      device_id: deviceId,
+      play,
+    });
   },
 
   async nextTrack(): Promise<void> {

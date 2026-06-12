@@ -301,6 +301,15 @@ class SpotifyService:
         body = {"context_uri": context_uri}
         await self._put("/me/player/play", body=body, params=params)
 
+    async def get_devices(self) -> list[dict]:
+        """List the user's available Spotify Connect devices."""
+        data = await self._get("/me/player/devices")
+        return (data or {}).get("devices", [])
+
+    async def transfer_playback(self, device_id: str, play: bool = True) -> None:
+        """Transfer playback to a device, optionally resuming it there."""
+        await self._put("/me/player", body={"device_ids": [device_id], "play": play})
+
     async def add_to_queue(self, uri: str, device_id: str | None = None) -> None:
         """Append a single URI to the user's playback queue."""
         params: dict[str, str] = {"uri": uri}

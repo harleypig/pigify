@@ -3,6 +3,16 @@
 Outstanding engineering work. The product vision (smart mixes, the
 rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
+## Bugs
+
+- [x] **(High) Logout doesn't return to the login page.** Logging out from
+      the user dropdown should return to the "Connect Spotify" login screen,
+      but it stays on the app. Likely cause: in `handleLogout` (App.tsx) the
+      auth-state reset (`setIsAuthenticated(false)`, etc.) runs only after
+      `await apiService.logout()` resolves, so a failed/erroring logout call
+      leaves the user on the app — clear auth state regardless of the call's
+      outcome, and surface the error.
+
 ## Security / hardening
 
 - [ ] **Tighten CSP `style-src`.** The frontend currently requires
@@ -66,7 +76,9 @@ Recipes sidebar, Playlist selector.
 **Remaining (hard-coded colours → day-glo console):**
 
 - [x] **`TrackList`** — the main content list (highest-visibility surface).
-- [ ] **`Player`** — the transport / playback-controls surface.
+- [x] **`Player`** — removed (dead code, superseded by `NowPlayingBar`). Its
+      `spotifyService` (Web Playback SDK) layer lives on, reused by the
+      in-browser-playback feature under *Product roadmap*.
 - [x] **`TrackInfoPanel`** — the track-detail panel.
 - [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
 - [ ] **`SettingsPanel`** — the settings surface.
@@ -142,6 +154,10 @@ Track Info refinements, ordered simplest → most complex:
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Play-button overlay on the playlist cover.** Show a play-button
+      overlay on the playlist cover image (beside the title) — e.g. on hover —
+      that starts playing the playlist when clicked. Reuses the existing
+      Play-playlist action (`playPlaylist`).
 - [ ] **Custom right-click (context) menu.** Hijack the browser context menu
       within the app to offer track/row actions (Play, Add to queue, Track
       info, Open in Spotify). Scope it to specific surfaces (rows), not the
@@ -307,6 +323,13 @@ resumable-session item rides along with the safety work.
 - [ ] **Browser e2e (Playwright).** Pure helpers are extracted into
       co-located `*.helpers.ts` modules and unit-tested; full browser e2e
       across the target matrix is still deferred.
+- [ ] **Cross-browser testing (Chrome, Edge, Opera, Brave).** Verify the app
+      across the browsers actually used, paying special attention to
+      **in-browser playback** — the Web Playback SDK depends on Widevine DRM
+      (EME) and `Permissions-Policy`/autoplay handling, which vary by browser
+      (e.g. Brave has Widevine off by default; the EME `Permissions-Policy`
+      delegation to `sdk.scdn.co` was a Chrome gotcha). Document any
+      per-browser caveats or required user settings.
 
 ## Product roadmap
 
@@ -324,6 +347,38 @@ See `docs/ROADMAP.md`. High-level outstanding:
 - [ ] **"Playing on device" indicator.** Surface which device playback is
       currently happening on (active device name) somewhere in the UI. Backed
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
+      *(Subsumed by the in-browser-playback device popup below — the popup
+      shows the active device.)*
+- [x] **In-browser playback + device popup (meld `Player` into the
+      NowPlayingBar).** Let pigify play audio in the browser tab itself, not
+      only remote-control an existing device, with a **show/select device
+      popup** on the NowPlayingBar. Architecture: the Web Playback SDK's role
+      is to **register the browser as a Spotify Connect device** (it then
+      appears in `/me/player/devices`); the actual "play here" is a
+      **transfer** to that `device_id` via the REST API — not the SDK's own
+      play method (which `spotifyService.play()` calls but doesn't exist).
+      Groundwork present: the `streaming` scope, `GET /api/auth/token`,
+      the `spotifyService` SDK wrapper, and device_id-aware play endpoints.
+      Build order:
+      1. Backend: `get_devices()` (`GET /me/player/devices`) +
+         `transfer_playback(device_id, play)` (`PUT /me/player`) on the
+         service, exposed as `/api/player/devices` + `/api/player/transfer`.
+      2. SDK init on auth: load the SDK, register the browser device, and make
+         `getOAuthToken` fetch a **fresh** token from `/api/auth/token` (fix
+         the current always-same-token bug) for refresh.
+      3. NowPlayingBar **device popup**: a devices button listing
+         `/me/player/devices` (incl. "This browser"), active one highlighted,
+         transfer on select; day-glo styled.
+      4. ✅ Done — dead `Player.tsx` / `.css` / `.test.tsx` removed
+         (`spotifyService` kept; this feature reuses it).
+      Caveats: Premium-only; first play needs a user gesture; the access
+      token is exposed to the browser (inherent to the SDK; `/api/auth/token`
+      already does this).
+      **Status: DONE / validated in Brave** — connects, registers
+      "Pigify - Web", transfers and plays. Chrome on the dev machine fails
+      (`connect()` false) but so does **open.spotify.com** there — a
+      machine/Chrome DRM issue, not a pigify bug. Per-browser DRM quirks are
+      tracked by the cross-browser item under *Tests*.
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can
