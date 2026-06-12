@@ -383,8 +383,14 @@ async def combined_track_detail(
             "isrc": isrc,
             "external_url": (track.get("external_urls") or {}).get("spotify"),
         },
+        # Only surface connections that are actually available. A provider
+        # at tier "none" (e.g. Last.fm when it isn't configured/connected)
+        # is omitted entirely, matching this endpoint's degradation policy
+        # so the payload never carries an empty, disabled provider object.
         "connections": {
-            k: v.model_dump() for k, v in (await get_all_connections(request)).items()
+            k: v.model_dump()
+            for k, v in (await get_all_connections(request)).items()
+            if v.tier != "none"
         },
     }
 
