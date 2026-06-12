@@ -421,7 +421,7 @@ function TrackList({
               className="track-list-edit"
               onClick={() => setEditing(true)}
             >
-              Edit info
+              Edit
             </button>
           )}
         </div>
