@@ -3,6 +3,16 @@
 Outstanding engineering work. The product vision (smart mixes, the
 rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
+## Bugs
+
+- [ ] **(High) Logout doesn't return to the login page.** Logging out from
+      the user dropdown should return to the "Connect Spotify" login screen,
+      but it stays on the app. Likely cause: in `handleLogout` (App.tsx) the
+      auth-state reset (`setIsAuthenticated(false)`, etc.) runs only after
+      `await apiService.logout()` resolves, so a failed/erroring logout call
+      leaves the user on the app — clear auth state regardless of the call's
+      outcome, and surface the error.
+
 ## Security / hardening
 
 - [ ] **Tighten CSP `style-src`.** The frontend currently requires
