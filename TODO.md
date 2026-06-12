@@ -76,10 +76,12 @@ Recipes sidebar, Playlist selector.
 
 **Revisit later (near end of development):**
 
-- [ ] **TrackList header empty space.** The header has too much empty space
-      (vertical and horizontal). Likely resolves once the now-playing/queue
-      and recently-played side panels land (they'll fill the horizontal
-      gap) — revisit the header layout then rather than now.
+- [ ] **TrackList horizontal empty space.** The whole track list panel — the
+      header **and** the rows — has too much **horizontal** empty space. This
+      should largely resolve once the now-playing/queue and recently-played
+      side panels land (they fill the horizontal gap), so revisit the entire
+      panel's horizontal layout then. (Vertical spacing is handled as we go,
+      not here.)
 
 ## Documentation
 
@@ -180,7 +182,10 @@ resumable-session item rides along with the safety work.
       preview *without* writing to Spotify — if it currently creates a real
       playlist, sandbox it to preview-only for demos). Enforce **server-side**
       on the `GRANT_DEMO_INVITE` grant — reject mutating endpoints, not just
-      hide buttons. **Safety-critical: required before sharing a real demo.**
+      hide buttons. When a demo visitor attempts a blocked action, pop a
+      **small modal** explaining that making changes is disabled while in the
+      demo (ideally with a link to join). **Safety-critical: required before
+      sharing a real demo.**
 - [ ] **Anonymize the demo identity.** A demo must not reveal the owner.
       `/api/auth/me` today returns the owner's real Spotify profile (name) for
       a real demo and `demo-<id>` for a placeholder — show a generic demo
