@@ -205,6 +205,12 @@ See `docs/ROADMAP.md`. High-level outstanding:
 - [ ] Unified YAML rules + mixes DSL (the recipe filter DSL exists; the full
       YAML rule/mix system does not).
 - [ ] Expand the visual recipe/mix builder.
+- [ ] **Now-playing / queue + recently-played displays.** Add a now-playing
+      and **queued-tracks** view and a **recently-played** view, with
+      abilities similar to the Spotify client (see what's next, jump to a
+      track, etc.) — details TBD. Backed by the Web API
+      (`/me/player/queue`, `/me/player/recently-played`); new components in
+      the day-glo console style.
 - [ ] **Evaluate the Spotify Ads API.** Currently unused and left unchecked
       in the developer dashboard. It targets advertisers (Ad Studio
       campaigns), so it's most likely out of scope for a playback/curation
