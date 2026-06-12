@@ -158,6 +158,23 @@ Recipes sidebar, Playlist selector.
       logging out strips the session with no way back. Let the same visitor
       re-enter until the duration expires (e.g. a resume token, or don't fully
       clear the demo grant on logout) without re-redeeming the spent invite.
+- [ ] **Demo sessions are read-only (no account mutations).** A real demo runs
+      on the **owner's** token, which carries write scopes — so a demo visitor
+      must be **blocked from create/modify/delete** on the owner's Spotify:
+      no creating or editing playlists, no love/unlove or other library
+      writes, no playback changes to the owner's devices. Allow only the
+      **non-destructive preview** (the temp-playlist / recipe builder must
+      preview *without* writing to Spotify — if it currently creates a real
+      playlist, sandbox it to preview-only for demos). Enforce **server-side**
+      on the `GRANT_DEMO_INVITE` grant — reject mutating endpoints, not just
+      hide buttons. **Safety-critical: required before sharing a real demo.**
+- [ ] **Anonymize the demo identity.** A demo must not reveal the owner.
+      `/api/auth/me` today returns the owner's real Spotify profile (name) for
+      a real demo and `demo-<id>` for a placeholder — show a generic demo
+      identity instead (the invite label, or just "Demo") for **both** kinds,
+      while still serving the owner's playlists/library (the point of the
+      demo). Decide whether to also suppress the owner's live now-playing
+      (a privacy leak) or accept it.
 
 ## Tests
 
