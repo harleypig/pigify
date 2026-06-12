@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   apiService,
   type Playlist,
@@ -26,6 +32,58 @@ const DEFAULT_SORT: SortSpec = {
   keys: [{ field: "added_at", direction: "desc" }],
 };
 
+// Track-row columns, in grid order. `width` feeds the shared grid template;
+// `label` is the (possibly empty) column-header text; `name` is the readable
+// label in the column chooser. Non-hideable columns (title, heart) are always
+// shown. The header row and every track row use the same template plus a fixed
+// trailing gutter for the chooser, so the two separate grids stay aligned.
+interface ColumnDef {
+  key: string;
+  label: string;
+  name: string;
+  width: string;
+  align?: "center" | "right";
+  hideable: boolean;
+}
+
+const COLUMNS: ColumnDef[] = [
+  {
+    key: "index",
+    label: "#",
+    name: "Index",
+    width: "40px",
+    align: "center",
+    hideable: true,
+  },
+  { key: "art", label: "", name: "Artwork", width: "60px", hideable: true },
+  {
+    key: "title",
+    label: "Title",
+    name: "Title",
+    width: "1fr",
+    hideable: false,
+  },
+  {
+    key: "album",
+    label: "Album",
+    name: "Album",
+    width: "200px",
+    hideable: true,
+  },
+  { key: "heart", label: "", name: "Heart", width: "36px", hideable: false },
+  {
+    key: "duration",
+    label: "Time",
+    name: "Duration",
+    width: "60px",
+    align: "right",
+    hideable: true,
+  },
+];
+
+const HIDEABLE_COLUMNS = COLUMNS.filter((c) => c.hideable);
+const COLUMNS_KEY = "pigify.trackColumns";
+
 function TrackList({
   playlistId,
   onTrackSelect,
@@ -39,6 +97,17 @@ function TrackList({
   // to the queue display later (TODO) — this only tracks selection for now.
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
+  // Which hideable columns are shown (non-hideable ones are always shown).
+  // Persisted so the chosen column set survives reloads. Defaults to all.
+  const [visibleCols, setVisibleCols] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem(COLUMNS_KEY);
+      if (raw) return new Set(JSON.parse(raw) as string[]);
+    } catch {
+      /* ignore */
+    }
+    return new Set(HIDEABLE_COLUMNS.map((c) => c.key));
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lovedMap, setLovedMap] = useState<
@@ -290,6 +359,36 @@ function TrackList({
     }
   };
 
+  // Persist the chosen column set.
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMNS_KEY, JSON.stringify([...visibleCols]));
+    } catch {
+      /* ignore */
+    }
+  }, [visibleCols]);
+
+  const toggleColumn = (key: string) => {
+    setVisibleCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  // Columns actually shown (non-hideable always; hideable when selected), the
+  // grid template they imply, and a quick lookup of which keys are shown.
+  const shownColumns = COLUMNS.filter(
+    (c) => !c.hideable || visibleCols.has(c.key),
+  );
+  const shownKeys = new Set(shownColumns.map((c) => c.key));
+  // A fixed trailing 28px gutter reserves space for the header's column
+  // chooser so the header and the rows (separate grids) line up exactly.
+  const gridStyle = {
+    "--tl-cols": `${shownColumns.map((c) => c.width).join(" ")} 28px`,
+  } as CSSProperties;
+
   const formatDuration = (ms: number): string => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -306,7 +405,7 @@ function TrackList({
   }
 
   return (
-    <div className="track-list">
+    <div className="track-list" style={gridStyle}>
       <div className="track-list-header">
         <div className="track-list-heading">
           <h2>{playlist?.name ?? "Playlist"}</h2>
@@ -340,6 +439,40 @@ function TrackList({
           undoAvailable={undoAvailable}
           warnings={warnings}
         />
+      </div>
+      {/* Column header row + chooser. Labels align to the rows below via the
+          shared --tl-cols template; the chooser sits in the trailing gutter. */}
+      <div className="track-list-columns">
+        {shownColumns.map((c) => (
+          <span
+            key={c.key}
+            className={`tlc-label${c.align ? ` tlc-align-${c.align}` : ""}`}
+          >
+            {c.label}
+          </span>
+        ))}
+        <details className="tlc-chooser">
+          <summary
+            className="tlc-chooser-btn"
+            title="Choose columns"
+            aria-label="Choose columns"
+          >
+            ▦
+          </summary>
+          <div className="tlc-chooser-menu">
+            <p className="tlc-chooser-title">Columns</p>
+            {HIDEABLE_COLUMNS.map((c) => (
+              <label key={c.key} className="tlc-chooser-item">
+                <input
+                  type="checkbox"
+                  checked={visibleCols.has(c.key)}
+                  onChange={() => toggleColumn(c.key)}
+                />
+                <span>{c.name}</span>
+              </label>
+            ))}
+          </div>
+        </details>
       </div>
       <div
         className="track-list-items"
@@ -378,25 +511,29 @@ function TrackList({
               }
             }}
           >
-            <div className="track-number">{index + 1}</div>
-            <div className="track-image">
-              {track.image_url ? (
-                /* Explicit dimensions match the .track-image CSS box and
-                   prevent CLS as rows scroll into view. */
-                <img
-                  src={track.image_url}
-                  alt=""
-                  width={40}
-                  height={40}
-                  loading="lazy"
-                  decoding="async"
-                />
-              ) : (
-                <div className="track-placeholder" aria-hidden="true">
-                  ♪
-                </div>
-              )}
-            </div>
+            {shownKeys.has("index") && (
+              <div className="track-number">{index + 1}</div>
+            )}
+            {shownKeys.has("art") && (
+              <div className="track-image">
+                {track.image_url ? (
+                  /* Explicit dimensions match the .track-image CSS box and
+                     prevent CLS as rows scroll into view. */
+                  <img
+                    src={track.image_url}
+                    alt=""
+                    width={40}
+                    height={40}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  <div className="track-placeholder" aria-hidden="true">
+                    ♪
+                  </div>
+                )}
+              </div>
+            )}
             <div className="track-info">
               {/* The song name is the only way to start playback. Right-click
                   it to open the Track Info panel instead of playing. */}
@@ -419,7 +556,9 @@ function TrackList({
               </button>
               <div className="track-artists">{track.artists.join(", ")}</div>
             </div>
-            <div className="track-album">{track.album}</div>
+            {shownKeys.has("album") && (
+              <div className="track-album">{track.album}</div>
+            )}
             {/* stopPropagation prevents heart clicks from triggering the
                 row-level "play this track" handler. The wrapper is a passive
                 event boundary, not an interactive control of its own — the
@@ -453,9 +592,11 @@ function TrackList({
                 }
               />
             </div>
-            <div className="track-duration">
-              {formatDuration(track.duration_ms)}
-            </div>
+            {shownKeys.has("duration") && (
+              <div className="track-duration">
+                {formatDuration(track.duration_ms)}
+              </div>
+            )}
           </div>
         ))}
       </div>

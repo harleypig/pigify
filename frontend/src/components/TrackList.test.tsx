@@ -53,6 +53,9 @@ const TRACKS: Track[] = [
 describe("TrackList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Column visibility persists to localStorage; clear it so each test
+    // starts from the default (all columns shown).
+    localStorage.clear();
     // Sort metadata is loaded once on mount; keep it empty so no hydration or
     // sorting transforms run (the rows render in load order).
     getSortFields.mockResolvedValue({ fields: [] });
@@ -154,6 +157,21 @@ describe("TrackList", () => {
 
     expect(row).toHaveClass("selected");
     expect(onTrackSelect).not.toHaveBeenCalled();
+  });
+
+  it("hides a column's cells when toggled off in the chooser", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    // Album cells are shown by default.
+    expect(await screen.findByText("Album One")).toBeInTheDocument();
+
+    // Toggle the Album column off via the chooser checkbox.
+    await userEvent.click(screen.getByRole("checkbox", { name: "Album" }));
+
+    expect(screen.queryByText("Album One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Album Two")).not.toBeInTheDocument();
   });
 
   it("opens the track info panel on right-click of the name", async () => {

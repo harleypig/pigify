@@ -76,6 +76,104 @@
   text-decoration: underline;
 }
 
+/* ── Column header row: mono labels aligned to the rows via --tl-cols ── */
+.track-list-columns {
+  display: grid;
+  grid-template-columns: var(--tl-cols);
+  gap: 1rem;
+  align-items: center;
+  /* Match the rows' horizontal padding so labels sit over their columns. */
+  padding: 0.25rem 0.75rem 0.5rem;
+  margin-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.1);
+}
+
+.tlc-label {
+  font-family: var(--brand-font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tlc-align-center {
+  text-align: center;
+}
+.tlc-align-right {
+  text-align: right;
+}
+
+/* Column chooser: a small disclosure in the trailing gutter. */
+.tlc-chooser {
+  position: relative;
+  justify-self: end;
+}
+.tlc-chooser-btn {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--brand-ink-dim);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.tlc-chooser-btn::-webkit-details-marker {
+  display: none;
+}
+.tlc-chooser-btn:hover,
+.tlc-chooser[open] .tlc-chooser-btn {
+  color: var(--brand-accent-bright);
+  background: rgba(var(--brand-accent-rgb), 0.12);
+}
+
+.tlc-chooser-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 150px;
+  padding: 8px;
+  /* Recessed deck face, matching the sort popover. */
+  background: #0d1020;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
+  border-radius: var(--brand-radius-sm);
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.85);
+}
+.tlc-chooser-title {
+  margin: 0 0 6px;
+  font-family: var(--brand-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
+}
+.tlc-chooser-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px;
+  font-size: 0.8rem;
+  color: var(--brand-ink);
+  cursor: pointer;
+  border-radius: 5px;
+}
+.tlc-chooser-item:hover {
+  background: rgba(var(--brand-accent-rgb), 0.1);
+}
+.tlc-chooser-item input {
+  cursor: pointer;
+  accent-color: var(--brand-accent);
+}
+
 .track-list-items {
   flex: 1;
   overflow-y: auto;
@@ -84,7 +182,9 @@
 /* ── Track row: a dark rack slot that lights up on hover/focus ── */
 .track-item {
   display: grid;
-  grid-template-columns: 40px 60px 1fr 200px 36px 60px;
+  /* Shared template set on .track-list (--tl-cols); the trailing 28px gutter
+     is reserved by --tl-cols so rows line up with the column-header chooser. */
+  grid-template-columns: var(--tl-cols);
   gap: 1rem;
   align-items: center;
   padding: 0.6rem 0.75rem;
