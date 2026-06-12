@@ -441,7 +441,12 @@ function TrackList({
   };
 
   if (loading) {
-    return <div className="track-list-loading">Loading tracks…</div>;
+    return (
+      <div className="track-list-loading">
+        <span className="track-list-spinner" aria-hidden="true" />
+        <span>Loading {playlist?.name ?? "playlist"} …</span>
+      </div>
+    );
   }
 
   if (error) {

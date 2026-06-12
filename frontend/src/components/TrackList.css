@@ -335,6 +335,30 @@
   color: var(--brand-ink-dim);
 }
 
+/* Loading: a blue rack-light spinner beside the "Loading <playlist> …" text. */
+.track-list-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.track-list-spinner {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-top-color: var(--brand-accent);
+  border-radius: 50%;
+  animation: tl-spin 0.7s linear infinite;
+}
+
+@keyframes tl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .track-list-error {
   color: var(--brand-red);
 }

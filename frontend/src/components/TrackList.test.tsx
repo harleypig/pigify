@@ -80,7 +80,8 @@ describe("TrackList", () => {
 
     render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
 
-    expect(screen.getByText("Loading tracks…")).toBeInTheDocument();
+    // "Loading <playlist> …" — the playlist name may not have resolved yet.
+    expect(screen.getByText(/Loading .+/)).toBeInTheDocument();
   });
 
   it("renders a row per track from the loaded data", async () => {
