@@ -165,6 +165,39 @@
   align-items: center;
 }
 
+/* Wikipedia accordion: a "+" / "−" toggle that gates the (collapsed by
+   default) article so it never auto-expands. */
+.tip-wiki-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tip-wiki-toggle:hover {
+  color: #ddd;
+}
+.tip-wiki-sign {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1;
+  color: #aaa;
+}
+.tip-wiki-toggle:hover .tip-wiki-sign {
+  border-color: #888;
+  color: #ddd;
+}
+
 .tip-tier {
   font-size: 9px;
   padding: 2px 7px;

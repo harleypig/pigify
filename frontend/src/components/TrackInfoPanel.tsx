@@ -17,6 +17,8 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Wikipedia starts collapsed; opened on demand via the "+" toggle.
+  const [wikiOpen, setWikiOpen] = useState(false);
   const reqRef = useRef(0);
 
   const fetchDetail = useCallback((id: string, refresh: boolean) => {
@@ -44,6 +46,8 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   }, []);
 
   useEffect(() => {
+    // New track: re-collapse Wikipedia so it never auto-expands.
+    setWikiOpen(false);
     if (!trackId) {
       setData(null);
       setError(null);
@@ -338,22 +342,36 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
 
             {data.wikipedia && (
               <section className="tip-section">
-                <h4>
-                  Wikipedia
+                <h4 className="tip-wiki-head">
+                  <button
+                    type="button"
+                    className="tip-wiki-toggle"
+                    onClick={() => setWikiOpen((o) => !o)}
+                    aria-expanded={wikiOpen}
+                  >
+                    <span className="tip-wiki-sign" aria-hidden="true">
+                      {wikiOpen ? "−" : "+"}
+                    </span>
+                    Wikipedia
+                  </button>
                   <span className="tip-tier tip-tier-public">public</span>
                 </h4>
-                {data.wikipedia.description && (
-                  <p className="tip-meta">{data.wikipedia.description}</p>
+                {wikiOpen && (
+                  <>
+                    {data.wikipedia.description && (
+                      <p className="tip-meta">{data.wikipedia.description}</p>
+                    )}
+                    <p className="tip-summary">{data.wikipedia.extract}</p>
+                    <a
+                      className="tip-extlink"
+                      href={data.wikipedia.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Read on Wikipedia
+                    </a>
+                  </>
                 )}
-                <p className="tip-summary">{data.wikipedia.extract}</p>
-                <a
-                  className="tip-extlink"
-                  href={data.wikipedia.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Read on Wikipedia
-                </a>
               </section>
             )}
 
