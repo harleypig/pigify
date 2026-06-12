@@ -24,6 +24,15 @@
   border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.16);
 }
 
+/* Playlist name + count sit inline; the count reads to the right of the name. */
+.track-list-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
 .track-list-header h2 {
   margin: 0;
   font-family: var(--brand-font-display);

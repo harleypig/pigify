@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiService,
+  type Playlist,
   type SortField,
   type SortPreset,
   type Track,
@@ -30,6 +31,7 @@ function TrackList({
   onTrackFocus,
 }: TrackListProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lovedMap, setLovedMap] = useState<
@@ -117,6 +119,14 @@ function TrackList({
     setHydration({ audio_features: {}, lastfm: {} });
     setWarnings([]);
   }, [refreshUndoStatus, loadTracks]);
+
+  // Load the playlist's own details (name/description) for the header.
+  useEffect(() => {
+    apiService
+      .getPlaylist(playlistId)
+      .then(setPlaylist)
+      .catch(() => setPlaylist(null));
+  }, [playlistId]);
 
   // Hydrate when sort spec needs data we don't have.
   const ensureHydration = useCallback(
@@ -261,8 +271,8 @@ function TrackList({
   return (
     <div className="track-list">
       <div className="track-list-header">
-        <div>
-          <h2>Tracks</h2>
+        <div className="track-list-heading">
+          <h2>{playlist?.name ?? "Playlist"}</h2>
           <span className="track-count">
             {sortedTracks.length} tracks
             {hydrating && (

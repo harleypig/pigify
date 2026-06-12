@@ -12,6 +12,7 @@ const listSortPresets = vi.fn();
 const getAllPlaylistTracks = vi.fn();
 const checkFavorites = vi.fn();
 const getUndoStatus = vi.fn();
+const getPlaylist = vi.fn();
 vi.mock("../services/api", () => ({
   apiService: {
     getSortFields: (...a: unknown[]) => getSortFields(...a),
@@ -19,6 +20,7 @@ vi.mock("../services/api", () => ({
     getAllPlaylistTracks: (...a: unknown[]) => getAllPlaylistTracks(...a),
     checkFavorites: (...a: unknown[]) => checkFavorites(...a),
     getUndoStatus: (...a: unknown[]) => getUndoStatus(...a),
+    getPlaylist: (...a: unknown[]) => getPlaylist(...a),
   },
 }));
 
@@ -56,6 +58,12 @@ describe("TrackList", () => {
     getSortFields.mockResolvedValue({ fields: [] });
     listSortPresets.mockResolvedValue([]);
     getUndoStatus.mockResolvedValue({ available: false, applied_at: null });
+    getPlaylist.mockResolvedValue({
+      id: "pl1",
+      name: "My Playlist",
+      description: "",
+      images: [],
+    });
     // Loved state per track — supplied so HeartButton does not fetch again.
     checkFavorites.mockResolvedValue([
       { sources: { spotify: false, lastfm: null } },
@@ -82,6 +90,16 @@ describe("TrackList", () => {
     expect(getAllPlaylistTracks).toHaveBeenCalledWith("pl1");
     // Header track count reflects the loaded rows.
     expect(screen.getByText("2 tracks")).toBeInTheDocument();
+  });
+
+  it("shows the playlist name as the header", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "My Playlist" }),
+    ).toBeInTheDocument();
   });
 
   it("renders an empty track list when the playlist has no tracks", async () => {
