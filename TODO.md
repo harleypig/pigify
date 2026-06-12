@@ -119,6 +119,12 @@ Recipes sidebar, Playlist selector.
 
 ## Access & onboarding
 
+**Priority** (after the day-glo rollout): the **demo safety layer** first
+(read-only enforcement, anonymized identity, "demo mode" banner, remove the
+placeholder kind) — these gate sharing a real demo; then **join flow +
+capacity**; then **owner-bypass** and the admin surface it enables. The
+resumable-session item rides along with the safety work.
+
 - [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
       demo page → a form collecting **Name + Email only** (what the Spotify
       dashboard's User Management needs). Do NOT ask for the Spotify user ID —
