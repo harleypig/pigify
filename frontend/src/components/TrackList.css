@@ -24,8 +24,26 @@
   border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.16);
 }
 
-/* Playlist name + count sit inline; the count reads to the right of the name. */
+/* Playlist cover sits left of a text block (name + count + edit). */
 .track-list-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+/* The album/playlist cover — sized to read detail without dominating. */
+.track-list-cover {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: var(--brand-radius-sm);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.25);
+}
+
+/* Name + count + edit sit inline; the count reads to the right of the name. */
+.track-list-heading-main {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;

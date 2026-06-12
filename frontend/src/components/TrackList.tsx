@@ -45,6 +45,8 @@ interface ColumnDef {
   width: string;
   align?: "center" | "right";
   hideable: boolean;
+  // Hideable columns shown by default unless this is explicitly false.
+  defaultOn?: boolean;
 }
 
 const COLUMNS: ColumnDef[] = [
@@ -56,7 +58,15 @@ const COLUMNS: ColumnDef[] = [
     align: "center",
     hideable: true,
   },
-  { key: "art", label: "", name: "Artwork", width: "60px", hideable: true },
+  {
+    key: "art",
+    label: "",
+    name: "Artwork",
+    width: "60px",
+    hideable: true,
+    // The playlist cover sits by the title now; per-row art is off by default.
+    defaultOn: false,
+  },
   {
     key: "title",
     label: "Title",
@@ -90,9 +100,13 @@ const COLUMNS: ColumnDef[] = [
 ];
 
 const HIDEABLE_COLUMNS = COLUMNS.filter((c) => c.hideable);
-// v2: the loved/heart column became toggleable, so older saved sets (which
-// never listed it) are ignored rather than hiding the heart unexpectedly.
-const COLUMNS_KEY = "pigify.trackColumns.v2";
+const DEFAULT_VISIBLE_COLUMNS = HIDEABLE_COLUMNS.filter(
+  (c) => c.defaultOn !== false,
+).map((c) => c.key);
+// Bump the version when the column set or its defaults change, so older saved
+// sets are ignored instead of resurrecting a removed column or overriding a
+// new default. v2: loved/heart became toggleable. v3: per-row art defaults off.
+const COLUMNS_KEY = "pigify.trackColumns.v3";
 
 function TrackList({
   playlistId,
@@ -116,7 +130,7 @@ function TrackList({
     } catch {
       /* ignore */
     }
-    return new Set(HIDEABLE_COLUMNS.map((c) => c.key));
+    return new Set(DEFAULT_VISIBLE_COLUMNS);
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -457,22 +471,34 @@ function TrackList({
     <div className="track-list" style={gridStyle}>
       <div className="track-list-header">
         <div className="track-list-heading">
-          <h2>{playlist?.name ?? "Playlist"}</h2>
-          <span className="track-count">
-            {sortedTracks.length} tracks · {formatTotalTime(totalDurationMs)}
-            {hydrating && (
-              <span className="hydrating-tag"> · loading sort data…</span>
-            )}
-          </span>
-          {playlist && (
-            <button
-              type="button"
-              className="track-list-edit"
-              onClick={() => setEditing(true)}
-            >
-              Edit
-            </button>
+          {playlist?.images?.[0]?.url && (
+            <img
+              className="track-list-cover"
+              src={playlist.images[0].url}
+              alt=""
+              width={56}
+              height={56}
+              loading="lazy"
+            />
           )}
+          <div className="track-list-heading-main">
+            <h2>{playlist?.name ?? "Playlist"}</h2>
+            <span className="track-count">
+              {sortedTracks.length} tracks · {formatTotalTime(totalDurationMs)}
+              {hydrating && (
+                <span className="hydrating-tag"> · loading sort data…</span>
+              )}
+            </span>
+            {playlist && (
+              <button
+                type="button"
+                className="track-list-edit"
+                onClick={() => setEditing(true)}
+              >
+                Edit
+              </button>
+            )}
+          </div>
         </div>
         <SortMenu
           fields={fields}
