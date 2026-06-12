@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import time
 import unittest
+from unittest.mock import AsyncMock, patch
 
 from fastapi import HTTPException
 
 from app.auth import session as sess
+from app.services.spotify import SpotifyService
 
 
 class _Req:
@@ -130,6 +132,144 @@ class RequireDependencyTest(unittest.TestCase):
         req = _Req({"access_token": "at"})
         with self.assertRaises(HTTPException):
             sess.require_spotify_id(req)  # type: ignore[arg-type]
+
+
+class EstablishStoresAbsoluteExpiryTest(unittest.TestCase):
+    def test_token_expires_at_is_an_absolute_deadline(self) -> None:
+        # Regression: establish_session used to store the *relative* lifetime
+        # (e.g. 3600) in token_expires_at, so refresh logic could never tell
+        # when the token actually expired.
+        req = _Req()
+        before = time.time()
+        sess.establish_session(
+            req,  # type: ignore[arg-type]
+            spotify_id="u",
+            access_token="at",
+            refresh_token="rt",
+            token_expires_in=3600,
+        )
+
+        stored = req.session["token_expires_at"]
+        # Should be ~now+3600, not the bare 3600.
+        self.assertGreater(stored, before + 3500)
+        self.assertLess(stored, time.time() + 3700)
+
+    def test_no_lifetime_stores_none(self) -> None:
+        req = _Req()
+        sess.establish_session(
+            req,  # type: ignore[arg-type]
+            spotify_id="demo",
+            placeholder=True,
+        )
+        self.assertIsNone(req.session["token_expires_at"])
+
+
+class RequireFreshTokenTest(unittest.IsolatedAsyncioTestCase):
+    async def test_returns_current_token_when_not_near_expiry(self) -> None:
+        req = _Req(
+            {
+                "access_token": "at",
+                "refresh_token": "rt",
+                "spotify_user_id": "u",
+                "token_expires_at": time.time() + 1000,
+            }
+        )
+        with patch.object(
+            SpotifyService, "refresh_access_token", AsyncMock()
+        ) as refresh:
+            token = await sess.require_fresh_token(req)  # type: ignore[arg-type]
+
+        self.assertEqual(token, "at")
+        refresh.assert_not_called()
+
+    async def test_refreshes_when_expired_and_persists_new_token(self) -> None:
+        req = _Req(
+            {
+                "access_token": "old",
+                "refresh_token": "rt",
+                "spotify_user_id": "u",
+                "token_expires_at": time.time() - 10,
+            }
+        )
+        with patch.object(
+            SpotifyService,
+            "refresh_access_token",
+            AsyncMock(return_value={"access_token": "new", "expires_in": 3600}),
+        ) as refresh:
+            token = await sess.require_fresh_token(req)  # type: ignore[arg-type]
+
+        self.assertEqual(token, "new")
+        refresh.assert_awaited_once_with("rt")
+        # The new token and a fresh absolute deadline are written back.
+        self.assertEqual(req.session["access_token"], "new")
+        self.assertGreater(req.session["token_expires_at"], time.time() + 3500)
+
+    async def test_keeps_rotated_refresh_token_when_returned(self) -> None:
+        req = _Req(
+            {
+                "access_token": "old",
+                "refresh_token": "rt-old",
+                "spotify_user_id": "u",
+                "token_expires_at": time.time() - 10,
+            }
+        )
+        with patch.object(
+            SpotifyService,
+            "refresh_access_token",
+            AsyncMock(
+                return_value={
+                    "access_token": "new",
+                    "refresh_token": "rt-new",
+                    "expires_in": 3600,
+                }
+            ),
+        ):
+            await sess.require_fresh_token(req)  # type: ignore[arg-type]
+
+        self.assertEqual(req.session["refresh_token"], "rt-new")
+
+    async def test_returns_stale_token_when_refresh_fails(self) -> None:
+        # A refresh failure must NOT raise (same exception profile as
+        # require_token) — it returns the existing token and lets the
+        # downstream Spotify 401 handling deal with a truly-dead session.
+        req = _Req(
+            {
+                "access_token": "stale",
+                "refresh_token": "rt",
+                "spotify_user_id": "u",
+                "token_expires_at": time.time() - 10,
+            }
+        )
+        with patch.object(
+            SpotifyService,
+            "refresh_access_token",
+            AsyncMock(side_effect=RuntimeError("boom")),
+        ):
+            token = await sess.require_fresh_token(req)  # type: ignore[arg-type]
+
+        self.assertEqual(token, "stale")
+        self.assertEqual(req.session["access_token"], "stale")
+
+    async def test_returns_stale_token_when_no_refresh_token(self) -> None:
+        req = _Req(
+            {
+                "access_token": "stale",
+                "spotify_user_id": "u",
+                "token_expires_at": time.time() - 10,
+            }
+        )
+        with patch.object(
+            SpotifyService, "refresh_access_token", AsyncMock()
+        ) as refresh:
+            token = await sess.require_fresh_token(req)  # type: ignore[arg-type]
+
+        self.assertEqual(token, "stale")
+        refresh.assert_not_called()
+
+    async def test_raises_401_when_unauthenticated(self) -> None:
+        with self.assertRaises(HTTPException) as ctx:
+            await sess.require_fresh_token(_Req())  # type: ignore[arg-type]
+        self.assertEqual(ctx.exception.status_code, 401)
 
 
 class ClearTest(unittest.TestCase):

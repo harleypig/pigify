@@ -27,8 +27,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.session import require_fresh_token as _require_token
 from app.auth.session import require_spotify_id as _require_spotify_user
-from app.auth.session import require_token as _require_token
 from app.db.repositories import saved_filters as saved_filters_repo
 from app.db.session import user_session_scope
 from app.models.playlist import Track
@@ -240,7 +240,7 @@ class ResolveResponse(BaseModel):
 @router.post("/resolve", response_model=ResolveResponse)
 async def resolve_adhoc(request: Request, recipe: Recipe):
     """Resolve a recipe without saving it (used for live preview)."""
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     result = await resolve_recipe(recipe, spotify, _lastfm_username(request))
     return ResolveResponse(
         tracks=result.tracks,
@@ -255,7 +255,7 @@ async def resolve_adhoc(request: Request, recipe: Recipe):
 async def resolve_saved(request: Request, recipe_id: str):
     raw = await _load_recipe_payload(request, recipe_id)
     recipe = Recipe(**{k: v for k, v in raw.items() if k in Recipe.model_fields})
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     result = await resolve_recipe(recipe, spotify, _lastfm_username(request))
     return ResolveResponse(
         tracks=result.tracks,
@@ -309,7 +309,7 @@ async def play_recipe(
     recipe_id: str,
     body: PlayRequest = PlayRequest(),  # noqa: B008
 ):
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     warnings: list[str] = []
 
     if body.uris:
@@ -340,7 +340,7 @@ async def play_recipe(
 @router.post("/play-adhoc", response_model=PlayResponse)
 async def play_adhoc(request: Request, recipe: Recipe, device_id: str | None = None):
     """Resolve and play an unsaved recipe in one call."""
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
     result = await resolve_recipe(recipe, spotify, _lastfm_username(request))
     uris = [t.uri for t in result.tracks if t.uri]
     if not uris:
@@ -376,7 +376,7 @@ class MaterializeResponse(BaseModel):
 async def materialize_recipe(
     request: Request, recipe_id: str, body: MaterializeRequest
 ):
-    spotify = SpotifyService(_require_token(request))
+    spotify = SpotifyService(await _require_token(request))
 
     raw = await _load_recipe_payload(request, recipe_id)
 

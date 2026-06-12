@@ -16,7 +16,7 @@ from fastapi import APIRouter, Body, HTTPException, Path, Query, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
-from app.auth.session import read_grant, require_spotify_id, require_token
+from app.auth.session import read_grant, require_fresh_token, require_spotify_id
 from app.config import settings
 from app.db.repositories import enrichment_cache
 from app.db.session import user_session_scope
@@ -359,7 +359,7 @@ async def combined_track_detail(
     Wikipedia article) are memoized in the per-user enrichment cache so
     repeat opens of the same track skip the outbound API round trips.
     """
-    access_token = require_token(request)
+    access_token = await require_fresh_token(request)
     spotify_user_id = require_spotify_id(request)
     spotify = SpotifyService(access_token)
     track = await spotify.get_track(spotify_track_id)

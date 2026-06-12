@@ -16,7 +16,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from app.auth.session import require_token
+from app.auth.session import require_fresh_token
 from app.models.favorites import (
     Conflict,
     Favorite,
@@ -33,8 +33,8 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _services(request: Request) -> FavoritesService:
-    spotify = SpotifyService(require_token(request))
+async def _services(request: Request) -> FavoritesService:
+    spotify = SpotifyService(await require_fresh_token(request))
     return FavoritesService(
         spotify,
         lastfm_session_key=request.session.get("lastfm_session_key"),
@@ -69,7 +69,7 @@ def _save_conflicts(request: Request, conflicts: list[Conflict]) -> None:
 
 @router.get("/status", response_model=FavoritesStatus)
 async def get_status(request: Request):
-    svc = _services(request)
+    svc = await _services(request)
     return FavoritesStatus(
         connections=svc.connection_status(),
         last_sync=_last_sync_from_session(request),
@@ -92,7 +92,7 @@ async def check(
     Spotify-only state is filled for every track that has a track_id; Last.fm
     state is included only when the user is connected.
     """
-    svc = _services(request)
+    svc = await _services(request)
     n = max(len(track_id), len(name), len(artist))
     if n == 0:
         return []
@@ -149,13 +149,13 @@ class WriteBody(BaseModel):
 
 @router.post("/love", response_model=WriteThroughResult)
 async def love(request: Request, body: WriteBody):
-    svc = _services(request)
+    svc = await _services(request)
     return await svc.love(TrackIdentity(**body.model_dump()))
 
 
 @router.post("/unlove", response_model=WriteThroughResult)
 async def unlove(request: Request, body: WriteBody):
-    svc = _services(request)
+    svc = await _services(request)
     return await svc.unlove(TrackIdentity(**body.model_dump()))
 
 
@@ -165,7 +165,7 @@ class SyncBody(BaseModel):
 
 @router.post("/sync", response_model=SyncSummary)
 async def sync(request: Request, body: SyncBody = SyncBody()):  # noqa: B008
-    svc = _services(request)
+    svc = await _services(request)
     summary = await svc.reconcile(max_tracks=body.max_tracks)
     request.session["favorites_last_sync"] = summary.model_dump()
     _save_conflicts(request, summary.conflicts)
@@ -182,7 +182,7 @@ async def resolve_conflict(request: Request, body: ResolveBody):
     conflicts = _conflicts_from_session(request)
     if body.index < 0 or body.index >= len(conflicts):
         raise HTTPException(status_code=404, detail="Conflict not found")
-    svc = _services(request)
+    svc = await _services(request)
     conflict = conflicts[body.index]
     result = await svc.resolve_conflict(conflict, body.choice)
     # Drop the conflict from the pending list (whatever the outcome the user
@@ -201,7 +201,7 @@ async def update_settings(request: Request, body: SettingsBody):
     if body.background_interval_minutes < 0 or body.background_interval_minutes > 1440:
         raise HTTPException(status_code=400, detail="Interval must be 0–1440 minutes")
     request.session["favorites_bg_interval"] = body.background_interval_minutes
-    svc = _services(request)
+    svc = await _services(request)
     return FavoritesStatus(
         connections=svc.connection_status(),
         last_sync=_last_sync_from_session(request),

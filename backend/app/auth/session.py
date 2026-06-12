@@ -18,10 +18,17 @@ that goes through these dependencies honours it automatically.
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 
 from fastapi import HTTPException, Request
+
+logger = logging.getLogger(__name__)
+
+# Refresh the Spotify access token when it is within this many seconds of
+# expiry, so a request never sets out with a token about to die mid-flight.
+_TOKEN_REFRESH_SKEW_SECONDS = 60
 
 # Canonical session keys. The first five predate this module and are kept
 # verbatim so existing cookies keep working; the ``grant_*`` keys are new.
@@ -74,7 +81,11 @@ def establish_session(
     s = request.session
     s[_K_ACCESS_TOKEN] = access_token
     s[_K_REFRESH_TOKEN] = refresh_token
-    s[_K_TOKEN_EXPIRES_AT] = token_expires_in
+    # Store an absolute epoch deadline, not the relative lifetime Spotify
+    # hands back — require_fresh_token compares it against time.time().
+    s[_K_TOKEN_EXPIRES_AT] = (
+        time.time() + token_expires_in if token_expires_in else None
+    )
     s[_K_SPOTIFY_ID] = spotify_id
     s[_K_PIGIFY_ID] = pigify_user_id
     s[_K_GRANT_TYPE] = grant_type
@@ -134,6 +145,60 @@ def require_token(request: Request) -> str:
     if not grant.access_token:
         raise HTTPException(status_code=401, detail=_NOT_AUTHENTICATED)
     return grant.access_token
+
+
+async def require_fresh_token(request: Request) -> str:
+    """A *non-expired* Spotify access token, refreshing it on demand.
+
+    The async, refresh-aware counterpart to :func:`require_token`. Spotify
+    access tokens live only an hour; this keeps a logged-in user's session
+    alive across that boundary by minting a new token from the stored refresh
+    token when the current one is at/near expiry (see ADR-0001), persisting it
+    back into the session cookie.
+
+    Its failure profile is deliberately identical to ``require_token``: it
+    raises 401 only when there is no usable session/token. A *refresh* failure
+    is **not** raised — it returns the existing (stale) token and lets the
+    downstream Spotify call surface the 401 (handled by ``/me``). Keeping the
+    profile unchanged is what makes repointing call sites a safe mechanical
+    change, with no new exception for an endpoint's ``except`` block to turn
+    into a 500.
+    """
+    token = require_token(request)
+
+    s = request.session
+    expires_at = s.get(_K_TOKEN_EXPIRES_AT)
+    # No deadline recorded, or comfortably valid → use the current token.
+    if expires_at is None or time.time() < expires_at - _TOKEN_REFRESH_SKEW_SECONDS:
+        return token
+
+    refresh_token = s.get(_K_REFRESH_TOKEN)
+    if not refresh_token:
+        return token
+
+    # Lazy import: the services layer may import auth helpers, so importing it
+    # at module load could form a cycle.
+    from app.services.spotify import SpotifyService
+
+    try:
+        token_data = await SpotifyService.refresh_access_token(refresh_token)
+    except Exception:
+        logger.warning(
+            "Spotify token refresh failed; using the existing token", exc_info=True
+        )
+        return token
+
+    new_access = token_data.get("access_token")
+    if not new_access:
+        return token
+
+    s[_K_ACCESS_TOKEN] = new_access
+    # Spotify usually omits a refresh token on refresh (it isn't rotated for
+    # the Authorization Code flow); keep the new one only if one is returned.
+    if token_data.get("refresh_token"):
+        s[_K_REFRESH_TOKEN] = token_data["refresh_token"]
+    s[_K_TOKEN_EXPIRES_AT] = time.time() + token_data.get("expires_in", 3600)
+    return new_access
 
 
 def require_spotify_id(request: Request) -> str:

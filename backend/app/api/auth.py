@@ -18,9 +18,9 @@ from app.auth.session import (
     clear_session,
     current_refresh_token,
     establish_session,
+    require_fresh_token,
     require_grant,
     require_spotify_id,
-    require_token,
 )
 from app.config import settings
 from app.db.repositories import users as users_repo
@@ -217,8 +217,12 @@ async def get_current_user(request: Request):
         # A UI-only session has no real Spotify user to fetch.
         return User(id=grant.spotify_id or settings.DEV_SPOTIFY_ID, display_name="Dev")
 
+    # Fetch (refreshing if needed) outside the try: require_fresh_token only
+    # raises 401 for a missing session, and that must propagate as-is rather
+    # than be caught by the except-Exception below and turned into a 500.
+    token = await require_fresh_token(request)
     try:
-        spotify = SpotifyService(require_token(request))
+        spotify = SpotifyService(token)
         user = await spotify.get_current_user()
         return user
     except httpx.HTTPStatusError as e:
@@ -249,7 +253,7 @@ async def get_access_token(request: Request):
     """
     Get current access token for Spotify Web SDK.
     """
-    access_token = require_token(request)
+    access_token = await require_fresh_token(request)
     return {"access_token": access_token}
 
 
