@@ -174,15 +174,21 @@ class SpotifyService {
     );
 
     this.player.addListener("ready", ({ device_id }: { device_id: string }) => {
+      console.log("Web Playback ready — registered device id:", device_id);
       this.deviceId = device_id;
       this.onReadyChange?.(device_id);
     });
-    this.player.addListener("not_ready", () => {
-      this.deviceId = null;
-      this.onReadyChange?.(null);
-    });
+    this.player.addListener(
+      "not_ready",
+      ({ device_id }: { device_id: string }) => {
+        console.warn("Web Playback device went offline:", device_id);
+        this.deviceId = null;
+        this.onReadyChange?.(null);
+      },
+    );
 
-    await this.player.connect();
+    const connected = await this.player.connect();
+    console.log("Web Playback connect() returned:", connected);
   }
 
   async play(trackUri: string): Promise<void> {
