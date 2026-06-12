@@ -162,6 +162,81 @@
   cursor: default;
 }
 
+/* ── Device popup: "play on…" ── */
+.now-playing-devices {
+  position: relative;
+  display: inline-flex;
+}
+
+.now-playing-devices-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 190px;
+  padding: 8px;
+  /* Recessed deck face, matching the other day-glo popovers. */
+  background: #0d1020;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
+  border-radius: var(--brand-radius-sm);
+  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.85);
+}
+
+.npd-title {
+  margin: 0 0 6px;
+  font-family: var(--brand-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
+}
+
+.npd-empty {
+  margin: 4px 2px;
+  font-size: 0.8rem;
+  color: var(--brand-ink-dim);
+}
+
+.npd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--brand-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.npd-item:hover {
+  background: rgba(var(--brand-accent-rgb), 0.12);
+}
+
+.npd-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.npd-item.active .npd-name {
+  color: var(--brand-accent-bright);
+}
+
+.npd-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-accent);
+  box-shadow: 0 0 8px rgba(var(--brand-accent-rgb), 0.7);
+}
+
 /* ── Row 2: progress ── */
 .now-playing-progress-row {
   display: flex;
