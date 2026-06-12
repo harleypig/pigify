@@ -42,7 +42,11 @@ interface SpotifyPlayer {
     cb: (e: SpotifyReadyEvent) => void,
   ): void;
   addListener(
-    event: "initialization_error" | "authentication_error" | "account_error",
+    event:
+      | "initialization_error"
+      | "authentication_error"
+      | "account_error"
+      | "playback_error",
     cb: (e: SpotifyErrorEvent) => void,
   ): void;
   connect(): Promise<boolean>;
@@ -136,7 +140,7 @@ class SpotifyService {
     }
 
     this.player = new window.Spotify.Player({
-      name: "pigify",
+      name: "Pigify - Web",
       getOAuthToken: (cb: (token: string) => void) => {
         getToken()
           .then(cb)
@@ -162,6 +166,11 @@ class SpotifyService {
           "Web Playback account error (Premium required?):",
           message,
         ),
+    );
+    this.player.addListener(
+      "playback_error",
+      ({ message }: { message: string }) =>
+        console.error("Web Playback playback error:", message),
     );
 
     this.player.addListener("ready", ({ device_id }: { device_id: string }) => {
