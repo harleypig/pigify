@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Track } from "../services/api";
@@ -12,6 +12,7 @@ const listSortPresets = vi.fn();
 const getAllPlaylistTracks = vi.fn();
 const checkFavorites = vi.fn();
 const getUndoStatus = vi.fn();
+const getPlaylist = vi.fn();
 vi.mock("../services/api", () => ({
   apiService: {
     getSortFields: (...a: unknown[]) => getSortFields(...a),
@@ -19,6 +20,7 @@ vi.mock("../services/api", () => ({
     getAllPlaylistTracks: (...a: unknown[]) => getAllPlaylistTracks(...a),
     checkFavorites: (...a: unknown[]) => checkFavorites(...a),
     getUndoStatus: (...a: unknown[]) => getUndoStatus(...a),
+    getPlaylist: (...a: unknown[]) => getPlaylist(...a),
   },
 }));
 
@@ -51,11 +53,20 @@ const TRACKS: Track[] = [
 describe("TrackList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Column visibility persists to localStorage; clear it so each test
+    // starts from the default (all columns shown).
+    localStorage.clear();
     // Sort metadata is loaded once on mount; keep it empty so no hydration or
     // sorting transforms run (the rows render in load order).
     getSortFields.mockResolvedValue({ fields: [] });
     listSortPresets.mockResolvedValue([]);
     getUndoStatus.mockResolvedValue({ available: false, applied_at: null });
+    getPlaylist.mockResolvedValue({
+      id: "pl1",
+      name: "My Playlist",
+      description: "",
+      images: [],
+    });
     // Loved state per track — supplied so HeartButton does not fetch again.
     checkFavorites.mockResolvedValue([
       { sources: { spotify: false, lastfm: null } },
@@ -69,7 +80,8 @@ describe("TrackList", () => {
 
     render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
 
-    expect(screen.getByText("Loading tracks…")).toBeInTheDocument();
+    // "Loading <playlist> …" — the playlist name may not have resolved yet.
+    expect(screen.getByText(/Loading .+/)).toBeInTheDocument();
   });
 
   it("renders a row per track from the loaded data", async () => {
@@ -81,7 +93,18 @@ describe("TrackList", () => {
     expect(screen.getByText("Song Two")).toBeInTheDocument();
     expect(getAllPlaylistTracks).toHaveBeenCalledWith("pl1");
     // Header track count reflects the loaded rows.
-    expect(screen.getByText("2 tracks")).toBeInTheDocument();
+    // Count + total playtime (each fixture track is 200s → 2 tracks ≈ 7 min).
+    expect(screen.getByText(/2 tracks · \d+ min/)).toBeInTheDocument();
+  });
+
+  it("shows the playlist name as the header", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    expect(
+      await screen.findByRole("heading", { name: "My Playlist" }),
+    ).toBeInTheDocument();
   });
 
   it("renders an empty track list when the playlist has no tracks", async () => {
@@ -89,7 +112,7 @@ describe("TrackList", () => {
 
     render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
 
-    expect(await screen.findByText("0 tracks")).toBeInTheDocument();
+    expect(await screen.findByText(/0 tracks · 0 min/)).toBeInTheDocument();
     expect(screen.queryByText("Song One")).not.toBeInTheDocument();
   });
 
@@ -103,7 +126,7 @@ describe("TrackList", () => {
     ).toBeInTheDocument();
   });
 
-  it("selects and focuses a track when its row is clicked", async () => {
+  it("plays and focuses a track when its name is clicked", async () => {
     getAllPlaylistTracks.mockResolvedValue(TRACKS);
     const onTrackSelect = vi.fn();
     const onTrackFocus = vi.fn();
@@ -116,12 +139,74 @@ describe("TrackList", () => {
       />,
     );
 
-    const row = await screen.findByRole("button", {
-      name: "Play Song One by Artist One",
-    });
-    await userEvent.click(row);
+    const name = await screen.findByRole("button", { name: "Song One" });
+    await userEvent.click(name);
 
     expect(onTrackSelect).toHaveBeenCalledWith("spotify:track:id1");
     expect(onTrackFocus).toHaveBeenCalledWith("id1");
+  });
+
+  it("selects a row on a plain body click without playing", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+    const onTrackSelect = vi.fn();
+
+    render(<TrackList playlistId="pl1" onTrackSelect={onTrackSelect} />);
+
+    // Click the artists cell (row body, not the name button) — this should
+    // select the row, not start playback.
+    const row = (await screen.findByText("Artist One")).closest(".track-item");
+    await userEvent.click(row as Element);
+
+    expect(row).toHaveClass("selected");
+    expect(onTrackSelect).not.toHaveBeenCalled();
+  });
+
+  it("unhighlights a row when its highlighted body is clicked again", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    const row = (await screen.findByText("Artist One")).closest(".track-item");
+    await userEvent.click(row as Element);
+    expect(row).toHaveClass("selected");
+
+    // Clicking the highlighted row again clears its highlight.
+    await userEvent.click(row as Element);
+    expect(row).not.toHaveClass("selected");
+  });
+
+  it("hides a column's cells when toggled off in the chooser", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+
+    render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
+
+    // Album cells are shown by default.
+    expect(await screen.findByText("Album One")).toBeInTheDocument();
+
+    // Toggle the Album column off via the chooser checkbox.
+    await userEvent.click(screen.getByRole("checkbox", { name: "Album" }));
+
+    expect(screen.queryByText("Album One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Album Two")).not.toBeInTheDocument();
+  });
+
+  it("opens the track info panel on right-click of the name", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+    const onTrackSelect = vi.fn();
+    const onTrackFocus = vi.fn();
+
+    render(
+      <TrackList
+        playlistId="pl1"
+        onTrackSelect={onTrackSelect}
+        onTrackFocus={onTrackFocus}
+      />,
+    );
+
+    const name = await screen.findByRole("button", { name: "Song One" });
+    fireEvent.contextMenu(name);
+
+    expect(onTrackFocus).toHaveBeenCalledWith("id1");
+    expect(onTrackSelect).not.toHaveBeenCalled();
   });
 });

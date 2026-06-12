@@ -1,0 +1,136 @@
+/*
+ * Edit-playlist-info modal — a recessed deck panel floated over a dimmed
+ * backdrop, in the day-glo console identity: mono "equipment label" field
+ * labels, navy console inputs with a blue focus ring, and the lit primary
+ * LED save button. All colour/type from the brand tokens.
+ */
+
+.edit-playlist-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(7, 8, 13, 0.7);
+  backdrop-filter: blur(2px);
+}
+
+.edit-playlist-dialog {
+  width: 100%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 1.5rem 1.5rem;
+  /* Recessed deck face, matching the other console panels. */
+  background: #0d1020;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.35);
+  border-radius: var(--brand-radius);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.14);
+}
+
+.edit-playlist-title {
+  margin: 0 0 0.5rem;
+  font-family: var(--brand-font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--brand-ink);
+}
+
+/* Field labels: mono "equipment label" voice. */
+.edit-playlist-label {
+  margin-top: 0.4rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--brand-ink-dim);
+}
+
+.edit-playlist-input,
+.edit-playlist-textarea {
+  width: 100%;
+  background: var(--brand-navy);
+  color: var(--brand-ink);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-radius: var(--brand-radius-sm);
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+
+.edit-playlist-textarea {
+  resize: vertical;
+  min-height: 3rem;
+}
+
+.edit-playlist-input:focus-visible,
+.edit-playlist-textarea:focus-visible {
+  outline: none;
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 1px rgba(var(--brand-accent-rgb), 0.4);
+}
+
+.edit-playlist-error {
+  margin-top: 0.3rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.68rem;
+  color: var(--brand-red-bright);
+}
+
+.edit-playlist-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.edit-playlist-cancel,
+.edit-playlist-save {
+  border-radius: var(--brand-radius-sm);
+  padding: 0.45rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-playlist-cancel {
+  background: transparent;
+  color: var(--brand-ink-dim);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.25);
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.edit-playlist-cancel:hover:not(:disabled) {
+  color: var(--brand-ink);
+  border-color: rgba(var(--brand-accent-rgb), 0.5);
+}
+
+/* Save: the lit primary LED. */
+.edit-playlist-save {
+  background: var(--brand-accent);
+  color: #07080d;
+  border: none;
+  box-shadow: 0 0 12px rgba(var(--brand-accent-rgb), 0.4);
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.edit-playlist-save:hover:not(:disabled) {
+  background: var(--brand-accent-bright);
+  box-shadow: 0 0 16px rgba(var(--brand-accent-rgb), 0.6);
+}
+
+.edit-playlist-cancel:disabled,
+.edit-playlist-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}

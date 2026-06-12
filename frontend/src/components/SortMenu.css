@@ -1,3 +1,11 @@
+/*
+ * Sort menu — the console's "sort patchbay": a navy trigger whose readout
+ * glows electric blue, opening a recessed deck panel of quick presets,
+ * multi-key sort rows, saved sorts, and apply controls. Active selections
+ * light blue; the destructive "apply to playlist" is the lit primary LED;
+ * alerts speak in blood-red. All colour/type from the brand tokens.
+ */
+
 .sort-menu {
   position: relative;
   display: inline-flex;
@@ -5,42 +13,52 @@
   gap: 0.5rem;
 }
 
+/* ── Trigger + undo ── */
 .sort-trigger {
-  background: #282828;
-  color: #fff;
-  border: 1px solid #3a3a3a;
-  border-radius: 999px;
+  background: var(--brand-navy);
+  color: var(--brand-ink);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
+  border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.9rem;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
 
 .sort-trigger:hover {
-  background: #333;
+  border-color: rgba(var(--brand-accent-rgb), 0.55);
+  box-shadow: 0 0 10px rgba(var(--brand-accent-rgb), 0.18);
 }
 
+/* The current-sort readout glows electric blue, like a deck label. */
 .sort-trigger-summary {
-  color: #1db954;
+  color: var(--brand-accent-bright);
   font-weight: 600;
   margin-left: 0.25rem;
 }
 
 .sort-undo {
   background: transparent;
-  color: #b3b3b3;
-  border: 1px solid #3a3a3a;
-  border-radius: 999px;
+  color: var(--brand-ink-dim);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-radius: var(--brand-radius-sm);
   padding: 0.35rem 0.75rem;
   font-size: 0.8rem;
   cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .sort-undo:hover {
-  color: #fff;
-  border-color: #555;
+  color: var(--brand-ink);
+  border-color: rgba(var(--brand-accent-rgb), 0.55);
 }
 
+/* ── Popover: a recessed deck panel ── */
 .sort-popover {
   position: absolute;
   top: calc(100% + 0.5rem);
@@ -48,32 +66,37 @@
   width: 380px;
   max-height: 80vh;
   overflow-y: auto;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   z-index: 100;
   padding: 0.5rem 0;
+  /* Recessed deck face (darker than the navy controls inside it). */
+  background: #0d1020;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
+  border-radius: var(--brand-radius);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
 }
 
 .sort-popover-section {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #2a2a2a;
+  border-bottom: 1px solid rgba(var(--brand-accent-rgb), 0.12);
 }
 
 .sort-popover-section:last-child {
   border-bottom: none;
 }
 
+/* Section headers: mono "equipment label" voice. */
 .sort-section-title {
-  font-size: 0.7rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.68rem;
   text-transform: uppercase;
-  color: #888;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
+  color: var(--brand-ink-dim);
   margin-bottom: 0.5rem;
-  font-weight: 600;
 }
 
+/* ── Quick presets ── */
 .sort-quick-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -81,26 +104,32 @@
 }
 
 .sort-quick {
-  background: #252525;
-  color: #ddd;
+  background: var(--brand-navy);
+  color: var(--brand-ink);
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.55rem;
   font-size: 0.8rem;
   cursor: pointer;
   text-align: left;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .sort-quick:hover {
-  background: #2f2f2f;
+  border-color: rgba(var(--brand-accent-rgb), 0.4);
 }
 
+/* Active preset: lit blue chip. */
 .sort-quick.active {
-  background: #1db95422;
-  border-color: #1db954;
-  color: #fff;
+  background: rgba(var(--brand-accent-rgb), 0.14);
+  border-color: var(--brand-accent);
+  color: var(--brand-ink);
+  box-shadow: 0 0 8px rgba(var(--brand-accent-rgb), 0.25);
 }
 
+/* ── Custom multi-key rows ── */
 .sort-row {
   display: grid;
   grid-template-columns: 70px 1fr 1fr;
@@ -113,27 +142,54 @@
   grid-template-columns: 70px 1fr 1fr auto;
 }
 
+.sort-row-label {
+  font-size: 0.72rem;
+  color: var(--brand-ink-dim);
+}
+
+.sort-field-select,
+.sort-dir-select {
+  background: var(--brand-navy);
+  color: var(--brand-ink);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-radius: var(--brand-radius-sm);
+  padding: 0.35rem 0.4rem;
+  font-size: 0.8rem;
+  min-width: 0;
+}
+
+.sort-field-select:focus-visible,
+.sort-dir-select:focus-visible {
+  outline: none;
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 1px rgba(var(--brand-accent-rgb), 0.4);
+}
+
 .sort-row-actions {
   display: inline-flex;
   gap: 0.2rem;
 }
 
 .sort-row-btn {
-  background: #252525;
-  color: #ccc;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
+  background: var(--brand-navy);
+  color: var(--brand-ink-dim);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.22);
+  border-radius: var(--brand-radius-sm);
   width: 24px;
   height: 28px;
   font-size: 0.85rem;
   line-height: 1;
-  cursor: pointer;
   padding: 0;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .sort-row-btn:hover:not(:disabled) {
-  background: #2f2f2f;
-  color: #fff;
+  color: var(--brand-ink);
+  border-color: rgba(var(--brand-accent-rgb), 0.5);
 }
 
 .sort-row-btn:disabled {
@@ -141,55 +197,39 @@
   cursor: not-allowed;
 }
 
+/* Remove key: lights blood-red on hover. */
 .sort-row-remove:hover:not(:disabled) {
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+  color: var(--brand-red-bright);
+  border-color: rgba(var(--brand-red-rgb), 0.6);
 }
 
 .sort-add-key {
   background: transparent;
-  color: #1db954;
-  border: 1px dashed #3a3a3a;
-  border-radius: 4px;
+  color: var(--brand-accent-bright);
+  border: 1px dashed rgba(var(--brand-accent-rgb), 0.4);
+  border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.55rem;
   font-size: 0.78rem;
-  cursor: pointer;
   width: 100%;
   margin-top: 0.25rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .sort-add-key:hover:not(:disabled) {
-  border-color: #1db954;
-  background: #1db95411;
+  border-color: var(--brand-accent);
+  background: rgba(var(--brand-accent-rgb), 0.08);
 }
 
 .sort-add-key:disabled {
   opacity: 0.4;
   cursor: not-allowed;
-  color: #888;
+  color: var(--brand-ink-dim);
 }
 
-.sort-preset-count {
-  color: #888;
-  font-size: 0.72rem;
-}
-
-.sort-row-label {
-  font-size: 0.75rem;
-  color: #b3b3b3;
-}
-
-.sort-field-select,
-.sort-dir-select {
-  background: #252525;
-  color: #fff;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
-  padding: 0.35rem 0.4rem;
-  font-size: 0.8rem;
-  min-width: 0;
-}
-
+/* ── Saved sorts ── */
 .sort-presets {
   display: flex;
   flex-direction: column;
@@ -205,41 +245,50 @@
 
 .sort-preset-load {
   flex: 1;
-  background: #252525;
-  color: #fff;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
+  background: var(--brand-navy);
+  color: var(--brand-ink);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.22);
+  border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.55rem;
   font-size: 0.8rem;
   text-align: left;
   cursor: pointer;
+  transition: border-color 0.15s;
 }
 
 .sort-preset-load:hover {
-  background: #2f2f2f;
+  border-color: rgba(var(--brand-accent-rgb), 0.5);
+}
+
+.sort-preset-count {
+  color: var(--brand-ink-dim);
+  font-size: 0.72rem;
 }
 
 .sort-preset-del {
   background: transparent;
-  border: 1px solid #3a3a3a;
-  color: #888;
-  border-radius: 4px;
+  color: var(--brand-ink-dim);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.22);
+  border-radius: var(--brand-radius-sm);
   width: 28px;
   height: 28px;
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .sort-preset-del:hover {
-  color: #ff6b6b;
-  border-color: #ff6b6b;
+  color: var(--brand-red-bright);
+  border-color: rgba(var(--brand-red-rgb), 0.6);
 }
 
 .sort-empty {
   font-size: 0.78rem;
-  color: #666;
   font-style: italic;
+  color: var(--brand-ink-dim);
 }
 
 .sort-save-row {
@@ -249,30 +298,52 @@
 
 .sort-preset-name-input {
   flex: 1;
-  background: #252525;
-  color: #fff;
-  border: 1px solid #3a3a3a;
-  border-radius: 4px;
+  background: var(--brand-navy);
+  color: var(--brand-ink);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.5rem;
   font-size: 0.8rem;
 }
 
+.sort-preset-name-input::placeholder {
+  color: var(--brand-ink-dim);
+}
+
+.sort-preset-name-input:focus-visible {
+  outline: none;
+  border-color: var(--brand-accent);
+  box-shadow: 0 0 0 1px rgba(var(--brand-accent-rgb), 0.4);
+}
+
+/* Save: a small lit primary LED. */
 .sort-preset-save-btn {
-  background: #1db954;
-  color: #000;
+  background: var(--brand-accent);
+  color: #07080d;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.8rem;
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 0 10px rgba(var(--brand-accent-rgb), 0.35);
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
+}
+
+.sort-preset-save-btn:hover:not(:disabled) {
+  background: var(--brand-accent-bright);
+  box-shadow: 0 0 14px rgba(var(--brand-accent-rgb), 0.5);
 }
 
 .sort-preset-save-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
+/* ── Apply actions ── */
 .sort-actions {
   display: flex;
   gap: 0.5rem;
@@ -281,7 +352,7 @@
 .sort-apply-view,
 .sort-apply-playlist {
   flex: 1;
-  border-radius: 4px;
+  border-radius: var(--brand-radius-sm);
   padding: 0.5rem;
   font-size: 0.82rem;
   font-weight: 600;
@@ -289,35 +360,49 @@
   border: none;
 }
 
+/* "Apply to view": secondary navy console button. */
 .sort-apply-view {
-  background: #2f2f2f;
-  color: #fff;
+  background: var(--brand-navy);
+  color: var(--brand-ink);
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.28);
+  transition:
+    background 0.15s,
+    border-color 0.15s;
 }
 
 .sort-apply-view:hover {
-  background: #3a3a3a;
+  border-color: rgba(var(--brand-accent-rgb), 0.5);
 }
 
+/* "Apply to playlist" rewrites Spotify — the lit primary LED. */
 .sort-apply-playlist {
-  background: #1db954;
-  color: #000;
+  background: var(--brand-accent);
+  color: #07080d;
+  box-shadow: 0 0 12px rgba(var(--brand-accent-rgb), 0.4);
+  transition:
+    background 0.15s,
+    box-shadow 0.15s;
 }
 
 .sort-apply-playlist:hover:not(:disabled) {
-  background: #1ed760;
+  background: var(--brand-accent-bright);
+  box-shadow: 0 0 16px rgba(var(--brand-accent-rgb), 0.6);
 }
 
 .sort-apply-playlist:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
+/* ── Alerts: blood-red mono readout ── */
 .sort-warnings {
   margin-top: 0.5rem;
 }
 
 .sort-warning {
-  font-size: 0.72rem;
-  color: #f0b34e;
+  font-family: var(--brand-font-mono);
+  font-size: 0.68rem;
+  color: var(--brand-red-bright);
   margin-top: 0.2rem;
 }

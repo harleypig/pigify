@@ -191,6 +191,65 @@ class IntegrationsApiTest(unittest.TestCase):
 
         self.assertEqual(resp.status_code, 502)
 
+    # ----- combined track-detail -----------------------------------------
+
+    def test_combined_detail_omits_disabled_connections(self) -> None:
+        """A provider at tier ``none`` (Last.fm off) must not appear in the
+        payload's ``connections`` map, nor leak a top-level object — so the
+        raw view shows nothing for a disabled provider."""
+        track = {
+            "id": "tid",
+            "name": "Song",
+            "artists": [{"name": "Artist"}],
+            "album": {"name": "Album", "release_date": "2020"},
+            "duration_ms": 1000,
+            "explicit": False,
+            "external_ids": {},
+            "external_urls": {"spotify": "http://x"},
+        }
+        conns = {
+            "spotify": ConnectionStatus(
+                service="spotify",
+                tier="authenticated",
+                display_name="Spotify",
+                connected_account="me",
+            ),
+            "lastfm": _conn("none"),
+        }
+
+        with (
+            patch.object(
+                integ_mod, "get_all_connections", AsyncMock(return_value=conns)
+            ),
+            patch.object(
+                integ_mod, "get_connection", AsyncMock(return_value=_conn("none"))
+            ),
+            patch.object(
+                integ_mod.SpotifyService,
+                "get_track",
+                AsyncMock(return_value=track),
+            ),
+            patch.object(
+                integ_mod.musicbrainz,
+                "resolve_spotify_track",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                integ_mod.wikipedia,
+                "resolve_song_article",
+                AsyncMock(return_value=None),
+            ),
+        ):
+            client = self._client()
+            client.post("/__test__/session", json={"access_token": "tok"})
+            resp = client.get("/api/integrations/track-detail/tid")
+
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertIn("spotify", body["connections"])
+        self.assertNotIn("lastfm", body["connections"])
+        self.assertNotIn("lastfm", body)
+
     # ----- enrichment-cache delete validation -----------------------------
 
     def test_cache_delete_requires_auth(self) -> None:

@@ -293,6 +293,14 @@ class SpotifyService:
         body = {"uris": uris[:500]}
         await self._put("/me/player/play", body=body, params=params)
 
+    async def play_context(
+        self, context_uri: str, device_id: str | None = None
+    ) -> None:
+        """Start playback of a context (album/playlist/artist) by its URI."""
+        params = {"device_id": device_id} if device_id else None
+        body = {"context_uri": context_uri}
+        await self._put("/me/player/play", body=body, params=params)
+
     async def add_to_queue(self, uri: str, device_id: str | None = None) -> None:
         """Append a single URI to the user's playback queue."""
         params: dict[str, str] = {"uri": uri}
@@ -311,6 +319,15 @@ class SpotifyService:
         body = {"name": name, "description": description, "public": public}
         data = await self._post(f"/users/{user_id}/playlists", body=body)
         return data or {}
+
+    async def update_playlist_details(
+        self, playlist_id: str, name: str, description: str
+    ) -> None:
+        """Change a playlist's name and description (PUT /playlists/{id})."""
+        await self._put(
+            f"/playlists/{playlist_id}",
+            body={"name": name, "description": description},
+        )
 
     async def add_tracks_to_playlist(self, playlist_id: str, uris: list[str]) -> None:
         """Append tracks to a playlist in 100-URI chunks."""

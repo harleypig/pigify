@@ -176,6 +176,32 @@ export const apiService = {
     return response.data;
   },
 
+  async updatePlaylistDetails(
+    playlistId: string,
+    details: { name: string; description: string },
+  ): Promise<Playlist> {
+    const response = await apiClient.put(
+      `/api/playlists/${playlistId}`,
+      details,
+    );
+    return response.data;
+  },
+
+  async playPlaylist(playlistId: string): Promise<void> {
+    await apiClient.post(`/api/playlists/${playlistId}/play`);
+  },
+
+  async queuePlaylist(
+    playlistId: string,
+    uris: string[],
+  ): Promise<{ queued: number; total: number; truncated: boolean }> {
+    const response = await apiClient.post(
+      `/api/playlists/${playlistId}/queue`,
+      { uris },
+    );
+    return response.data;
+  },
+
   async getPlaylistTracks(
     playlistId: string,
     limit = 100,

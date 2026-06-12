@@ -1,22 +1,100 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { apiService, type TrackDetail } from "../services/api";
 import { formatDuration, highlightJson } from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
+
+const PANEL_SIZE_KEY = "pigify.trackInfoPanel.size";
 
 interface Props {
   trackId: string | null;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  // Jump the panel back to the currently-playing track (clears the override
+  // set by clicking/right-clicking a track in the list).
+  onShowNowPlaying?: () => void;
+  // True when there is a now-playing track and the panel isn't showing it.
+  canShowNowPlaying?: boolean;
 }
 
-function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
+function TrackInfoPanel({
+  trackId,
+  collapsed,
+  onToggleCollapsed,
+  onShowNowPlaying,
+  canShowNowPlaying,
+}: Props) {
   const [data, setData] = useState<TrackDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Wikipedia starts collapsed; opened on demand via the "+" toggle.
+  const [wikiOpen, setWikiOpen] = useState(false);
   const reqRef = useRef(0);
+
+  // User-resized panel size (null = the CSS default). Persisted; the panel is
+  // pinned bottom-right, so the grip is the top-left corner (drag to grow).
+  const [size, setSize] = useState<{ w: number; h: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem(PANEL_SIZE_KEY);
+      if (raw) return JSON.parse(raw) as { w: number; h: number };
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
+  const panelRef = useRef<HTMLElement>(null);
+  const dragRef = useRef<{ x: number; y: number; w: number; h: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    try {
+      if (size) localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(size));
+    } catch {
+      /* ignore */
+    }
+  }, [size]);
+
+  const onResizeDown = (e: ReactPointerEvent) => {
+    const el = panelRef.current;
+    if (!el) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      w: el.offsetWidth,
+      h: el.offsetHeight,
+    };
+  };
+  const onResizeMove = (e: ReactPointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    // Pinned bottom-right: dragging up/left (smaller clientX/Y) grows it.
+    const w = Math.max(
+      280,
+      Math.min(window.innerWidth - 32, d.w + d.x - e.clientX),
+    );
+    const h = Math.max(
+      200,
+      Math.min(window.innerHeight - 96, d.h + d.y - e.clientY),
+    );
+    setSize({ w, h });
+  };
+  const onResizeUp = (e: ReactPointerEvent) => {
+    dragRef.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
 
   const fetchDetail = useCallback((id: string, refresh: boolean) => {
     const reqId = ++reqRef.current;
@@ -43,6 +121,8 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   }, []);
 
   useEffect(() => {
+    // New track: re-collapse Wikipedia so it never auto-expands.
+    setWikiOpen(false);
     if (!trackId) {
       setData(null);
       setError(null);
@@ -53,6 +133,34 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
 
   const handleRefresh = () => {
     if (trackId && !refreshing && !loading) fetchDetail(trackId, true);
+  };
+
+  // Share the track. For now the shared payload is just the Spotify link:
+  // prefer the native share sheet (Web Share API), falling back to copying
+  // the link to the clipboard. Per-service social sharing is a later TODO.
+  const handleShare = async () => {
+    if (!data?.spotify.external_url) return;
+    const { external_url, name, artists } = data.spotify;
+    const payload = {
+      title: name,
+      text: `${name} — ${artists.join(", ")}`,
+      url: external_url,
+    };
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch {
+        // User dismissed the sheet or it failed — fall back to copy.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(external_url);
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    } catch (e) {
+      console.error("Share failed", e);
+    }
   };
 
   const handleCopy = async () => {
@@ -83,10 +191,42 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   }
 
   return (
-    <aside className="track-info-panel" aria-label="Track info">
+    <aside
+      className="track-info-panel"
+      aria-label="Track info"
+      ref={panelRef}
+      style={
+        size
+          ? ({
+              width: size.w,
+              height: size.h,
+              maxHeight: "none",
+            } as CSSProperties)
+          : undefined
+      }
+    >
+      {/* Top-left resize grip (panel is pinned bottom-right). Pointer-only. */}
+      <div
+        className="tip-resize"
+        onPointerDown={onResizeDown}
+        onPointerMove={onResizeMove}
+        onPointerUp={onResizeUp}
+        aria-hidden="true"
+      />
       <header className="tip-header">
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">
+          {canShowNowPlaying && onShowNowPlaying && (
+            <button
+              type="button"
+              className="tip-toggle tip-nowplaying"
+              onClick={onShowNowPlaying}
+              aria-label="Show the currently playing track"
+              title="Show the currently playing track"
+            >
+              ♪
+            </button>
+          )}
           <button
             type="button"
             className="tip-toggle tip-refresh"
@@ -152,14 +292,42 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                 {data.spotify.explicit ? " · explicit" : ""}
               </p>
               {data.spotify.external_url && (
-                <a
-                  className="tip-extlink"
-                  href={data.spotify.external_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open in Spotify
-                </a>
+                <div className="tip-head-actions">
+                  <a
+                    className="tip-extlink"
+                    href={data.spotify.external_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open in Spotify
+                  </a>
+                  <button
+                    type="button"
+                    className="tip-share"
+                    onClick={handleShare}
+                    title="Share this track (copies the Spotify link)"
+                    aria-label="Share this track"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                    <span>{shared ? "Link copied!" : "Share"}</span>
+                  </button>
+                </div>
               )}
             </section>
 
@@ -281,22 +449,36 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
 
             {data.wikipedia && (
               <section className="tip-section">
-                <h4>
-                  Wikipedia
+                <h4 className="tip-wiki-head">
+                  <button
+                    type="button"
+                    className="tip-wiki-toggle"
+                    onClick={() => setWikiOpen((o) => !o)}
+                    aria-expanded={wikiOpen}
+                  >
+                    <span className="tip-wiki-sign" aria-hidden="true">
+                      {wikiOpen ? "−" : "+"}
+                    </span>
+                    Wikipedia
+                  </button>
                   <span className="tip-tier tip-tier-public">public</span>
                 </h4>
-                {data.wikipedia.description && (
-                  <p className="tip-meta">{data.wikipedia.description}</p>
+                {wikiOpen && (
+                  <>
+                    {data.wikipedia.description && (
+                      <p className="tip-meta">{data.wikipedia.description}</p>
+                    )}
+                    <p className="tip-summary">{data.wikipedia.extract}</p>
+                    <a
+                      className="tip-extlink"
+                      href={data.wikipedia.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Read on Wikipedia
+                    </a>
+                  </>
                 )}
-                <p className="tip-summary">{data.wikipedia.extract}</p>
-                <a
-                  className="tip-extlink"
-                  href={data.wikipedia.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Read on Wikipedia
-                </a>
               </section>
             )}
 

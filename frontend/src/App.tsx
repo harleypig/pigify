@@ -20,13 +20,22 @@ import { apiService, type Profile, type User } from "./services/api";
 import "./App.css";
 
 const PANEL_COLLAPSED_KEY = "pigify.trackInfoPanel.collapsed";
+const SELECTED_PLAYLIST_KEY = "pigify.selectedPlaylist";
 const SCROBBLE_POLL_MS = 60 * 1000; // 60s
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string | null>(
+    () => {
+      try {
+        return localStorage.getItem(SELECTED_PLAYLIST_KEY);
+      } catch {
+        return null;
+      }
+    },
+  );
   const [currentTrack, setCurrentTrack] = useState<string | null>(null);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<
@@ -61,6 +70,18 @@ function App() {
       /* ignore */
     }
   }, [panelCollapsed]);
+
+  // Remember the last-opened playlist across refreshes and logout/login.
+  // Write-only: logout clears the in-memory selection but leaves the stored
+  // id, so the next page load (or login) restores the same playlist view.
+  useEffect(() => {
+    if (!selectedPlaylist) return;
+    try {
+      localStorage.setItem(SELECTED_PLAYLIST_KEY, selectedPlaylist);
+    } catch {
+      /* ignore */
+    }
+  }, [selectedPlaylist]);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -279,14 +300,16 @@ function App() {
               onProfileChange={setProfile}
               initialTab={settingsInitialTab}
             />
+          ) : selectedPlaylist ? (
+            <TrackList
+              playlistId={selectedPlaylist}
+              onTrackSelect={setCurrentTrack}
+              onTrackFocus={focusPanelOnTrack}
+            />
           ) : (
-            selectedPlaylist && (
-              <TrackList
-                playlistId={selectedPlaylist}
-                onTrackSelect={setCurrentTrack}
-                onTrackFocus={focusPanelOnTrack}
-              />
-            )
+            <div className="content-placeholder">
+              Select a playlist to get started…
+            </div>
           )}
         </div>
       </main>
@@ -294,6 +317,10 @@ function App() {
         trackId={panelTrackId}
         collapsed={panelCollapsed}
         onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
+        onShowNowPlaying={focusPanelOnNowPlaying}
+        canShowNowPlaying={
+          nowPlayingTrackId !== null && panelTrackId !== nowPlayingTrackId
+        }
       />
     </div>
   );
