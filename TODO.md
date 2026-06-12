@@ -74,6 +74,28 @@ Recipes sidebar, Playlist selector.
 - [ ] **`UserMenu`** — the account menu.
 - [ ] **`HeartButton`** — the like / heart accent control.
 
+**Current batch (from the tasklist).** TrackList + Track Info refinements,
+ordered simplest → most complex. Shipped so far: halved side padding +
+empty-state placeholder; name-only play with right-click-for-info; row
+multi-select (single / Ctrl / Shift). Remaining:
+
+- [ ] **Fix the "show raw" Last.fm leak.** In the Track Info panel, the "show
+      raw" view includes a Last.fm object even when Last.fm is disabled. When
+      it's off, that object should be empty or absent entirely.
+- [ ] **Share icon → Spotify link.** Add a share icon to the Track Info panel
+      that, for now, is a direct link to the track on Spotify. (Social-media
+      sharing is the deferred item under _Track info panel_ below.)
+- [ ] **Collapse the Wikipedia entry behind a `+`.** Don't auto-expand the
+      Wikipedia information; show a `+` next to the Wikipedia header that
+      opens it on demand.
+- [ ] **Remember the last-loaded playlist.** Persist the selected playlist so
+      a refresh — or logout then back in — restores the same playlist view.
+- [ ] **Day-glo restyle the `TrackInfoPanel`.** Bring the track-detail panel
+      onto the brand (also tracked in the component checklist above).
+- [ ] **Column headers + column chooser.** Add a header row immediately below
+      the list's header separator labelling the displayed columns, with a
+      control at the far right to choose which columns to show.
+
 **Revisit later (near end of development):**
 
 - [ ] **TrackList horizontal empty space.** The whole track list panel — the
