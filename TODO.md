@@ -84,7 +84,7 @@ multi-select (single / Ctrl / Shift). Remaining:
       it's off, that object should be empty or absent entirely.
 - [x] **Share icon → Spotify link.** Add a share icon to the Track Info panel
       that, for now, is a direct link to the track on Spotify. (Social-media
-      sharing is the deferred item under _Track info panel_ below.)
+      sharing is the deferred item under *Track info panel* below.)
 - [x] **Collapse the Wikipedia entry behind a `+`.** Don't auto-expand the
       Wikipedia information; show a `+` next to the Wikipedia header that
       opens it on demand.
@@ -145,8 +145,8 @@ Track Info refinements, ordered simplest → most complex:
 - [ ] **Custom right-click (context) menu.** Hijack the browser context menu
       within the app to offer track/row actions (Play, Add to queue, Track
       info, Open in Spotify). Scope it to specific surfaces (rows), not the
-      whole document, and keep a keyboard-accessible equivalent. _Decision
-      pending on scope._
+      whole document, and keep a keyboard-accessible equivalent. *Decision
+      pending on scope.*
 - [ ] **Sortable fields as column options (with an advanced picker).** Any
       field the list can sort by should be available as a column. Don't
       overwhelm the initial chooser: show the standard set plus any
@@ -197,7 +197,7 @@ Track Info refinements, ordered simplest → most complex:
       SQLite-only if it isn't wired, or confirm and cover Postgres if it is.
 - [ ] **Document the access / onboarding model.** It spans two independent
       gates and is Spotify-policy-dependent, so it is non-obvious:
-      - **Spotify dashboard _User Management_** (Spotify-side; blocks OAuth
+      - **Spotify dashboard *User Management*** (Spotify-side; blocks OAuth
         itself in Development Mode): add each user manually with **Full Name**
         (just a label) + their **Spotify-account email** — the email MUST
         match the email on their Spotify account, or they hit "not registered
