@@ -75,6 +75,7 @@ class SpotifyService {
   private player: SpotifyPlayer | null = null;
   private deviceId: string | null = null;
   private isInitialized = false;
+  private onReadyChange: ((deviceId: string | null) => void) | null = null;
 
   async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -110,56 +111,68 @@ class SpotifyService {
     this.isInitialized = true;
   }
 
-  async setAccessToken(token: string): Promise<void> {
+  /**
+   * Register this browser as a Spotify Connect device. `getToken` is invoked
+   * by the SDK whenever it needs a (fresh) OAuth access token — so token
+   * refresh is handled by re-fetching rather than capturing one statically.
+   * `onReadyChange` fires with the device id when the browser device becomes
+   * ready, and with null when it goes offline (or never registers, e.g. a
+   * non-Premium account). Calling it again after a successful connect just
+   * re-reports the current device id.
+   */
+  async connect(
+    getToken: () => Promise<string>,
+    onReadyChange: (deviceId: string | null) => void,
+  ): Promise<void> {
+    await this.initialize();
     if (!window.Spotify) {
       throw new Error("Spotify SDK not loaded");
     }
+    this.onReadyChange = onReadyChange;
+
+    if (this.player) {
+      onReadyChange(this.deviceId);
+      return;
+    }
 
     this.player = new window.Spotify.Player({
-      name: "Pigify",
+      name: "pigify",
       getOAuthToken: (cb: (token: string) => void) => {
-        cb(token);
+        getToken()
+          .then(cb)
+          .catch((e) => console.error("Web Playback token fetch failed:", e));
       },
       volume: 0.5,
     });
 
-    // Error handling
     this.player.addListener(
       "initialization_error",
-      ({ message }: { message: string }) => {
-        console.error("Initialization error:", message);
-      },
+      ({ message }: { message: string }) =>
+        console.error("Web Playback init error:", message),
     );
-
     this.player.addListener(
       "authentication_error",
-      ({ message }: { message: string }) => {
-        console.error("Authentication error:", message);
-      },
+      ({ message }: { message: string }) =>
+        console.error("Web Playback auth error:", message),
     );
-
     this.player.addListener(
       "account_error",
-      ({ message }: { message: string }) => {
-        console.error("Account error:", message);
-      },
+      ({ message }: { message: string }) =>
+        console.error(
+          "Web Playback account error (Premium required?):",
+          message,
+        ),
     );
 
-    // Ready
     this.player.addListener("ready", ({ device_id }: { device_id: string }) => {
-      console.log("Ready with Device ID", device_id);
       this.deviceId = device_id;
+      this.onReadyChange?.(device_id);
+    });
+    this.player.addListener("not_ready", () => {
+      this.deviceId = null;
+      this.onReadyChange?.(null);
     });
 
-    // Not Ready
-    this.player.addListener(
-      "not_ready",
-      ({ device_id }: { device_id: string }) => {
-        console.log("Device ID has gone offline", device_id);
-      },
-    );
-
-    // Connect to the player
     await this.player.connect();
   }
 
