@@ -92,7 +92,7 @@ multi-select (single / Ctrl / Shift). Remaining:
       a refresh — or logout then back in — restores the same playlist view.
 - [x] **Day-glo restyle the `TrackInfoPanel`.** Bring the track-detail panel
       onto the brand (also tracked in the component checklist above).
-- [ ] **Column headers + column chooser.** Add a header row immediately below
+- [x] **Column headers + column chooser.** Add a header row immediately below
       the list's header separator labelling the displayed columns, with a
       control at the far right to choose which columns to show.
 
