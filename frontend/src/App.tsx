@@ -163,8 +163,14 @@ function App() {
   };
 
   const handleLogout = async () => {
+    // Logout is fundamentally a client-side "forget my session" action, so
+    // always return to the login screen — even if the server call fails the
+    // user must not be trapped in the app.
     try {
       await apiService.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
       setIsAuthenticated(false);
       setUser(null);
       setProfile(null);
@@ -174,8 +180,6 @@ function App() {
       setNowPlayingTrackId(null);
       setSettingsPanelOpen(false);
       setScrobbleAlert({ queued: 0, oldestQueuedAt: null });
-    } catch (error) {
-      console.error("Logout error:", error);
     }
   };
 
