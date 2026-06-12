@@ -63,6 +63,38 @@ describe("NowPlayingBar", () => {
     checkFavorites.mockResolvedValue([{ sources: { spotify: null } }]);
   });
 
+  it("checks loved state by the original id when the track is relinked", async () => {
+    // Spotify relinks popular tracks for the user's market: the top-level id
+    // is the relinked (playable) track, while linked_from carries the
+    // original. Library ops (the loved-state check, save/unsave) must use the
+    // original id — otherwise the saved-tracks check misses and the heart
+    // reads as unloved. Regression for that bug.
+    getPlaybackState.mockResolvedValue({
+      item: {
+        id: "relinked-id",
+        uri: "spotify:track:relinked-id",
+        name: "Popular Song",
+        duration_ms: 200000,
+        artists: [{ name: "Famous Artist" }],
+        album: { name: "Album", images: [{ url: "http://img/c.jpg" }] },
+        linked_from: {
+          id: "original-id",
+          uri: "spotify:track:original-id",
+        },
+      },
+      is_playing: false,
+      progress_ms: 0,
+    });
+
+    render(<NowPlayingBar trackUri={null} />);
+
+    await waitFor(() =>
+      expect(checkFavorites).toHaveBeenCalledWith([
+        expect.objectContaining({ track_id: "original-id" }),
+      ]),
+    );
+  });
+
   it("plays the provided trackUri on mount", async () => {
     render(<NowPlayingBar trackUri="spotify:track:abc" />);
 

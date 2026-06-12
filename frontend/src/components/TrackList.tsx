@@ -193,8 +193,10 @@ function TrackList({
           }
         });
         setLovedMap(map);
-      } catch {
-        /* non-fatal */
+      } catch (e) {
+        // Non-fatal (rows just show unloved), but don't hide it — a silent
+        // failure here looks identical to "nothing is loved".
+        console.warn("Bulk loved-state check failed:", e);
       }
     } catch (err) {
       setError("Failed to load tracks");

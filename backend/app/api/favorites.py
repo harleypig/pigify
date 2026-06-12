@@ -11,6 +11,8 @@ Endpoints:
   PUT  /api/favorites/settings         - configure background interval
 """
 
+import logging
+
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
@@ -28,6 +30,7 @@ from app.services.favorites import FavoritesService
 from app.services.spotify import SpotifyService
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _services(request: Request) -> FavoritesService:
@@ -107,7 +110,15 @@ async def check(
             for (i, _), s in zip(ids_with_idx, states, strict=False):
                 spotify_states[i] = s
         except Exception:
-            pass
+            # Degrade gracefully (leave these states unknown/None), but do not
+            # hide the failure: a swallowed error here is indistinguishable
+            # from a genuine "not loved" and makes loved-state bugs impossible
+            # to diagnose. Log it so the real cause is visible.
+            logger.exception(
+                "Spotify saved-tracks check failed for %d id(s); "
+                "loved state left unknown",
+                len(ids_with_idx),
+            )
 
     out: list[Favorite] = []
     for i in range(n):

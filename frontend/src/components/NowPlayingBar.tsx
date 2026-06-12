@@ -327,8 +327,13 @@ function NowPlayingBar({
           {track && (
             <HeartButton
               track={{
-                spotify_id: track.id,
-                spotify_uri: track.uri,
+                // Loved-state and love/unlove are Library operations, so for a
+                // relinked track they must reference the ORIGINAL id/uri
+                // (`linked_from`), not the relinked, market-playable top-level
+                // one — otherwise Spotify's saved-tracks check misses and the
+                // heart reads as unloved for popular songs. See PlaybackItem.
+                spotify_id: track.linked_from?.id ?? track.id,
+                spotify_uri: track.linked_from?.uri ?? track.uri,
                 name: track.name,
                 artist: track.artists?.[0]?.name ?? "",
                 album: track.album?.name,
