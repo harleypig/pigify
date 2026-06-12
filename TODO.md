@@ -371,6 +371,16 @@ See `docs/ROADMAP.md`. High-level outstanding:
       token is exposed to the browser (inherent to the SDK; `/api/auth/token`
       already does this). Supersedes the standalone `Player` component
       (reuses its `spotifyService` layer).
+      **Status:** code-complete (backend devices/transfer, SDK connect with
+      token refresh, day-glo device popup) and verified doing its part —
+      secure context, token delivered, EME allowed via `Permissions-Policy`.
+      Could **not** be validated on the dev machine: the Web Playback SDK's
+      `connect()` returns false there because **open.spotify.com fails
+      identically** (skips, "can't play right now", ~15s then silence), i.e. a
+      **machine/Chrome DRM** limitation, not a pigify bug. **Validate on a
+      machine/browser where open.spotify.com plays cleanly** (the
+      cross-browser item under *Tests* covers it); then step 4 (remove dead
+      `Player.*`).
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can
