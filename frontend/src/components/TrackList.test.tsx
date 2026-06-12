@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Track } from "../services/api";
@@ -121,7 +121,7 @@ describe("TrackList", () => {
     ).toBeInTheDocument();
   });
 
-  it("selects and focuses a track when its row is clicked", async () => {
+  it("plays and focuses a track when its name is clicked", async () => {
     getAllPlaylistTracks.mockResolvedValue(TRACKS);
     const onTrackSelect = vi.fn();
     const onTrackFocus = vi.fn();
@@ -134,12 +134,45 @@ describe("TrackList", () => {
       />,
     );
 
-    const row = await screen.findByRole("button", {
-      name: "Play Song One by Artist One",
-    });
-    await userEvent.click(row);
+    const name = await screen.findByRole("button", { name: "Song One" });
+    await userEvent.click(name);
 
     expect(onTrackSelect).toHaveBeenCalledWith("spotify:track:id1");
     expect(onTrackFocus).toHaveBeenCalledWith("id1");
+  });
+
+  it("selects a row on a plain body click without playing", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+    const onTrackSelect = vi.fn();
+
+    render(<TrackList playlistId="pl1" onTrackSelect={onTrackSelect} />);
+
+    // Click the artists cell (row body, not the name button) — this should
+    // select the row, not start playback.
+    const row = (await screen.findByText("Artist One")).closest(".track-item");
+    await userEvent.click(row as Element);
+
+    expect(row).toHaveClass("selected");
+    expect(onTrackSelect).not.toHaveBeenCalled();
+  });
+
+  it("opens the track info panel on right-click of the name", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+    const onTrackSelect = vi.fn();
+    const onTrackFocus = vi.fn();
+
+    render(
+      <TrackList
+        playlistId="pl1"
+        onTrackSelect={onTrackSelect}
+        onTrackFocus={onTrackFocus}
+      />,
+    );
+
+    const name = await screen.findByRole("button", { name: "Song One" });
+    fireEvent.contextMenu(name);
+
+    expect(onTrackFocus).toHaveBeenCalledWith("id1");
+    expect(onTrackSelect).not.toHaveBeenCalled();
   });
 });

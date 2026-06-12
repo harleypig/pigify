@@ -111,6 +111,17 @@
     0 0 0 1px rgba(var(--brand-accent-rgb), 0.55);
 }
 
+/* Selected rows (mouse single / Ctrl / Shift): a persistent lit edge plus a
+   blue wash, stronger and stickier than the transient hover state. */
+.track-item.selected {
+  background-color: rgba(var(--brand-accent-rgb), 0.16);
+  box-shadow: inset 3px 0 0 var(--brand-accent);
+}
+
+.track-item.selected:hover {
+  background-color: rgba(var(--brand-accent-rgb), 0.22);
+}
+
 /* Index: a mono counter. */
 .track-number {
   text-align: center;
@@ -151,13 +162,34 @@
   min-width: 0;
 }
 
+/* The name is a button (the play trigger), reset to read as plain text until
+   hovered, where it lights up to signal it is the clickable play target. */
 .track-name {
+  display: block;
+  max-width: 100%;
   margin-bottom: 0.2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   font-weight: 600;
+  text-align: left;
   color: var(--brand-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.track-name:hover {
+  color: var(--brand-accent-bright);
+  text-decoration: underline;
+}
+
+.track-name:focus-visible {
+  outline: 2px solid rgba(var(--brand-accent-rgb), 0.6);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .track-artists {

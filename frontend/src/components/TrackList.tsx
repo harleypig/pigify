@@ -34,6 +34,11 @@ function TrackList({
   const [tracks, setTracks] = useState<Track[]>([]);
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [editing, setEditing] = useState(false);
+  // Row selection (mouse): a plain click single-selects, Ctrl toggles one
+  // row, Shift selects a range. Queuing the selection will be drag-and-drop
+  // to the queue display later (TODO) — this only tracks selection for now.
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [anchorIndex, setAnchorIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lovedMap, setLovedMap] = useState<
@@ -122,8 +127,11 @@ function TrackList({
     setWarnings([]);
   }, [refreshUndoStatus, loadTracks]);
 
-  // Load the playlist's own details (name/description) for the header.
+  // Load the playlist's own details (name/description) for the header, and
+  // drop any row selection carried over from the previous playlist.
   useEffect(() => {
+    setSelectedKeys(new Set());
+    setAnchorIndex(null);
     apiService
       .getPlaylist(playlistId)
       .then(setPlaylist)
@@ -255,6 +263,33 @@ function TrackList({
     }
   };
 
+  // Mouse selection model: a plain click single-selects, Ctrl toggles the
+  // one row, Shift selects the range from the anchor (the last single/Ctrl
+  // click) to this row in either direction. Selection is keyed by rowKeys so
+  // it survives sorts and tolerates duplicate tracks.
+  const selectRow = (index: number, ctrl: boolean, shift: boolean) => {
+    const key = rowKeys[index];
+
+    if (shift && anchorIndex !== null) {
+      const lo = Math.min(anchorIndex, index);
+      const hi = Math.max(anchorIndex, index);
+      const range = new Set<string>();
+      for (let i = lo; i <= hi; i++) range.add(rowKeys[i]);
+      setSelectedKeys(range);
+    } else if (ctrl) {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+      setAnchorIndex(index);
+    } else {
+      setSelectedKeys(new Set([key]));
+      setAnchorIndex(index);
+    }
+  };
+
   const formatDuration = (ms: number): string => {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
@@ -306,32 +341,37 @@ function TrackList({
           warnings={warnings}
         />
       </div>
-      <div className="track-list-items">
+      <div
+        className="track-list-items"
+        role="listbox"
+        aria-multiselectable="true"
+        aria-label="Tracks"
+      >
         {sortedTracks.map((track, index) => (
-          /* The row is rendered as a div with role="button" rather than a real
-             <button> because it contains another interactive child (HeartButton),
-             and nesting buttons is invalid HTML. We provide keyboard equivalents
-             (Enter / Space) and an aria-label so this is still operable.
-             Long playlists are not virtualized — the typical Pigify use case is
-             a few hundred rows, well within what the DOM handles smoothly. */
-          // biome-ignore lint/a11y/useSemanticElements: row cannot be a real <button> because it nests an interactive HeartButton (invalid HTML); keyboard equivalents and aria-label are provided
+          /* Each row is an option in the listbox below — the row body is the
+             mouse selection affordance (single / Ctrl / Shift click); it is
+             NOT the play trigger. Only the song name plays (see the name
+             button), so a stray click never starts playback; Enter on a
+             focused row plays as a keyboard fallback. Long playlists are not
+             virtualized — the typical Pigify use case is a few hundred rows,
+             well within what the DOM handles smoothly. */
           <div
             key={rowKeys[index]}
-            className="track-item"
-            role="button"
+            className={`track-item${
+              selectedKeys.has(rowKeys[index]) ? " selected" : ""
+            }`}
+            role="option"
+            aria-selected={selectedKeys.has(rowKeys[index])}
             tabIndex={0}
-            aria-label={`Play ${track.name} by ${track.artists.join(", ")}`}
-            onClick={() => {
-              onTrackSelect(track.uri);
-              onTrackFocus?.(track.id);
-            }}
+            aria-label={`${track.name} by ${track.artists.join(", ")}`}
+            onClick={(e) =>
+              selectRow(index, e.ctrlKey || e.metaKey, e.shiftKey)
+            }
             onKeyDown={(e) => {
-              // Only act when the row itself is focused — ignore Enter/Space
-              // forwarded from the nested HeartButton or any other inner
-              // control, otherwise toggling the heart would also trigger
-              // playback of the track.
+              // Only act when the row itself is focused — ignore Enter
+              // forwarded from inner controls (the name button, the heart).
               if (e.target !== e.currentTarget) return;
-              if (e.key === "Enter" || e.key === " ") {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 onTrackSelect(track.uri);
                 onTrackFocus?.(track.id);
@@ -358,7 +398,25 @@ function TrackList({
               )}
             </div>
             <div className="track-info">
-              <div className="track-name">{track.name}</div>
+              {/* The song name is the only way to start playback. Right-click
+                  it to open the Track Info panel instead of playing. */}
+              <button
+                type="button"
+                className="track-name"
+                title="Play — right-click for track info"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTrackSelect(track.uri);
+                  onTrackFocus?.(track.id);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onTrackFocus?.(track.id);
+                }}
+              >
+                {track.name}
+              </button>
               <div className="track-artists">{track.artists.join(", ")}</div>
             </div>
             <div className="track-album">{track.album}</div>
