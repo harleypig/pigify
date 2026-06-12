@@ -49,6 +49,78 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       `backend/app/api/favorites.py` (`logger.exception`),
       `frontend` `TrackList.tsx` and `HeartButton.tsx` (`console.warn`).
 
+## Spotify audit (2026-06-12)
+
+Findings from the `/spotify-audit` run against `rules/spotify.md`, ordered by
+priority. **Recommended approach:** verify #1 first (it may be silently
+breaking playlist writes *now*); then land the safe fixes (#2 rate-limit, #5
+`market`, #1 scope) on the `spotify-audit` branch; decide #3/#4 (deprecated
+endpoints) **as a product call**, not just a code change — they have no
+drop-in replacement. Already-clean items (PKCE-not-required confidential
+backend, secret handling, `127.0.0.1` redirect, proactive token refresh,
+now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
+
+### High
+
+- [ ] **(High) Verify the missing `playlist-modify` scope.** The requested
+      scopes (`backend/app/api/auth.py:99-107`) omit
+      `playlist-modify-public` / `playlist-modify-private`, yet the app writes
+      playlists: `add_tracks_to_playlist` (`spotify.py:347`),
+      `reorder_playlist_item` (`:548`), recipe materialize (`:560-563`). Those
+      writes **403** without the scope. *rules/spotify.md › Scopes.* Confirm
+      whether applying a reorder / materializing a recipe actually succeeds; if
+      not, add the scope (and force re-consent).
+- [ ] **(High) Add Spotify 429 / `Retry-After` handling.** The HTTP layer
+      (`spotify.py` `_get`/`_put`/`_post`/`_delete` + the shared client) has no
+      rate-limit branch (the repo's backoff is all Last.fm scrobble-queue).
+      *rules/spotify.md › Rate limiting.* A burst (parallel mount fan-out, big
+      playlist hydrate) risks throttling/ban. Fix with the `spotify-patterns`
+      429 recipe: honor `Retry-After`, then exponential backoff.
+- [ ] **(High, product decision) Deprecated `/audio-analysis`.**
+      `spotify.py:276` (`get_audio_analysis`) drives the now-playing waveform
+      (`player.py:122-134`). Deprecated 2024-11-27 — 404 for new apps, no
+      replacement; already degrades to an empty waveform (`player.py:170`).
+      *rules/spotify.md › Endpoints.* Decide: drop the waveform, or confirm the
+      Spotify app has pre-existing extended access. Do **not** auto-rewrite.
+- [ ] **(High, product decision) Deprecated `/audio-features`.**
+      `spotify.py:519` (`get_audio_features`), used by recipe filtering
+      (`recipes.py:241`) and sort-by-audio-feature hydration
+      (`playlists.py:414`, `sort_fields.py`). Same deprecation/fate — these
+      sort fields / recipe buckets silently can't populate. Decide: remove the
+      audio-feature surface, or confirm extended access.
+
+### Medium
+
+- [ ] **(Medium) Pass a `market` param.** No `market`/`from_token` anywhere
+      (confirmed). *rules/spotify.md › Track relinking.* For a playback app,
+      unplayable-in-market tracks surface, and it's why relinking only bit the
+      now-playing path. Add `market=from_token` to catalogue/library reads.
+- [ ] **(Medium) Legacy `/me/tracks` save/remove.** `spotify.py:219` (`PUT`),
+      `:227` (`DELETE`), `:205` (`contains`). The per-type Save/Remove Tracks
+      endpoints are deprecated in favor of the unified *Save/Remove Items to
+      Library*. *rules/spotify.md › Endpoints.* Migrate the writes.
+- [ ] **(Medium) `/playlists/{id}/tracks` → `/items`.** Reads + reorder + add
+      use `/tracks` (`:347,:467,:488,:548,:560,:563`); Spotify steers reads
+      toward `/items`. *rules/spotify.md › Endpoints.*
+- [x] **(Medium) Verify the `/me/tracks*` batch cap — clean.** Chunked at 50
+      (`:202,:217,:225`). Verified against the official docs (Context7): the
+      library endpoints `/me/tracks/contains`, `PUT`/`DELETE /me/tracks` all
+      cap at **50 ids**, so pigify's chunk size is correct. (The earlier "20"
+      was the *catalog* `/tracks` multi-get, which pigify doesn't use — it only
+      calls a single `/tracks/{id}`.) No change needed.
+
+### Info (verify manually)
+
+- [ ] **(Info) Premium gating.** The SDK degrades silently for non-Premium
+      (`spotify.ts:164` logs `account_error`; `NowPlayingBar.tsx:136` no-ops).
+      Consider a "Premium required" message. *rules/spotify.md › Web Playback
+      SDK.*
+- [ ] **(Info) Compliance — caching & attribution.** pigify persists Spotify
+      metadata (per-user DB playlist items + track stats + enrichment cache).
+      The Developer Terms limit caching beyond immediate use; confirm retention
+      is defensible and that the UI **attributes** Spotify. *rules/spotify.md ›
+      Compliance.*
+
 ## Security / hardening
 
 - [ ] **Tighten CSP `style-src`.** The frontend currently requires
