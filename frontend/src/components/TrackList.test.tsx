@@ -92,7 +92,8 @@ describe("TrackList", () => {
     expect(screen.getByText("Song Two")).toBeInTheDocument();
     expect(getAllPlaylistTracks).toHaveBeenCalledWith("pl1");
     // Header track count reflects the loaded rows.
-    expect(screen.getByText("2 tracks")).toBeInTheDocument();
+    // Count + total playtime (each fixture track is 200s → 2 tracks ≈ 7 min).
+    expect(screen.getByText(/2 tracks · \d+ min/)).toBeInTheDocument();
   });
 
   it("shows the playlist name as the header", async () => {
@@ -110,7 +111,7 @@ describe("TrackList", () => {
 
     render(<TrackList playlistId="pl1" onTrackSelect={vi.fn()} />);
 
-    expect(await screen.findByText("0 tracks")).toBeInTheDocument();
+    expect(await screen.findByText(/0 tracks · 0 min/)).toBeInTheDocument();
     expect(screen.queryByText("Song One")).not.toBeInTheDocument();
   });
 

@@ -284,6 +284,12 @@ function TrackList({
     });
   }, [sortedTracks]);
 
+  // Total playtime of the whole playlist, shown beside the track count.
+  const totalDurationMs = useMemo(
+    () => tracks.reduce((sum, t) => sum + (t.duration_ms || 0), 0),
+    [tracks],
+  );
+
   const handleSavePreset = async (preset: SortPreset) => {
     try {
       const updated = await apiService.saveSortPreset(preset);
@@ -426,6 +432,14 @@ function TrackList({
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
+  // Whole-playlist playtime, rounded to minutes: "2 hr 51 min" or "47 min".
+  const formatTotalTime = (ms: number): string => {
+    const totalMinutes = Math.round(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return hours > 0 ? `${hours} hr ${minutes} min` : `${minutes} min`;
+  };
+
   if (loading) {
     return <div className="track-list-loading">Loading tracks…</div>;
   }
@@ -440,7 +454,7 @@ function TrackList({
         <div className="track-list-heading">
           <h2>{playlist?.name ?? "Playlist"}</h2>
           <span className="track-count">
-            {sortedTracks.length} tracks
+            {sortedTracks.length} tracks · {formatTotalTime(totalDurationMs)}
             {hydrating && (
               <span className="hydrating-tag"> · loading sort data…</span>
             )}
