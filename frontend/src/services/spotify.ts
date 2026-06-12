@@ -133,12 +133,6 @@ class SpotifyService {
     if (!window.Spotify) {
       throw new Error("Spotify SDK not loaded");
     }
-    console.log(
-      "Web Playback: SDK present:",
-      !!window.Spotify,
-      "| secureContext:",
-      window.isSecureContext,
-    );
     this.onReadyChange = onReadyChange;
 
     if (this.player) {
@@ -150,14 +144,7 @@ class SpotifyService {
       name: "Pigify - Web",
       getOAuthToken: (cb: (token: string) => void) => {
         getToken()
-          .then((t) => {
-            console.log(
-              "Web Playback: delivering token to SDK (length",
-              t?.length,
-              ")",
-            );
-            cb(t);
-          })
+          .then(cb)
           .catch((e) => console.error("Web Playback token fetch failed:", e));
       },
       volume: 0.5,
