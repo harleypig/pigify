@@ -15,6 +15,7 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const reqRef = useRef(0);
 
@@ -53,6 +54,34 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
 
   const handleRefresh = () => {
     if (trackId && !refreshing && !loading) fetchDetail(trackId, true);
+  };
+
+  // Share the track. For now the shared payload is just the Spotify link:
+  // prefer the native share sheet (Web Share API), falling back to copying
+  // the link to the clipboard. Per-service social sharing is a later TODO.
+  const handleShare = async () => {
+    if (!data?.spotify.external_url) return;
+    const { external_url, name, artists } = data.spotify;
+    const payload = {
+      title: name,
+      text: `${name} — ${artists.join(", ")}`,
+      url: external_url,
+    };
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share(payload);
+        return;
+      } catch {
+        // User dismissed the sheet or it failed — fall back to copy.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(external_url);
+      setShared(true);
+      setTimeout(() => setShared(false), 1500);
+    } catch (e) {
+      console.error("Share failed", e);
+    }
   };
 
   const handleCopy = async () => {
@@ -152,14 +181,42 @@ function TrackInfoPanel({ trackId, collapsed, onToggleCollapsed }: Props) {
                 {data.spotify.explicit ? " · explicit" : ""}
               </p>
               {data.spotify.external_url && (
-                <a
-                  className="tip-extlink"
-                  href={data.spotify.external_url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open in Spotify
-                </a>
+                <div className="tip-head-actions">
+                  <a
+                    className="tip-extlink"
+                    href={data.spotify.external_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open in Spotify
+                  </a>
+                  <button
+                    type="button"
+                    className="tip-share"
+                    onClick={handleShare}
+                    title="Share this track (copies the Spotify link)"
+                    aria-label="Share this track"
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                    <span>{shared ? "Link copied!" : "Share"}</span>
+                  </button>
+                </div>
               )}
             </section>
 
