@@ -1,31 +1,54 @@
+/*
+ * Heart toggle — the console's "love" LED. Idle it sits dim blue-grey, an
+ * unlit control; on hover it lights toward the day-glo blood red, and when
+ * the track is loved it burns fluorescent red with a soft glow — the same
+ * lit-accent language as the rest of the brand. Colours come from the
+ * --brand-* tokens (theme.css); the glyphs and liked colour stay
+ * overridable via the --heart-* tokens (index.css).
+ */
 .heart-btn {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #888;
+  color: var(--brand-ink-dim);
   padding: 0 6px;
   line-height: 1;
   transition:
     color 0.15s ease,
+    text-shadow 0.15s ease,
     transform 0.15s ease;
 }
+
 .heart-btn:hover:not(:disabled) {
-  color: var(--heart-liked-color, #e53935);
-  transform: scale(1.1);
+  color: var(--heart-liked-color);
+  /* A faint bloom as the control lights up under the cursor. */
+  text-shadow: 0 0 8px rgba(var(--brand-red-rgb), 0.45);
+  transform: scale(1.15);
 }
+
+/* Loved = lit LED: fluorescent red with a steady day-glo glow. */
 .heart-btn.is-loved {
-  color: var(--heart-liked-color, #e53935);
+  color: var(--heart-liked-color);
+  text-shadow: 0 0 8px rgba(var(--brand-red-rgb), 0.65);
 }
+
+.heart-btn.is-loved:hover:not(:disabled) {
+  text-shadow: 0 0 12px rgba(var(--brand-red-rgb), 0.9);
+}
+
 .heart-btn.is-busy {
   opacity: 0.6;
   cursor: wait;
 }
+
 .heart-btn:disabled {
   cursor: not-allowed;
 }
+
 .heart-sm {
   font-size: 16px;
 }
+
 .heart-md {
   font-size: 22px;
 }
@@ -33,6 +56,7 @@
 .heart-btn::before {
   content: var(--heart-icon-default, "\2661");
 }
+
 .heart-btn.is-loved::before {
   content: var(--heart-icon-liked, "\2665");
 }

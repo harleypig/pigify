@@ -2,7 +2,9 @@
    and the autofill chrome render with the correct palette. */
 :root {
   color-scheme: dark;
-  --heart-liked-color: #e53935;
+  /* The "love" accent rides the brand's day-glo blood red (theme.css); the
+     literal is only a fallback if the brand layer is absent. */
+  --heart-liked-color: var(--brand-red, #ff2a45);
   --heart-icon-liked: "\2665";
   --heart-icon-default: "\2661";
 }
