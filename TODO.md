@@ -5,7 +5,7 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Bugs
 
-- [ ] **(High) Logout doesn't return to the login page.** Logging out from
+- [x] **(High) Logout doesn't return to the login page.** Logging out from
       the user dropdown should return to the "Connect Spotify" login screen,
       but it stays on the app. Likely cause: in `handleLogout` (App.tsx) the
       auth-state reset (`setIsAuthenticated(false)`, etc.) runs only after
