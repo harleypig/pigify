@@ -312,6 +312,15 @@ class SpotifyService:
         data = await self._post(f"/users/{user_id}/playlists", body=body)
         return data or {}
 
+    async def update_playlist_details(
+        self, playlist_id: str, name: str, description: str
+    ) -> None:
+        """Change a playlist's name and description (PUT /playlists/{id})."""
+        await self._put(
+            f"/playlists/{playlist_id}",
+            body={"name": name, "description": description},
+        )
+
     async def add_tracks_to_playlist(self, playlist_id: str, uris: list[str]) -> None:
         """Append tracks to a playlist in 100-URI chunks."""
         for i in range(0, len(uris), 100):

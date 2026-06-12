@@ -277,6 +277,28 @@ async def get_playlist(request: Request, playlist_id: str):
         ) from e
 
 
+class PlaylistDetailsUpdate(BaseModel):
+    """Editable playlist info."""
+
+    name: str
+    description: str = ""
+
+
+@router.put("/{playlist_id}", response_model=Playlist)
+async def update_playlist(
+    request: Request, playlist_id: str, body: PlaylistDetailsUpdate
+):
+    spotify = SpotifyService(_require_token(request))
+    try:
+        await spotify.update_playlist_details(playlist_id, body.name, body.description)
+        # Return the refreshed playlist so the client gets the new values.
+        return await spotify.get_playlist(playlist_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update playlist: {e!s}"
+        ) from e
+
+
 @router.get("/{playlist_id}/tracks", response_model=list[Track])
 async def get_playlist_tracks(
     request: Request,

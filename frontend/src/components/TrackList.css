@@ -57,6 +57,25 @@
   font-style: normal;
 }
 
+/* "Edit info" — a small mono accent link that opens the edit-playlist modal. */
+.track-list-edit {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--brand-font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(var(--brand-accent-rgb), 0.85);
+  transition: color 0.15s;
+}
+
+.track-list-edit:hover {
+  color: var(--brand-accent-bright);
+  text-decoration: underline;
+}
+
 .track-list-items {
   flex: 1;
   overflow-y: auto;

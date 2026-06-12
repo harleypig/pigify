@@ -11,6 +11,7 @@ import {
   type SortableHydration,
   sortTracks,
 } from "../services/sortEngine";
+import EditPlaylistInfo from "./EditPlaylistInfo";
 import HeartButton from "./HeartButton";
 import SortMenu, { type SortSpec } from "./SortMenu";
 import "./TrackList.css";
@@ -32,6 +33,7 @@ function TrackList({
 }: TrackListProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lovedMap, setLovedMap] = useState<
@@ -279,6 +281,15 @@ function TrackList({
               <span className="hydrating-tag"> · loading sort data…</span>
             )}
           </span>
+          {playlist && (
+            <button
+              type="button"
+              className="track-list-edit"
+              onClick={() => setEditing(true)}
+            >
+              Edit info
+            </button>
+          )}
         </div>
         <SortMenu
           fields={fields}
@@ -390,6 +401,13 @@ function TrackList({
           </div>
         ))}
       </div>
+      {editing && playlist && (
+        <EditPlaylistInfo
+          playlist={playlist}
+          onClose={() => setEditing(false)}
+          onSaved={setPlaylist}
+        />
+      )}
     </div>
   );
 }
