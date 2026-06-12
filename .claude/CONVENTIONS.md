@@ -27,7 +27,7 @@ backend/        Poetry project; package `app`, run as `uvicorn app.main:app`
   app/          api/ services/ db/ models/ config.py main.py
   migrations/   Alembic envs: system/ + user/
   tests/        pytest suite
-frontend/       React 18 + Vite 5 SPA (TypeScript), nginx-served in prod
+frontend/       React 19 + Vite 8 SPA (TypeScript), nginx-served in prod
 docs/           ARCHITECTURE / DATABASE / INTEGRATIONS / SPOTIFY_SETUP / DEVELOP
 docker/         dev/build docker-compose.yml (builds images from source), plus
   certs/        local mkcert certs (gitignored; see scripts/setup-ssl.sh)
@@ -81,12 +81,13 @@ examples/       user-facing copy-paste: image-based docker-compose.yml
 
 ## Frontend
 
-- **React 18 + Vite 5 + TypeScript (strict).** No React/Vite major bump
+- **React 19 + Vite 8 + TypeScript 6 (strict).** No React/Vite major bump
   as part of routine work.
 - **Lint + format: Biome** (`npm run check` / `npm run format`) — not
   ESLint/Prettier. **Type check: `tsc --noEmit`** (`npm run typecheck`).
-  **Tests: Vitest** (`npm test`). Three Biome rules are temporarily
-  disabled for pre-existing debt (see `frontend/biome.json` + `TODO.md`).
+  **Tests: Vitest** (`npm test`). Biome runs the **recommended** ruleset with
+  no rule overrides; `frontend/biome.json` only excludes the generated
+  `src/data/changelog.ts` (and `dist`) from lint/format.
 - **Plain CSS**, co-located per component. No Mantine / component
   framework.
 - **All backend calls go through `/api`**, proxied by Vite in dev and by
