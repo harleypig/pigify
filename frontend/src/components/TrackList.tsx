@@ -71,7 +71,14 @@ const COLUMNS: ColumnDef[] = [
     width: "200px",
     hideable: true,
   },
-  { key: "heart", label: "", name: "Heart", width: "36px", hideable: false },
+  {
+    key: "heart",
+    label: "♥",
+    name: "Loved",
+    width: "36px",
+    align: "center",
+    hideable: true,
+  },
   {
     key: "duration",
     label: "Time",
@@ -83,7 +90,9 @@ const COLUMNS: ColumnDef[] = [
 ];
 
 const HIDEABLE_COLUMNS = COLUMNS.filter((c) => c.hideable);
-const COLUMNS_KEY = "pigify.trackColumns";
+// v2: the loved/heart column became toggleable, so older saved sets (which
+// never listed it) are ignored rather than hiding the heart unexpectedly.
+const COLUMNS_KEY = "pigify.trackColumns.v2";
 
 function TrackList({
   playlistId,
@@ -584,35 +593,37 @@ function TrackList({
                 row-level "play this track" handler. The wrapper is a passive
                 event boundary, not an interactive control of its own — the
                 interactive HeartButton lives inside it. */}
-            {/* biome-ignore lint/a11y/noStaticElementInteractions: passive boundary that only stops click propagation; the actual control is the nested HeartButton */}
-            <div
-              className="track-heart"
-              onClick={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-            >
-              <HeartButton
-                track={{
-                  spotify_id: track.id,
-                  spotify_uri: track.uri,
-                  name: track.name,
-                  artist: track.artists[0] ?? "",
-                  album: track.album,
-                  image_url: track.image_url,
-                }}
-                size="sm"
-                initialSpotifyLoved={lovedMap[track.id]?.spotify}
-                initialLastfmLoved={lovedMap[track.id]?.lastfm}
-                onChange={(loved) =>
-                  setLovedMap((m) => ({
-                    ...m,
-                    [track.id]: {
-                      spotify: loved,
-                      lastfm: m[track.id]?.lastfm ?? null,
-                    },
-                  }))
-                }
-              />
-            </div>
+            {shownKeys.has("heart") && (
+              // biome-ignore lint/a11y/noStaticElementInteractions: passive boundary that only stops click propagation; the actual control is the nested HeartButton
+              <div
+                className="track-heart"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <HeartButton
+                  track={{
+                    spotify_id: track.id,
+                    spotify_uri: track.uri,
+                    name: track.name,
+                    artist: track.artists[0] ?? "",
+                    album: track.album,
+                    image_url: track.image_url,
+                  }}
+                  size="sm"
+                  initialSpotifyLoved={lovedMap[track.id]?.spotify}
+                  initialLastfmLoved={lovedMap[track.id]?.lastfm}
+                  onChange={(loved) =>
+                    setLovedMap((m) => ({
+                      ...m,
+                      [track.id]: {
+                        spotify: loved,
+                        lastfm: m[track.id]?.lastfm ?? null,
+                      },
+                    }))
+                  }
+                />
+              </div>
+            )}
             {shownKeys.has("duration") && (
               <div className="track-duration">
                 {formatDuration(track.duration_ms)}
