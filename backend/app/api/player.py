@@ -47,6 +47,33 @@ async def play(request: Request, body: PlayRequest = PlayRequest()):  # noqa: B0
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
+@router.get("/devices")
+async def get_devices(request: Request):
+    """List the user's available Spotify Connect devices (incl. this browser
+    once the Web Playback SDK has registered it)."""
+    spotify = SpotifyService(_get_token(request))
+    try:
+        return {"devices": await spotify.get_devices()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+class TransferRequest(BaseModel):
+    device_id: str
+    play: bool = True
+
+
+@router.put("/transfer")
+async def transfer(request: Request, body: TransferRequest):
+    """Transfer playback to a device (e.g. 'play here' in the browser)."""
+    spotify = SpotifyService(_get_token(request))
+    try:
+        await spotify.transfer_playback(body.device_id, body.play)
+        return {"status": "transferred"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
 @router.put("/pause")
 async def pause(request: Request):
     """Pause playback."""

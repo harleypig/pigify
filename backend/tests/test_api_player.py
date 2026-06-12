@@ -117,6 +117,37 @@ class PlayerApiTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), {"status": "paused"})
 
+    # ----- devices / transfer --------------------------------------------
+
+    def test_devices_lists(self) -> None:
+        devices = [{"id": "d1", "name": "Phone", "is_active": True}]
+        cls, _ = _make_spotify(get_devices=AsyncMock(return_value=devices))
+
+        with (
+            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "SpotifyService", cls),
+        ):
+            resp = self.client.get("/api/player/devices")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"devices": devices})
+
+    def test_transfer(self) -> None:
+        transfer_mock = AsyncMock()
+        cls, _ = _make_spotify(transfer_playback=transfer_mock)
+
+        with (
+            patch.object(player_mod, "_get_token", lambda r: "tok"),
+            patch.object(player_mod, "SpotifyService", cls),
+        ):
+            resp = self.client.put(
+                "/api/player/transfer", json={"device_id": "d1", "play": True}
+            )
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"status": "transferred"})
+        transfer_mock.assert_awaited_once_with("d1", True)
+
     def test_next(self) -> None:
         cls, _ = _make_spotify(next_track=AsyncMock())
 
