@@ -207,7 +207,21 @@
 .content {
   flex: 1;
   overflow-y: auto;
-  /* Top padding halved vs. the sides/bottom so the header sits closer to
-     the panel top. */
-  padding: 1rem 2rem 2rem;
+  /* Tight top + side padding so the content sits closer to the panel edges;
+     a little more breathing room kept at the bottom. */
+  padding: 1rem 1rem 2rem;
+}
+
+/* Initial state, before a playlist is chosen — fills the otherwise-blank panel
+   with a mono "equipment label" prompt instead of empty space. */
+.content-placeholder {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--brand-font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
 }

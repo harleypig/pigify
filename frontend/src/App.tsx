@@ -279,14 +279,16 @@ function App() {
               onProfileChange={setProfile}
               initialTab={settingsInitialTab}
             />
+          ) : selectedPlaylist ? (
+            <TrackList
+              playlistId={selectedPlaylist}
+              onTrackSelect={setCurrentTrack}
+              onTrackFocus={focusPanelOnTrack}
+            />
           ) : (
-            selectedPlaylist && (
-              <TrackList
-                playlistId={selectedPlaylist}
-                onTrackSelect={setCurrentTrack}
-                onTrackFocus={focusPanelOnTrack}
-              />
-            )
+            <div className="content-placeholder">
+              Select a playlist to get started…
+            </div>
           )}
         </div>
       </main>
