@@ -12,6 +12,42 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       `await apiService.logout()` resolves, so a failed/erroring logout call
       leaves the user on the app — clear auth state regardless of the call's
       outcome, and surface the error.
+- [x] **(High) Expired Spotify session shows "can't reach the server".**
+      `/api/auth/me` wrapped *every* exception — including a Spotify `401`
+      (expired/revoked token, or token store lost) — as a blanket `500`. The
+      login screen's reachability probe reads any `5xx` as "backend down", so
+      a merely-stale session surfaced as the scary "Can't reach the server".
+      Fixed in `backend/app/api/auth.py`: an upstream `401` now clears the
+      session and returns `401` (frontend treats the user as logged out);
+      other upstream statuses map to `502`. Regression test added.
+- [ ] **Centralise Spotify-`401` → `401` across the API.** The same
+      blanket-`500`-on-any-exception pattern still exists in
+      `backend/app/api/playlists.py` and `player.py`, so once a session's
+      token dies mid-use those endpoints also return `500` instead of a
+      clean `401`. Translate an upstream `httpx.HTTPStatusError(401)` to a
+      `401` (+ `clear_session`) in one place — an exception handler or a
+      shared dependency — rather than per-endpoint, and drop the duplicated
+      try/except 500 wrappers. Builds on the `/me` fix above.
+- [x] **Now-playing heart reads "unloved" for popular (relinked) songs.**
+      Spotify relinks regionally-licensed tracks for the user's market, so
+      `/me/player` returns the *relinked* id with the original in
+      `linked_from`. Per Spotify's track-relinking rules, Library operations
+      (saved-tracks check, save/unsave) must use the **original** id; the
+      now-playing heart used the relinked top-level id, so the saved-tracks
+      check missed and popular songs showed unloved (obscure single-market
+      tracks were fine). Fixed in `NowPlayingBar.tsx`: the HeartButton now
+      uses `linked_from?.id ?? id` (and uri) for loved-state and love/unlove;
+      `PlaybackItem` gained `linked_from`. Regression test added.
+      *Playlist-row hearts are unaffected — pigify fetches playlist tracks
+      without a `market` param, so Spotify returns canonical ids and does not
+      relink. If we ever add `market=from_token` to those fetches, the same
+      `linked_from` handling must be applied to the bulk loved-state check.*
+- [x] **Loved-state failures were silently swallowed.** Three spots hid a
+      failed saved-tracks check behind a bare `except`/`catch`, making a real
+      error indistinguishable from a genuine "not loved" (this is what made
+      the relinking bug above so hard to diagnose). Now logged:
+      `backend/app/api/favorites.py` (`logger.exception`),
+      `frontend` `TrackList.tsx` and `HeartButton.tsx` (`console.warn`).
 
 ## Security / hardening
 
@@ -93,7 +129,9 @@ Recipes sidebar, Playlist selector.
 - [ ] **`SettingsPanel`** — the settings surface.
 - [x] **`SortMenu`** — the sort control / menu.
 - [ ] **`UserMenu`** — the account menu.
-- [ ] **`HeartButton`** — the like / heart accent control.
+- [x] **`HeartButton`** — the like / heart accent control. On the brand: the
+      "love" LED now lights the day-glo blood red (`--brand-red`) with a lit
+      glow when loved, dim blue-grey when idle.
 
 **Current batch (from the tasklist).** TrackList + Track Info refinements,
 ordered simplest → most complex. Shipped so far: halved side padding +
@@ -178,6 +216,14 @@ Track Info refinements, ordered simplest → most complex:
       currently-sorted non-standard field (e.g. BPM) in the initial columns
       window, and put the full long-tail behind an "Advanced…" control that
       opens a modal.
+- [ ] **Visibility-aware now-playing poll.** The now-playing bar polls
+      `GET /api/player/state` every 2s unconditionally (`NowPlayingBar.tsx`),
+      so a backgrounded/hidden tab keeps hitting the backend (and the Spotify
+      token path) for nothing. Pause the poll when the tab is hidden
+      (`document.visibilitychange` / `document.hidden`) and resume — with an
+      immediate refresh — on focus. Optionally back off the interval while
+      paused. Cuts idle load; not a correctness bug (the cadence is by
+      design).
 
 **Revisit later (near end of development):**
 
