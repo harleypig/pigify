@@ -133,12 +133,16 @@ Recipes sidebar, Playlist selector.
       do NOT block demos (they run on the owner's token and consume no slot).
       pigify can't read the real dashboard state (no API), so this is an
       approximation; keep the allowlist in step with User Management.
-- [ ] **Owner always allowed (admin identity).** An `OWNER_SPOTIFY_ID` setting
-      that bypasses `ALLOWED_SPOTIFY_IDS` so the owner needn't allowlist
-      themselves; also the natural identity for admin actions (creating demo
-      invites, approving join requests). **Sequence: build this AFTER the demo
-      + join flow is built and tested** — keeping the owner on the allowlist
-      meanwhile keeps the deny/join path testable with a real account.
+- [ ] **Owner always allowed (admin identity), with a dev-only off switch.**
+      An `OWNER_SPOTIFY_ID` setting that bypasses `ALLOWED_SPOTIFY_IDS` so the
+      owner needn't allowlist themselves; also the natural identity for admin
+      actions (creating demo invites, approving join requests). Add a toggle
+      (e.g. `OWNER_BYPASS_ENABLED`, default on) to **disable the bypass at
+      will — honoured ONLY when `ENVIRONMENT=development`**, mirroring
+      `DEV_AUTH_BYPASS` (outside dev the owner is always allowed, so a prod
+      misconfig can't lock the owner out). Turning it off lets the owner
+      exercise the deny / join path with their real account while testing.
+      **Sequence: build this AFTER the demo + join flow is built and tested.**
 
 ## Tests
 
