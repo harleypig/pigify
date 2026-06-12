@@ -143,6 +143,21 @@ Recipes sidebar, Playlist selector.
       misconfig can't lock the owner out). Turning it off lets the owner
       exercise the deny / join path with their real account while testing.
       **Sequence: build this AFTER the demo + join flow is built and tested.**
+- [ ] **Owner admin surface.** An admin UI (tab / panel / popup) for
+      owner-only actions, currently CLI-only: mint / list / revoke demo
+      invites (`invites_cli`), and later review/approve join requests. Show it
+      **only** for the owner — gated on `OWNER_SPOTIFY_ID`; completely hidden
+      for everyone else. Depends on the owner-identity item above.
+- [ ] **Obvious "demo mode" banner.** While in a demo session, show a
+      persistent, **non-dismissable** bar across the top that explains this is
+      a demo (and its time limit) and links to the future **join** page — so a
+      visitor clearly knows they're seeing the owner's library, not their own.
+- [ ] **Resumable demo session.** A demo visitor should be able to log out
+      and come back **within the invite's duration window** (the redeemed
+      session's TTL). Invites are single-use today (redeem activates them), so
+      logging out strips the session with no way back. Let the same visitor
+      re-enter until the duration expires (e.g. a resume token, or don't fully
+      clear the demo grant on logout) without re-redeeming the spent invite.
 
 ## Tests
 
