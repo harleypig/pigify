@@ -100,7 +100,11 @@
   justify-self: end;
 }
 
-.user-info button {
+/* Direct-child action buttons only — must NOT reach the nested UserMenu
+   trigger (`.user-info > .user-menu > button`), which owns its own day-glo
+   styling in UserMenu.css. Without `> ` the solid-accent fill here collides
+   with the trigger's blue hover text and the name vanishes on hover. */
+.user-info > button {
   padding: 0.5rem 1rem;
   background-color: var(--brand-accent);
   color: #07080d;
@@ -110,21 +114,8 @@
   font-weight: 700;
 }
 
-.user-info button:hover {
+.user-info > button:hover {
   background-color: var(--brand-accent-bright);
-}
-
-.user-info .user-name-btn {
-  background: transparent;
-  color: var(--brand-ink);
-  padding: 0.3rem 0.6rem;
-  font-weight: 600;
-  border-radius: 7px;
-}
-
-.user-info .user-name-btn:hover {
-  background: rgba(var(--brand-accent-rgb), 0.12);
-  color: var(--brand-accent-bright);
 }
 
 /* ---- Scrobble banner: blue info, red stale ---- */

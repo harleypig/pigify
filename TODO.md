@@ -124,15 +124,14 @@ no order is required.
 
 **Already on the brand:** Login, Now-Playing bar, app shell (`App.css`),
 Recipes sidebar, Playlist selector, `TrackList`, `TrackInfoPanel`,
-`SortMenu`, `HeartButton`. (`Player` was removed as dead code, superseded
-by `NowPlayingBar`; its `spotifyService` Web Playback SDK layer lives on,
-reused by the in-browser-playback feature under *Product roadmap*.)
+`SortMenu`, `HeartButton`, `SettingsPanel`, `UserMenu`, `RecipeBuilder`.
+(`Player` was removed as dead code, superseded by `NowPlayingBar`; its
+`spotifyService` Web Playback SDK layer lives on, reused by the
+in-browser-playback feature under *Product roadmap*.)
 
-**Remaining (hard-coded colours → day-glo console):**
-
-- [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
-- [ ] **`SettingsPanel`** — the settings surface.
-- [ ] **`UserMenu`** — the account menu.
+**Remaining:** none — the day-glo console rollout is **complete**; every
+component surface is on the `--brand-*` tokens. Any new component should be
+authored on the brand from the start.
 
 **Deferred TrackList / Track Info items (capture only, build later):**
 
@@ -219,6 +218,19 @@ reused by the in-browser-playback feature under *Product roadmap*.)
 
 ## Track info panel
 
+- [ ] **Make the Track Info panel float / draggable.** It's pinned
+      bottom-right (`position: fixed`) and only resizable (top-left grip)
+      today; let the user **drag it anywhere** on the page and persist its
+      position alongside the already-persisted size.
+- [ ] **Persist open/closed state; drop the minimize-to-icon.** Remember
+      whether the panel is open across sessions — reopen it on login if it was
+      open at logout. And **remove the collapse-to-icon** behaviour (the
+      `collapsed` minimized box, bottom-right): open vs closed is the only
+      state, with no minimized icon.
+- [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
+      row that opens the Track Info panel — the same affordance the
+      now-playing bar already has ("Show track info"). Keep the existing
+      right-click-the-name shortcut; the icon just makes it discoverable.
 - [ ] **Share to social media.** Beyond the direct Spotify link (shipped),
       add sharing to the various social-media services — but only via methods
       that don't require **the app** to be authenticated to those services
@@ -234,6 +246,173 @@ reused by the in-browser-playback feature under *Product roadmap*.)
 - [ ] **Songfacts.com link.** Add a per-track songfacts.com link — a direct
       link if it can be resolved, otherwise a "Search songfacts.com for
       <song>" link.
+
+## Settings
+
+- [ ] **Configurable track-trivia cache TTL.** Settings › Connections › the
+      cached-trivia card (`EnrichmentCacheCard`) caches Last.fm / MusicBrainz
+      / Wikipedia results for a fixed ~week. Add a control to set the TTL,
+      **min 0 (no caching) … max 1 month**, wired to the backend
+      enrichment-cache expiry as a per-user setting; `0` bypasses the cache
+      entirely. (Covers all three providers, not just Last.fm.)
+- [ ] **Text-size control for the Settings window.** Add a simple
+      increase/decrease text-size button in the **upper-right** corner of the
+      Settings window — a local, persisted UI preference scaling the panel's
+      text. Pairs with the track-info *Font-size control + default* item
+      (*Track info panel*); share the default-size setting if practical.
+
+## Last.fm
+
+All Last.fm work lives here (public + connected tiers, scrobbling, favorites
+sync). See `docs/INTEGRATIONS.md › Last.fm` for how the integration works
+today.
+
+- [ ] **Explain "Background sync" in the Favorites tab.** Add a short blurb to
+      Settings › Favorites › Background sync saying what it is and what it
+      syncs: it reconciles **Spotify Saved Tracks ↔ Last.fm loved tracks** on
+      a recurring interval (the Spotify / Last.fm / Matched counts shown are
+      that reconciliation). Obvious to us who built it; opaque to a new user.
+- [ ] **Surface public Last.fm metadata without a connection (fix + extend).**
+      Verified: Last.fm **public** reads — tags, similar tracks, global play
+      count, listeners — need only the app API key (`LASTFM_API_KEY`), with no
+      user sign-in (`lastfm.py` "Public reads"; `connections.py` "public"
+      tier), and the About › Public providers copy is accurate. **But**
+      currently *no* Last.fm metadata appears unless the user connects their
+      account — the public tier isn't being surfaced. Fix so public data shows
+      with only the API key. It is already wired into sort (`lastfm_playcount`
+      global is a default field, `lastfm_listeners` available —
+      `sort_fields.py`) and the Track Info panel; **extend** it where it isn't
+      yet — global play count / listeners as track-list **columns**, tags as a
+      filter/facet. Personal play counts (`lastfm_user_playcount`) stay gated
+      to a connected account. **No bundled key:** even public Last.fm needs an
+      app `LASTFM_API_KEY`, and pigify deliberately ships **none** — we won't
+      embed our own credentials to grant universal public access. So with no
+      key configured the `none` tier (no Last.fm at all) is the *correct*
+      state, not a bug; this fix applies only once the deployer supplies their
+      own key. Surface that "bring your own Last.fm API key" requirement in
+      the setup / UI (ties to the tier-docs item below, and the credential
+      steps in `docs/INTEGRATIONS.md` / `.env.example`).
+- [ ] **Document public vs connected Last.fm (what each requires).** Spell out
+      the two tiers in `docs/INTEGRATIONS.md` (and the Connections / About UI
+      where it helps):
+      - **Public** — needs only `LASTFM_API_KEY`; no user action. Gives tags,
+        similar tracks, global play count, listeners (read-only).
+      - **Connected** — additionally needs `LASTFM_SHARED_SECRET` (signs the
+        auth session) **and** the user linking their Last.fm account (OAuth →
+        session key). Adds scrobbling, now-playing, personal play counts, and
+        Favorites (loved-tracks) sync.
+
+## Smart Filters (recipes)
+
+The "Smart Filters" feature — the `RecipesSidebar` panel and the
+`RecipeBuilder` modal that builds/edits one. **Last.fm note:** this area must
+handle all three Last.fm scenarios (none / public / connected — see
+*Last.fm*), since filters can use Last.fm-derived fields and that data is only
+present in some tiers.
+
+**Panel & playlist-list integration:**
+
+- [ ] **Move "Smart Filters" to the top of the playlist panel.** It currently
+      sits at the **bottom** of the playlist section and is easy to miss —
+      move the `RecipesSidebar` to the **top** of that panel so it's the first
+      thing seen.
+- [ ] **Surface a smart filter in the playlist list as a "filtered" type.**
+      Create a special playlist type (e.g. `filtered`) for a smart filter so
+      it appears **in the playlist list** alongside the user's Spotify
+      playlists and opens the **same way** — selecting it shows its resulting
+      tracks in the main track list, like any other playlist. Make it a
+      first-class, typed entry (badge/category), not a separate sidebar only.
+      Ties into *Export a filter to a real Spotify playlist* (below), the
+      *Filter the playlist list by type* item under *Frontend design ›
+      Playlist selector*, and the rules/mixes DSL in `docs/ROADMAP.md`.
+
+**Builder modal — filter management:**
+
+- [ ] **Make the builder a full filter-management (CRUD) window.** The filter
+      creation window should manage filters — create, view, **edit**, delete —
+      not just create. Title it per the naming alignment below so it reads as
+      "Filters" / "Smart Filters", not "recipe".
+- [ ] **Edit an existing filter from the list.** Add a way to edit a saved
+      filter — a **right-click** on the filter in the playlist/list and/or a
+      small **edit button** next to it — opening the builder pre-populated.
+- [ ] **Placeholder, not a default, for the filter name.** The name-the-filter
+      input shows a confusing `Bucket 1` today; use the placeholder **"Name
+      your filter"** instead — shown but **not** submitted as the value (the
+      user can still type that exact text to name it that, silly as that is).
+- [ ] **Clarify "Add bucket".** "Add bucket" is opaque; rename it, or add a
+      short explanatory line at the **top** of the window describing what a
+      bucket is (a group of sources + filters that contribute tracks).
+- [ ] **Align the "Smart Filters" ↔ "recipes" naming.** The UI labels the
+      feature **"Smart Filters"** (`RecipesSidebar` header) but the code calls
+      it **recipes** everywhere (`RecipeBuilder`, `RecipesSidebar`,
+      `recipesApi`, `StoredRecipe`, backend `recipes.py`). Pick one name and
+      align — rename the code to match the UI, or rename the UI to "recipes",
+      or (smallest) keep the split but **document the mapping**. A full code
+      rename touches the frontend, the API routes, and the backend, so weigh
+      the churn.
+
+**Filter & sort controls:**
+
+A bucket has two distinct steps that are easy to confuse: **Filter**
+*collects* the tracks, **Sort by** *orders* them. (Range needs like
+"duration < 5 min" are Filter, not Sort.)
+
+- [ ] **Show a default filter row (like the default sort).** The builder shows
+      a Sort by row by default but hides filtering behind **+ Add filter**, so
+      the Filter step is easy to miss — the Filter-vs-Sort split only becomes
+      clear after clicking it. Show one empty filter row by default, mirroring
+      the default sort row, so both steps are visible up front.
+- [ ] **Allow multiple "Sort by" fields.** Sort by takes a single field today;
+      allow several applied in order (multi-level sort, like the track-list
+      `SortMenu`) — add / remove / reorder sort keys, each with its own
+      direction.
+- [ ] **Evaluate per-field sort modifiers.** Sort by offers a blanket
+      ascending / descending, but not every field wants the same modifier —
+      some may want none or a field-specific control. Audit the sort fields
+      and decide whether asc/desc fits each, or whether some need a tailored
+      modifier.
+- [ ] **Unify the playlist and filter "Sort by".** The track-list `SortMenu`
+      (playlist sort) and the builder's Sort by should share the **same
+      appearance** and ideally the **same component/code** — keeping
+      `SortMenu`'s **simple button selection** as the shared look (bring the
+      filter's sort-by to match it, not the reverse). Dovetails with *Allow
+      multiple "Sort by" fields* above, since `SortMenu` already does
+      multi-key sort.
+
+**Source selection:**
+
+- [ ] **Playlist-type checkboxes in the source section.** Add a checkbox list
+      of **playlist types** to include. An **unchecked** type is excluded even
+      when **"All my playlists"** is selected (e.g. uncheck podcasts → no
+      podcasts). Pairs with *Filter the playlist list by type* under *Frontend
+      design › Playlist selector*.
+- [ ] **Filter "specific playlists" by the type checkboxes.** When **specific
+      playlists** is selected, the available-playlists list shows only the
+      types still checked above (uncheck podcasts → podcasts don't appear to
+      pick).
+- [ ] **Decide whether `filtered` may be a source — with a guard.** Evaluate
+      whether a filter can use **other filters** as a source (i.e. include the
+      `filtered` type in the checkboxes above). If allowed, checking
+      `filtered` must pop an **"are you sure?"** (yes / no) warning that it
+      can cause **infinite recursion** and that cross-filter interactions are
+      **undefined / not guaranteed to work**. Depends on the `filtered`
+      playlist type above.
+
+**Output & lifecycle:**
+
+- [ ] **Export a filter to a real Spotify playlist.** Filtered playlists live
+      only in pigify; add the ability to **create a real Spotify playlist**
+      from a filter so it's available in other Spotify clients (notably a
+      phone, until a mobile app exists). `recipesApi.materialize` is the seed.
+- [ ] **Recurring auto-updating filtered playlists.** *(at some point)* A
+      filter that **regenerates on a schedule** — e.g. "10 most recently added
+      + 20 least played, refreshed daily". This is the scheduled-**mix** idea
+      in `docs/ROADMAP.md` (Milestone 1 mixes).
+- [ ] **Filter-driven playlist cleanup.** *(at some point)* Use a filter to
+      **clean up a large playlist** (e.g. a 1300-track one): move some tracks
+      to other playlists, remove others, dedupe, etc. Builds on the
+      delete-playlist-tracks scaffold and the rules-engine move/remove
+      actions.
 
 ## Documentation
 
