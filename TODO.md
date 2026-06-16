@@ -629,6 +629,15 @@ See `docs/ROADMAP.md`. High-level outstanding:
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
       *(Subsumed by the shipped in-browser-playback device popup — that popup
       shows the active device.)*
+- [ ] **Notify when playback isn't on pigify.** When the active device is
+      **not** the pigify browser player (a phone, the desktop app, another
+      Connect device — `/me/player` `device.id` ≠ our SDK `device_id`), show a
+      **noticeable but unobtrusive** indicator — e.g. a lit accent on the
+      now-playing bar's device control + the device name, **not** the
+      full-width page-spanning banner the Spotify app uses. It should be easy
+      to glance and ideally one click to transfer playback here (reuses the
+      device-popup transfer). Pairs with the *"Playing on device" indicator*
+      above.
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can
