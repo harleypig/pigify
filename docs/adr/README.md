@@ -15,5 +15,7 @@ only the genuinely architectural calls.
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](0001-spotify-token-refresh-single-worker.md) | Lazy single-worker Spotify token refresh, accepting the refresh race | Accepted |
+| [0002](0002-no-market-param-on-track-reads.md) | No `market` parameter on Spotify track-data reads | Accepted |
+| [0003](0003-sqlite-only-until-extended-quota-mode.md) | SQLite-only until Spotify Extended Quota Mode | Accepted |
 
 [adr]: https://github.com/joelparkerhenderson/architecture-decision-record

@@ -91,6 +91,8 @@ async def spotify_login(request: Request):
     # - user-read-playback-state: Read current playback state
     # - user-modify-playback-state: Control playback (play/pause)
     # - playlist-read-private: Read user's private playlists
+    # - playlist-modify-private: Reorder / add to private playlists
+    # - playlist-modify-public: Reorder / add to public playlists
     # - user-read-private: Get user profile information
     # - user-library-read: Read Saved/Liked tracks (favorites sync)
     # - user-library-modify: Love/unlove Saved tracks (favorites sync)
@@ -100,6 +102,8 @@ async def spotify_login(request: Request):
         "user-read-playback-state",
         "user-modify-playback-state",
         "playlist-read-private",
+        "playlist-modify-private",
+        "playlist-modify-public",
         "user-read-private",
         "user-library-read",
         "user-library-modify",

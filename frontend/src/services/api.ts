@@ -305,6 +305,11 @@ export const apiService = {
     return response.data;
   },
 
+  // ICEBOX: removePlaylistItems(playlistId, items, snapshotId) — delete tracks
+  // from a playlist. Calls the (to-be-added) backend remove endpoint; the
+  // service call already exists. Design fork: remove a specific row (positions)
+  // vs all occurrences of a URI. See TODO.md "Delete playlist tracks".
+
   async getUndoStatus(
     playlistId: string,
   ): Promise<{ available: boolean; applied_at: number | null }> {

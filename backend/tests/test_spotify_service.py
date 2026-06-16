@@ -55,6 +55,61 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user.email, "alice@example.com")
 
     @respx.mock
+    async def test_retries_on_429_then_succeeds(self) -> None:
+        # An HTTP 429 with Retry-After is retried (Retry-After "0" → no real
+        # wait), and the subsequent 200 is returned. Regression for the
+        # rate-limit handling (Spotify audit #2).
+        route = respx.get(f"{BASE}/me").mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(200, json={"id": "user-1", "display_name": "A"}),
+            ]
+        )
+        user = await self.svc.get_current_user()
+        self.assertEqual(user.id, "user-1")
+        self.assertEqual(route.call_count, 2)  # retried exactly once
+
+    @respx.mock
+    async def test_get_playlist_tracks_uses_items_endpoint(self) -> None:
+        # Spotify renamed /playlists/{id}/tracks -> /items (Feb 2026 migration);
+        # we must call /items. Regression for Spotify audit #7.
+        route = respx.get(f"{BASE}/playlists/pl-1/items").mock(
+            return_value=httpx.Response(
+                200, json={"items": [spotify_track_item(track_id="t-1")]}
+            )
+        )
+        tracks = await self.svc.get_playlist_tracks("pl-1")
+        self.assertTrue(route.called)
+        self.assertEqual(tracks[0].id, "t-1")
+
+    @respx.mock
+    async def test_remove_items_from_playlist(self) -> None:
+        # Foundational delete-tracks call: DELETE /items with an items body +
+        # snapshot_id, returning the new snapshot_id.
+        route = respx.delete(f"{BASE}/playlists/pl-1/items").mock(
+            return_value=httpx.Response(200, json={"snapshot_id": "snap-2"})
+        )
+        snap = await self.svc.remove_items_from_playlist(
+            "pl-1", [{"uri": "spotify:track:t1"}], snapshot_id="snap-1"
+        )
+        self.assertEqual(snap, "snap-2")
+        content = route.calls.last.request.content
+        self.assertIn(b"spotify:track:t1", content)
+        self.assertIn(b'"snapshot_id":"snap-1"', content)
+
+    @respx.mock
+    async def test_check_saved_tracks_uses_library_contains_by_uri(self) -> None:
+        # Feb 2026: /me/tracks/contains -> /me/library/contains, keyed by URI
+        # (not bare id). Regression for Spotify audit #6.
+        route = respx.get(f"{BASE}/me/library/contains").mock(
+            return_value=httpx.Response(200, json=[True, False])
+        )
+        result = await self.svc.check_saved_tracks(["t1", "t2"])
+        self.assertEqual(result, [True, False])
+        uris = route.calls.last.request.url.params.get("uris")
+        self.assertEqual(uris, "spotify:track:t1,spotify:track:t2")
+
+    @respx.mock
     async def test_refresh_access_token(self) -> None:
         route = respx.post(SpotifyService.TOKEN_URL).mock(
             return_value=httpx.Response(

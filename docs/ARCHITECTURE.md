@@ -102,8 +102,9 @@ per Spotify user (service connections, track stats, scrobble queue, saved
 sorts/recipes). Two Alembic environments (`migrations/system/`,
 `migrations/user/`) run automatically on startup; manual control via
 `poetry run python -m app.db.cli`. Health: `GET /api/health/db`.
-`SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE` can point at Postgres
-instead. See `DATABASE.md`.
+`SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE` can point at Postgres,
+but that path is deferred — pigify is SQLite-only under Spotify's 5-user
+Dev-Mode cap (ADR-0003). See `DATABASE.md`.
 
 ## Deployment
 

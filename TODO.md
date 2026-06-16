@@ -5,49 +5,65 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Bugs
 
-- [x] **(High) Logout doesn't return to the login page.** Logging out from
-      the user dropdown should return to the "Connect Spotify" login screen,
-      but it stays on the app. Likely cause: in `handleLogout` (App.tsx) the
-      auth-state reset (`setIsAuthenticated(false)`, etc.) runs only after
-      `await apiService.logout()` resolves, so a failed/erroring logout call
-      leaves the user on the app — clear auth state regardless of the call's
-      outcome, and surface the error.
-- [x] **(High) Expired Spotify session shows "can't reach the server".**
-      `/api/auth/me` wrapped *every* exception — including a Spotify `401`
-      (expired/revoked token, or token store lost) — as a blanket `500`. The
-      login screen's reachability probe reads any `5xx` as "backend down", so
-      a merely-stale session surfaced as the scary "Can't reach the server".
-      Fixed in `backend/app/api/auth.py`: an upstream `401` now clears the
-      session and returns `401` (frontend treats the user as logged out);
-      other upstream statuses map to `502`. Regression test added.
-- [ ] **Centralise Spotify-`401` → `401` across the API.** The same
-      blanket-`500`-on-any-exception pattern still exists in
+- [ ] **Centralise Spotify-`401` → `401` across the API.** `/api/auth/me`
+      already translates an upstream Spotify `401` to a clean `401` (+ session
+      clear), but the blanket-`500`-on-any-exception pattern still exists in
       `backend/app/api/playlists.py` and `player.py`, so once a session's
-      token dies mid-use those endpoints also return `500` instead of a
+      token dies mid-use those endpoints still return `500` instead of a
       clean `401`. Translate an upstream `httpx.HTTPStatusError(401)` to a
       `401` (+ `clear_session`) in one place — an exception handler or a
       shared dependency — rather than per-endpoint, and drop the duplicated
-      try/except 500 wrappers. Builds on the `/me` fix above.
-- [x] **Now-playing heart reads "unloved" for popular (relinked) songs.**
-      Spotify relinks regionally-licensed tracks for the user's market, so
-      `/me/player` returns the *relinked* id with the original in
-      `linked_from`. Per Spotify's track-relinking rules, Library operations
-      (saved-tracks check, save/unsave) must use the **original** id; the
-      now-playing heart used the relinked top-level id, so the saved-tracks
-      check missed and popular songs showed unloved (obscure single-market
-      tracks were fine). Fixed in `NowPlayingBar.tsx`: the HeartButton now
-      uses `linked_from?.id ?? id` (and uri) for loved-state and love/unlove;
-      `PlaybackItem` gained `linked_from`. Regression test added.
-      *Playlist-row hearts are unaffected — pigify fetches playlist tracks
-      without a `market` param, so Spotify returns canonical ids and does not
-      relink. If we ever add `market=from_token` to those fetches, the same
-      `linked_from` handling must be applied to the bulk loved-state check.*
-- [x] **Loved-state failures were silently swallowed.** Three spots hid a
-      failed saved-tracks check behind a bare `except`/`catch`, making a real
-      error indistinguishable from a genuine "not loved" (this is what made
-      the relinking bug above so hard to diagnose). Now logged:
-      `backend/app/api/favorites.py` (`logger.exception`),
-      `frontend` `TrackList.tsx` and `HeartButton.tsx` (`console.warn`).
+      try/except 500 wrappers.
+
+## Spotify audit (2026-06-12)
+
+The `/spotify-audit` run (2026-06-12) against `rules/spotify.md`. The
+actionable findings shipped: playlist-modify scopes, 429/`Retry-After`
+handling, the Feb-2026 `/items` + `/me/library` migrations, the `market`
+decision (**ADR-0002**), and the verified `/me/tracks*` batch cap — see the
+merged history. Only the open follow-ups remain.
+
+- [ ] **Migrate `GET /me/tracks` (the saved-tracks read)?** The
+      save/remove/contains writes moved to `/me/library`; the paginated
+      saved-tracks read (`get_saved_tracks`, `GET /me/tracks`) was out of scope
+      and is unchanged — re-check whether it too needs the unified-library
+      migration. *rules/spotify.md › Endpoints.*
+
+### Info (verify manually)
+
+- [ ] **(Info) Premium gating.** The SDK degrades silently for non-Premium
+      (`spotify.ts:164` logs `account_error`; `NowPlayingBar.tsx:136` no-ops).
+      Consider a "Premium required" message. *rules/spotify.md › Web Playback
+      SDK.*
+- [ ] **(Info) Compliance — caching & attribution.** pigify persists Spotify
+      metadata (per-user DB playlist items + track stats + enrichment cache).
+      The Developer Terms limit caching beyond immediate use; confirm retention
+      is defensible and that the UI **attributes** Spotify. *rules/spotify.md ›
+      Compliance.*
+
+### Watch — re-evaluate each `/spotify-audit` run
+
+These depend on **deprecated Spotify endpoints with no drop-in replacement**.
+Don't re-flag them statically — on **each `/spotify-audit` run, re-verify
+against current docs (Context7)** whether Spotify shipped a replacement or
+un-deprecated them, or an open alternative's status changed; then update the
+**Re-evaluated** line. The drop-vs-keep product call can wait on that.
+
+- [ ] **Deprecated `/audio-analysis` (now-playing waveform).** `spotify.py`
+      `get_audio_analysis` → the waveform (`player.py`); already degrades to an
+      empty waveform. *No open replacement:* needs per-track time-series
+      loudness/segments — AcousticBrainz's data isn't time-series, and Essentia
+      needs raw audio Spotify won't give. Likely a drop.
+      **Re-evaluated 2026-06-16:** still no replacement.
+- [ ] **Deprecated `/audio-features` (sort-by-feature + recipe filters).**
+      `spotify.py` `get_audio_features` → `recipes.py`, `playlists.py` /
+      `sort_fields.py`. *Candidate open replacement:* **AcousticBrainz** (frozen
+      July-2022 dump, keyed by MBID) carries BPM/key/danceability/mood
+      descriptors, and pigify already resolves track → MBID via MusicBrainz, so
+      the fields could be repopulated by MBID lookup (coverage frozen mid-2022;
+      recent releases missing). MusicBrainz itself is metadata-only.
+      **Re-evaluated 2026-06-16:** still frozen; ListenBrainz building a
+      replacement, nothing drop-in yet.
 
 ## Security / hardening
 
@@ -76,15 +92,6 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       streams (`backend/v*` / `frontend/v*`) — pigify currently builds both
       images from one `v*` tag. Then expand the thin `.claude/CONVENTIONS.md`
       "Versioning" section to match.
-- [x] **nginx rule (rule-coverage gap).** This repo configures nginx
-      (`frontend/nginx.conf`: TLS termination, the `/api` proxy, the
-      CSP / Permissions-Policy security headers tuned for the Spotify Web
-      Playback SDK) but had no codified guidance for editing it. Resolved by
-      the 2026-06-12 `claude-audit`: a global, detection-activated
-      `rules/nginx.md` (reverse-proxy hygiene, TLS hardening, the
-      security-header `always` + `add_header`-inheritance footguns, CSP /
-      Permissions-Policy authoring). Rule-only — runtime header verification
-      stays with `rules/zap.md` / DAST. Resolved in dotfiles, not here.
 
 ## Theming & branding
 
@@ -116,78 +123,33 @@ Keep `theme.css` the single swap point. Order below is by visibility, but
 no order is required.
 
 **Already on the brand:** Login, Now-Playing bar, app shell (`App.css`),
-Recipes sidebar, Playlist selector.
+Recipes sidebar, Playlist selector, `TrackList`, `TrackInfoPanel`,
+`SortMenu`, `HeartButton`. (`Player` was removed as dead code, superseded
+by `NowPlayingBar`; its `spotifyService` Web Playback SDK layer lives on,
+reused by the in-browser-playback feature under *Product roadmap*.)
 
 **Remaining (hard-coded colours → day-glo console):**
 
-- [x] **`TrackList`** — the main content list (highest-visibility surface).
-- [x] **`Player`** — removed (dead code, superseded by `NowPlayingBar`). Its
-      `spotifyService` (Web Playback SDK) layer lives on, reused by the
-      in-browser-playback feature under *Product roadmap*.
-- [x] **`TrackInfoPanel`** — the track-detail panel.
 - [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
 - [ ] **`SettingsPanel`** — the settings surface.
-- [x] **`SortMenu`** — the sort control / menu.
 - [ ] **`UserMenu`** — the account menu.
-- [x] **`HeartButton`** — the like / heart accent control. On the brand: the
-      "love" LED now lights the day-glo blood red (`--brand-red`) with a lit
-      glow when loved, dim blue-grey when idle.
 
-**Current batch (from the tasklist).** TrackList + Track Info refinements,
-ordered simplest → most complex. Shipped so far: halved side padding +
-empty-state placeholder; name-only play with right-click-for-info; row
-multi-select (single / Ctrl / Shift). Remaining:
+**Deferred TrackList / Track Info items (capture only, build later):**
 
-- [x] **Fix the "show raw" Last.fm leak.** In the Track Info panel, the "show
-      raw" view includes a Last.fm object even when Last.fm is disabled. When
-      it's off, that object should be empty or absent entirely.
-- [x] **Share icon → Spotify link.** Add a share icon to the Track Info panel
-      that, for now, is a direct link to the track on Spotify. (Social-media
-      sharing is the deferred item under *Track info panel* below.)
-- [x] **Collapse the Wikipedia entry behind a `+`.** Don't auto-expand the
-      Wikipedia information; show a `+` next to the Wikipedia header that
-      opens it on demand.
-- [x] **Remember the last-loaded playlist.** Persist the selected playlist so
-      a refresh — or logout then back in — restores the same playlist view.
-- [x] **Day-glo restyle the `TrackInfoPanel`.** Bring the track-detail panel
-      onto the brand (also tracked in the component checklist above).
-- [x] **Column headers + column chooser.** Add a header row immediately below
-      the list's header separator labelling the displayed columns, with a
-      control at the far right to choose which columns to show.
-
-**Current batch 2 (track list window).** A second round of TrackList +
-Track Info refinements, ordered simplest → most complex:
-
-- [x] **Rename "Edit info" to "Edit".** Same size/font, shorter label.
-- [x] **Halve the track rows' side padding.** The left/right padding on the
-      track rows themselves is too much — halve it (the panel side padding was
-      already halved separately).
-- [x] **Close the column chooser on outside click.** Clicking anywhere outside
-      the open columns popover should dismiss it.
-- [x] **Click a highlighted row to unhighlight it.** A plain left-click on an
-      already-selected row clears its highlight (toggle), rather than
-      re-selecting it.
-- [x] **Loved state as a column option.** Make the loved/heart indicator a
-      toggleable column in the chooser.
-- [x] **Total playtime beside the track count.** Show the playlist's summed
-      duration next to the track count in the header.
-- [x] **Loading spinner with the playlist name.** Replace the bare "Loading
-      tracks…" with a spinner + text like "Loading <playlist> …" (large
-      playlists take a few seconds).
-- [x] **Album cover beside the playlist name; per-row art becomes optional.**
-      Drop the per-row thumbnails by default and put the playlist's cover
-      image next to the playlist name in the header — big enough to see detail
-      but not too large. Keep per-row artwork available as a column option
-      (off by default).
-- [x] **Resizable Track Info window.** Let the user resize the track-info
-      panel.
-- [x] **"Play playlist" + "Add to queue" header buttons.** Add buttons in the
-      playlist header to start playback of the whole playlist and to enqueue
-      all its tracks. (Add-to-queue enqueues every track, so flag progress on
-      large playlists.)
-
-**Deferred from batch 2 (capture only, build later):**
-
+- [ ] **Delete playlist tracks.** Remove track(s) from a playlist (DELETE
+      `/playlists/{id}/items`). **Scaffolded** — the service call exists
+      (`SpotifyService.remove_items_from_playlist`, with a test), and the
+      remaining integration points are marked with `ICEBOX:`: the backend
+      endpoint (`playlists.py`), `removePlaylistItems` (`api.ts`), and a per-row
+      remove action (`TrackList.tsx`). To finish: wire those three. **Design
+      fork:** remove a *specific row* (uri + `positions`) vs *all occurrences*
+      of a uri — choose per surface (a row action = positions; de-dup = either).
+      Considerations: pass the playlist `snapshot_id` (so a concurrent change
+      can't delete the wrong row), the 100-item cap (batched), editable
+      playlists only (else 403), a confirm/undo (destructive); the
+      `playlist-modify-*` scope is ready (audit #1). **Scenarios driving it:**
+      the rules-engine `remove_from` / move actions (`docs/ROADMAP.md`), per-row
+      curation, de-duplication, and post-reorder cleanup.
 - [ ] **Persist the sort setup.** The current sort spec (selected fields /
       order / applied preset) should survive a refresh and logout/login, like
       the selected playlist and column choices already do (localStorage).
@@ -201,6 +163,13 @@ Track Info refinements, ordered simplest → most complex:
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Surface `is_playable` (grey out unplayable rows).** Show which tracks
+      are unplayable in the user's market (greyed row / badge). This is the
+      **revisit trigger for ADR-0002** (no `market` on track reads): building
+      it requires passing `market=from_token` on the track reads **and** — in
+      the same change — surfacing `linked_from.id` and rekeying the bulk
+      loved-state check on `linked_from_id ?? id` (so relinking doesn't break
+      the loved hearts). Do the two together, never `market` alone.
 - [ ] **Play-button overlay on the playlist cover.** Show a play-button
       overlay on the playlist cover image (beside the title) — e.g. on hover —
       that starts playing the playlist when clicked. Reuses the existing
@@ -224,6 +193,20 @@ Track Info refinements, ordered simplest → most complex:
       immediate refresh — on focus. Optionally back off the interval while
       paused. Cuts idle load; not a correctness bug (the cadence is by
       design).
+
+**Playlist selector (capture only, build later):**
+
+- [ ] **Reorder the playlist list (pigify-local).** Let the user set a custom
+      order for the playlist selector. Spotify has **no API to reorder the
+      playlist library**, so this is a pigify-side order (persisted here,
+      applied to the selector display) — it won't sync back to the Spotify
+      apps.
+- [ ] **Filter the playlist list by type.** Filter the selector to **owned vs
+      followed** (via `owner.id`; note "copied" isn't a distinct Spotify
+      concept — a copy is just a playlist you own). Also **support podcasts /
+      audiobooks**: playlist items carry `track_type: "track" | "episode"`, and
+      Spotify exposes separate saved-shows / saved-audiobooks libraries —
+      handle `episode` items, not only tracks.
 
 **Revisit later (near end of development):**
 
@@ -258,14 +241,6 @@ Track Info refinements, ordered simplest → most complex:
       schema reference from `docs/ROADMAP.md` Milestone 4 — to a
       readthedocs.io page: pick the generator (MkDocs vs Sphinx), add a
       `.readthedocs.yaml`, and link the site from the README.
-- [ ] **Document obtaining Last.fm credentials.** Add how to get a Last.fm
-      API key + shared secret to `.env.example` and/or the integrations/setup
-      docs, so the optional scrobbling/enrichment setup is self-serve.
-- [ ] **Clarify database support.** `.env.example` says `SYSTEM_DATABASE_URL`
-      can point at Postgres and `docs/ROADMAP.md` states Postgres is already
-      supported, but only SQLite is exercised today. Verify whether Postgres
-      actually works (engine + migrations) and document accurately — note
-      SQLite-only if it isn't wired, or confirm and cover Postgres if it is.
 - [ ] **Document the access / onboarding model.** It spans two independent
       gates and is Spotify-policy-dependent, so it is non-obvious:
       - **Spotify dashboard *User Management*** (Spotify-side; blocks OAuth
@@ -402,38 +377,8 @@ See `docs/ROADMAP.md`. High-level outstanding:
 - [ ] **"Playing on device" indicator.** Surface which device playback is
       currently happening on (active device name) somewhere in the UI. Backed
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
-      *(Subsumed by the in-browser-playback device popup below — the popup
+      *(Subsumed by the shipped in-browser-playback device popup — that popup
       shows the active device.)*
-- [x] **In-browser playback + device popup (meld `Player` into the
-      NowPlayingBar).** Let pigify play audio in the browser tab itself, not
-      only remote-control an existing device, with a **show/select device
-      popup** on the NowPlayingBar. Architecture: the Web Playback SDK's role
-      is to **register the browser as a Spotify Connect device** (it then
-      appears in `/me/player/devices`); the actual "play here" is a
-      **transfer** to that `device_id` via the REST API — not the SDK's own
-      play method (which `spotifyService.play()` calls but doesn't exist).
-      Groundwork present: the `streaming` scope, `GET /api/auth/token`,
-      the `spotifyService` SDK wrapper, and device_id-aware play endpoints.
-      Build order:
-      1. Backend: `get_devices()` (`GET /me/player/devices`) +
-         `transfer_playback(device_id, play)` (`PUT /me/player`) on the
-         service, exposed as `/api/player/devices` + `/api/player/transfer`.
-      2. SDK init on auth: load the SDK, register the browser device, and make
-         `getOAuthToken` fetch a **fresh** token from `/api/auth/token` (fix
-         the current always-same-token bug) for refresh.
-      3. NowPlayingBar **device popup**: a devices button listing
-         `/me/player/devices` (incl. "This browser"), active one highlighted,
-         transfer on select; day-glo styled.
-      4. ✅ Done — dead `Player.tsx` / `.css` / `.test.tsx` removed
-         (`spotifyService` kept; this feature reuses it).
-      Caveats: Premium-only; first play needs a user gesture; the access
-      token is exposed to the browser (inherent to the SDK; `/api/auth/token`
-      already does this).
-      **Status: DONE / validated in Brave** — connects, registers
-      "Pigify - Web", transfers and plays. Chrome on the dev machine fails
-      (`connect()` false) but so does **open.spotify.com** there — a
-      machine/Chrome DRM issue, not a pigify bug. Per-browser DRM quirks are
-      tracked by the cross-browser item under *Tests*.
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can

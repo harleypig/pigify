@@ -52,8 +52,11 @@ examples/       user-facing copy-paste: image-based docker-compose.yml
 - **Async SQLAlchemy 2.0** with a **two-tier SQLite** model: one shared
   system DB (`pigify.db`: users, service connections, settings) plus one
   DB per Spotify user (playlist items, track stats, scrobble queue, saved
-  recipes). Repositories avoid SQLite-only features so Postgres is a
-  URL-swap (`SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE`).
+  recipes). Repositories avoid SQLite-only features so Postgres stays a
+  URL-swap (`SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE`) — kept as
+  cheap insurance only; actually running Postgres is **deferred** until
+  Spotify Extended Quota Mode (the 5-user Dev-Mode cap makes it pointless —
+  ADR-0003). Stay SQLite-only; don't add Postgres infra.
 - **Two Alembic environments** (`migrations/system`, `migrations/user`)
   applied automatically on startup via `app.db.bootstrap`; manual control
   via `poetry run python -m app.db.cli`.
@@ -103,6 +106,35 @@ terminates at the frontend nginx** (mounting mkcert certs from `docker/certs/`);
 the backend stays plain HTTP on the internal network. The web redirect
 URI is `https://127.0.0.1:8080/api/auth/spotify/callback`. Generate local
 certs with `scripts/setup-ssl.sh`.
+
+## Spotify Web API limitations
+
+Features the Spotify **Web API does not support** — verified, recorded here so
+they aren't re-attempted. (The generic "feature unsupported by an external
+API" process lives in the global `CLAUDE.md`; the global `rules/spotify.md` is
+the API policy.)
+
+- **No playback-queue reorder.** The API exposes only `GET /me/player/queue`
+  (read) and `POST /me/player/queue` (add one item); the live queue cannot be
+  reordered, moved, or removed. The Spotify app does it internally — we can't.
+  Closest feasible: rebuild the queue by re-queuing (lossy).
+- **No playlist-library reorder.** There is no endpoint to reorder the user's
+  *list* of playlists; only items *within* a playlist reorder (`PUT
+  /playlists/{id}/items`). A custom playlist-list order must be **pigify-local**
+  (stored here, applied to the selector).
+
+When a request hits one of these, follow the global process: re-verify it's
+still unsupported against current docs (Context7 / `rules/spotify.md`), tell
+the user with the nearest alternative, and record it (an `ICEBOX:` note at the
+relevant code + here). These are Spotify-API facts (true for any Spotify app),
+kept local for now — promotable to the global `rules/spotify.md` if a second
+Spotify repo appears.
+
+**Decision — no `market` on track-data reads.** Track-data reads (playlist
+tracks, single track) deliberately omit `market` / `from_token`: it would
+relink ids and break the bulk loved-state check for marginal gain. Full
+rationale, alternatives, and the revisit trigger live in
+**[ADR-0002](../docs/adr/0002-no-market-param-on-track-reads.md)**.
 
 ## Versioning
 

@@ -163,11 +163,16 @@ The recipe builder is the start; grow it into a full rules/mixes editor.
 ### Database
 
 - **SQLite longevity**: fine up to ~100k tracks and 5–10M scrobbles (rows
-  are tiny). Beyond ~20M scrobbles or heavy concurrent writes, Postgres is
-  safer — already supported via `SYSTEM_DATABASE_URL` /
-  `USER_DATABASE_URL_TEMPLATE` (see `DATABASE.md`).
-- **When to switch**: multiple active writers, multi-user, or
-  analytics-heavy workloads. Otherwise stay on SQLite for simplicity.
+  are tiny) — comfortably more than enough for the **5 users** Spotify's
+  Development Mode caps a self-hosted deploy at. Pigify is therefore
+  **SQLite-only**; the `SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE`
+  URL-swap to Postgres is kept latent but **deferred until Spotify Extended
+  Quota Mode** (~250k MAU), since below that cap Postgres is pure cost — see
+  [ADR-0003](adr/0003-sqlite-only-until-extended-quota-mode.md) and
+  `DATABASE.md`.
+- **When Postgres would earn its keep**: multiple active writers, real
+  multi-user scale, or analytics-heavy workloads — none reachable under the
+  5-user cap, hence the deferral above.
 - **Indexing**: index `track(spotify_id)`, `track(isrc)`,
   `playlist_item(playlist_id, spotify_id, added_at)`, and
   `scrobble(spotify_id, played_at)`.
@@ -183,21 +188,3 @@ The recipe builder is the start; grow it into a full rules/mixes editor.
 - Safety: every action supports `dry_run` and `allowlist`/`denylist` guards.
 - Versioned configs: embed the commit hash in generated playlists'
   descriptions.
-
-## Resolved decisions
-
-Open questions from the original concept, now settled by the current build:
-
-- **Spotify scopes** — the required scopes are documented in
-  `SPOTIFY_SETUP.md`.
-- **Token storage** — signed session cookies; the per-user refresh token is
-  held server-side via the session seam (`app/auth/session.py`).
-- **Player** — Web Playback SDK plus playback-state/transfer control.
-- **Error handling** — graceful degradation for optional providers and a
-  background retry queue for failed scrobbles (see `INTEGRATIONS.md`).
-- **UI stack** — React 19 + Vite, plain CSS (no component framework).
-- **Database** — two-tier SQLite (system + per-user) with Alembic; Postgres
-  is a config switch (see `DATABASE.md`).
-- **Ports** — backend `8000`, Vite dev `5000`, the HTTPS app on `8080`.
-- **Config volume** — a `config/` tree mounted for hot-reload is part of
-  Milestone 1, not yet wired.
