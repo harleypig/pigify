@@ -340,9 +340,9 @@ present in some tiers.
 
 **Filter & sort controls:**
 
-A bucket has two distinct steps that are easy to confuse: **Filter** *collects*
-the tracks, **Sort by** *orders* them. (Range needs like "duration < 5 min"
-are Filter, not Sort.)
+A bucket has two distinct steps that are easy to confuse: **Filter**
+*collects* the tracks, **Sort by** *orders* them. (Range needs like
+"duration < 5 min" are Filter, not Sort.)
 
 - [ ] **Show a default filter row (like the default sort).** The builder shows
       a Sort by row by default but hides filtering behind **+ Add filter**, so
