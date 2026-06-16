@@ -19,7 +19,7 @@ import UserMenu from "./components/UserMenu";
 import { apiService, type Profile, type User } from "./services/api";
 import "./App.css";
 
-const PANEL_COLLAPSED_KEY = "pigify.trackInfoPanel.collapsed";
+const PANEL_OPEN_KEY = "pigify.trackInfoPanel.open";
 const SELECTED_PLAYLIST_KEY = "pigify.selectedPlaylist";
 const SCROBBLE_POLL_MS = 60 * 1000; // 60s
 
@@ -55,21 +55,23 @@ function App() {
   const [panelOverrideTrackId, setPanelOverrideTrackId] = useState<
     string | null
   >(null);
-  const [panelCollapsed, setPanelCollapsed] = useState<boolean>(() => {
+  // Whether the Track Info panel is open. Persisted, so logging back in
+  // restores it open/closed as it was left. Default open on a fresh browser.
+  const [panelOpen, setPanelOpen] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(PANEL_COLLAPSED_KEY) === "1";
+      return localStorage.getItem(PANEL_OPEN_KEY) !== "0";
     } catch {
-      return false;
+      return true;
     }
   });
 
   useEffect(() => {
     try {
-      localStorage.setItem(PANEL_COLLAPSED_KEY, panelCollapsed ? "1" : "0");
+      localStorage.setItem(PANEL_OPEN_KEY, panelOpen ? "1" : "0");
     } catch {
       /* ignore */
     }
-  }, [panelCollapsed]);
+  }, [panelOpen]);
 
   // Remember the last-opened playlist across refreshes and logout/login.
   // Write-only: logout clears the in-memory selection but leaves the stored
@@ -189,12 +191,12 @@ function App() {
 
   const focusPanelOnNowPlaying = () => {
     setPanelOverrideTrackId(null);
-    setPanelCollapsed(false);
+    setPanelOpen(true);
   };
 
   const focusPanelOnTrack = (trackId: string) => {
     setPanelOverrideTrackId(trackId);
-    setPanelCollapsed(false);
+    setPanelOpen(true);
   };
 
   if (!isAuthenticated) {
@@ -317,15 +319,16 @@ function App() {
           )}
         </div>
       </main>
-      <TrackInfoPanel
-        trackId={panelTrackId}
-        collapsed={panelCollapsed}
-        onToggleCollapsed={() => setPanelCollapsed((c) => !c)}
-        onShowNowPlaying={focusPanelOnNowPlaying}
-        canShowNowPlaying={
-          nowPlayingTrackId !== null && panelTrackId !== nowPlayingTrackId
-        }
-      />
+      {panelOpen && (
+        <TrackInfoPanel
+          trackId={panelTrackId}
+          onClose={() => setPanelOpen(false)}
+          onShowNowPlaying={focusPanelOnNowPlaying}
+          canShowNowPlaying={
+            nowPlayingTrackId !== null && panelTrackId !== nowPlayingTrackId
+          }
+        />
+      )}
     </div>
   );
 }

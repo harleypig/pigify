@@ -26,19 +26,23 @@
   overflow: hidden;
 }
 
-.track-info-panel.collapsed {
-  width: auto;
-  max-height: none;
-  padding: 6px;
-  border-radius: var(--brand-radius-sm);
+/* While dragging: lift the module (deeper shadow, brighter edge) and stop
+   text selection from kicking in mid-drag. */
+.track-info-panel.dragging {
+  user-select: none;
+  border-color: rgba(var(--brand-accent-rgb), 0.55);
+  box-shadow:
+    0 26px 60px -10px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.2),
+    0 0 0 1px rgba(var(--brand-accent-rgb), 0.25);
 }
 
-/* Top-left resize grip — the panel is pinned bottom-right, so dragging the
-   top-left corner up/left grows it. */
+/* Bottom-right resize grip — the panel is anchored top-left (drag the header
+   to move it), so dragging this corner down/right grows it. */
 .tip-resize {
   position: absolute;
-  top: 0;
-  left: 0;
+  bottom: 0;
+  right: 0;
   width: 16px;
   height: 16px;
   z-index: 2;
@@ -48,13 +52,13 @@
 .tip-resize::before {
   content: "";
   position: absolute;
-  top: 4px;
-  left: 4px;
+  bottom: 4px;
+  right: 4px;
   width: 7px;
   height: 7px;
-  border-top: 2px solid rgba(var(--brand-accent-rgb), 0.45);
-  border-left: 2px solid rgba(var(--brand-accent-rgb), 0.45);
-  border-radius: 3px 0 0 0;
+  border-bottom: 2px solid rgba(var(--brand-accent-rgb), 0.45);
+  border-right: 2px solid rgba(var(--brand-accent-rgb), 0.45);
+  border-radius: 0 0 3px 0;
 }
 .tip-resize:hover::before {
   border-color: var(--brand-accent-bright);
@@ -70,6 +74,10 @@
     var(--brand-navy);
   /* Thin electric-blue power rail along the bottom edge. */
   box-shadow: inset 0 -1px 0 rgba(var(--brand-accent-rgb), 0.3);
+  /* The header is the drag handle for the floating panel. */
+  cursor: move;
+  user-select: none;
+  touch-action: none;
 }
 
 .tip-title-tag {

@@ -218,15 +218,15 @@ authored on the brand from the start.
 
 ## Track info panel
 
-- [ ] **Make the Track Info panel float / draggable.** It's pinned
-      bottom-right (`position: fixed`) and only resizable (top-left grip)
-      today; let the user **drag it anywhere** on the page and persist its
-      position alongside the already-persisted size.
-- [ ] **Persist open/closed state; drop the minimize-to-icon.** Remember
-      whether the panel is open across sessions — reopen it on login if it was
-      open at logout. And **remove the collapse-to-icon** behaviour (the
-      `collapsed` minimized box, bottom-right): open vs closed is the only
-      state, with no minimized icon.
+- [x] **Make the Track Info panel float / draggable.** Done: the panel is a
+      floating window — drag the header to move it anywhere, drag the
+      bottom-right grip to resize, both clamped on-screen and persisted
+      (`pigify.trackInfoPanel.pos` / `.size`).
+- [x] **Persist open/closed state; drop the minimize-to-icon.** Done: the
+      `collapsed` minimize-to-icon state is gone — the × button closes the
+      panel (it un-mounts; reopen from the now-playing ⓘ or by clicking a
+      track), and open/closed persists across sessions
+      (`pigify.trackInfoPanel.open`).
 - [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
       row that opens the Track Info panel — the same affordance the
       now-playing bar already has ("Show track info"). Keep the existing

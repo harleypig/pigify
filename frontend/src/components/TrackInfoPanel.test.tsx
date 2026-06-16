@@ -25,48 +25,12 @@ const detail = {
 describe("TrackInfoPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     getTrackDetail.mockResolvedValue(detail);
   });
 
-  it("renders the collapsed view with an expand control", () => {
-    render(
-      <TrackInfoPanel
-        trackId="t1"
-        collapsed={true}
-        onToggleCollapsed={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByRole("button", { name: "Expand track info panel" }),
-    ).toBeInTheDocument();
-  });
-
-  it("calls onToggleCollapsed when the expand button is clicked", async () => {
-    const onToggle = vi.fn();
-    render(
-      <TrackInfoPanel
-        trackId="t1"
-        collapsed={true}
-        onToggleCollapsed={onToggle}
-      />,
-    );
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Expand track info panel" }),
-    );
-
-    expect(onToggle).toHaveBeenCalledTimes(1);
-  });
-
-  it("fetches and shows track detail when expanded", async () => {
-    render(
-      <TrackInfoPanel
-        trackId="t1"
-        collapsed={false}
-        onToggleCollapsed={vi.fn()}
-      />,
-    );
+  it("fetches and shows track detail", async () => {
+    render(<TrackInfoPanel trackId="t1" onClose={vi.fn()} />);
 
     expect(await screen.findByText("Detail Track")).toBeInTheDocument();
     expect(screen.getByText(/The Artist/)).toBeInTheDocument();
@@ -74,15 +38,20 @@ describe("TrackInfoPanel", () => {
   });
 
   it("shows the empty state when no track is selected", () => {
-    render(
-      <TrackInfoPanel
-        trackId={null}
-        collapsed={false}
-        onToggleCollapsed={vi.fn()}
-      />,
-    );
+    render(<TrackInfoPanel trackId={null} onClose={vi.fn()} />);
 
     expect(screen.getByText("No track selected.")).toBeInTheDocument();
     expect(getTrackDetail).not.toHaveBeenCalled();
+  });
+
+  it("calls onClose when the close button is clicked", async () => {
+    const onClose = vi.fn();
+    render(<TrackInfoPanel trackId="t1" onClose={onClose} />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close track info panel" }),
+    );
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

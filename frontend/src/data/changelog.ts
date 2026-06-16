@@ -14,6 +14,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Make the Track Info panel a floating window.",
+      "Day-glo console rollout: Settings, UserMenu, RecipeBuilder + fixes.",
+      "Track Info floating panel + unify the two Sort by UIs.",
+      "Wrap the filter/sort intro at 78 cols.",
+      "Add filter/sort control items to Smart Filters.",
       "Align the Sort by / Take / Source row controls.",
       "Expand Smart Filters backlog (builder CRUD, sources, lifecycle).",
       "Capture Smart Filters (recipes) backlog.",
@@ -34,12 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
       "Record loved-state/auth fixes, nginx gap, visibility poll.",
       "Record the single-worker Spotify token-refresh decision.",
-      "Use the original id for relinked tracks; stop hiding errors.",
-      "Return 401 (not 500) when a Spotify session expires.",
-      "Carry the day-glo console brand onto the love control.",
-      "Flag nginx rule/skill gap for the next claude-audit.",
-      "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
-      "…and 221 earlier changes."
+      "…and 226 earlier changes."
     ]
   },
   {

@@ -3,6 +3,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -11,11 +12,50 @@ import { formatDuration, highlightJson } from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
 
 const PANEL_SIZE_KEY = "pigify.trackInfoPanel.size";
+const PANEL_POS_KEY = "pigify.trackInfoPanel.pos";
+const MIN_W = 280;
+const MIN_H = 200;
+const EDGE = 8; // keep this gap from the viewport edges
+
+interface Size {
+  w: number;
+  h: number;
+}
+interface Pos {
+  x: number;
+  y: number;
+}
+
+function readStored<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw) as T;
+  } catch {
+    /* ignore malformed storage */
+  }
+  return null;
+}
+
+// Keep the panel reachable: fully on-screen when it fits, else pinned to the
+// top-left edge (so the header / drag handle never drifts out of reach).
+function clampPos(p: Pos, w: number, h: number): Pos {
+  return {
+    x: Math.max(
+      EDGE,
+      Math.min(p.x, Math.max(EDGE, window.innerWidth - w - EDGE)),
+    ),
+    y: Math.max(
+      EDGE,
+      Math.min(p.y, Math.max(EDGE, window.innerHeight - h - EDGE)),
+    ),
+  };
+}
 
 interface Props {
   trackId: string | null;
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
+  // Close (un-mount) the panel. There is no minimized state — reopen from the
+  // now-playing ⓘ button or by clicking/right-clicking a track in the list.
+  onClose: () => void;
   // Jump the panel back to the currently-playing track (clears the override
   // set by clicking/right-clicking a track in the list).
   onShowNowPlaying?: () => void;
@@ -25,8 +65,7 @@ interface Props {
 
 function TrackInfoPanel({
   trackId,
-  collapsed,
-  onToggleCollapsed,
+  onClose,
   onShowNowPlaying,
   canShowNowPlaying,
 }: Props) {
@@ -41,59 +80,137 @@ function TrackInfoPanel({
   const [wikiOpen, setWikiOpen] = useState(false);
   const reqRef = useRef(0);
 
-  // User-resized panel size (null = the CSS default). Persisted; the panel is
-  // pinned bottom-right, so the grip is the top-left corner (drag to grow).
-  const [size, setSize] = useState<{ w: number; h: number } | null>(() => {
-    try {
-      const raw = localStorage.getItem(PANEL_SIZE_KEY);
-      if (raw) return JSON.parse(raw) as { w: number; h: number };
-    } catch {
-      /* ignore */
-    }
-    return null;
-  });
-  const panelRef = useRef<HTMLElement>(null);
-  const dragRef = useRef<{ x: number; y: number; w: number; h: number } | null>(
-    null,
+  // Floating-window geometry, both persisted: a top-left position and a size.
+  // Drag the header to move; drag the bottom-right grip to resize. `null`
+  // means "not set yet" — the panel first paints at its CSS default.
+  const [size, setSize] = useState<Size | null>(() =>
+    readStored<Size>(PANEL_SIZE_KEY),
   );
+  const [pos, setPos] = useState<Pos | null>(() =>
+    readStored<Pos>(PANEL_POS_KEY),
+  );
+  const [dragging, setDragging] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  // Origin of the active pointer gesture, shared by move and resize.
+  const gestureRef = useRef<{
+    mode: "move" | "resize";
+    px: number;
+    py: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
 
   useEffect(() => {
-    try {
-      if (size) localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(size));
-    } catch {
-      /* ignore */
+    if (size) {
+      try {
+        localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(size));
+      } catch {
+        /* ignore */
+      }
     }
   }, [size]);
+  useEffect(() => {
+    if (pos) {
+      try {
+        localStorage.setItem(PANEL_POS_KEY, JSON.stringify(pos));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [pos]);
 
-  const onResizeDown = (e: ReactPointerEvent) => {
+  // Anchor top-left on first mount: the panel first paints at the CSS default
+  // (bottom-right); measure that rect and convert it to an explicit position
+  // so dragging and bottom-right resizing share one anchor. Pre-paint, so no
+  // visible jump.
+  useLayoutEffect(() => {
+    if (pos) return;
+    const el = panelRef.current;
+    if (el) {
+      const r = el.getBoundingClientRect();
+      setPos({ x: r.left, y: r.top });
+    }
+  }, [pos]);
+
+  // Keep it on-screen if the window shrinks under it.
+  useEffect(() => {
+    const onResize = () => {
+      const el = panelRef.current;
+      if (el)
+        setPos((p) => (p ? clampPos(p, el.offsetWidth, el.offsetHeight) : p));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const onHeaderPointerDown = (e: ReactPointerEvent) => {
+    // Header controls (refresh, close, …) must still click, not start a drag.
+    if ((e.target as HTMLElement).closest("button, label, input, a")) return;
+    const el = panelRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    gestureRef.current = {
+      mode: "move",
+      px: e.clientX,
+      py: e.clientY,
+      x: r.left,
+      y: r.top,
+      w: r.width,
+      h: r.height,
+    };
+    setDragging(true);
+  };
+
+  const onResizePointerDown = (e: ReactPointerEvent) => {
     const el = panelRef.current;
     if (!el) return;
     e.preventDefault();
+    const r = el.getBoundingClientRect();
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      w: el.offsetWidth,
-      h: el.offsetHeight,
+    gestureRef.current = {
+      mode: "resize",
+      px: e.clientX,
+      py: e.clientY,
+      x: r.left,
+      y: r.top,
+      w: r.width,
+      h: r.height,
     };
   };
-  const onResizeMove = (e: ReactPointerEvent) => {
-    const d = dragRef.current;
-    if (!d) return;
-    // Pinned bottom-right: dragging up/left (smaller clientX/Y) grows it.
-    const w = Math.max(
-      280,
-      Math.min(window.innerWidth - 32, d.w + d.x - e.clientX),
-    );
-    const h = Math.max(
-      200,
-      Math.min(window.innerHeight - 96, d.h + d.y - e.clientY),
-    );
-    setSize({ w, h });
+
+  const onGesturePointerMove = (e: ReactPointerEvent) => {
+    const g = gestureRef.current;
+    if (!g) return;
+    const dx = e.clientX - g.px;
+    const dy = e.clientY - g.py;
+    if (g.mode === "move") {
+      setPos(clampPos({ x: g.x + dx, y: g.y + dy }, g.w, g.h));
+    } else {
+      // Top-left anchored, so the bottom-right grip grows toward the pointer.
+      const w = Math.max(
+        MIN_W,
+        Math.min(window.innerWidth - g.x - EDGE, g.w + dx),
+      );
+      const h = Math.max(
+        MIN_H,
+        Math.min(window.innerHeight - g.y - EDGE, g.h + dy),
+      );
+      setSize({ w, h });
+    }
   };
-  const onResizeUp = (e: ReactPointerEvent) => {
-    dragRef.current = null;
-    e.currentTarget.releasePointerCapture(e.pointerId);
+
+  const onGesturePointerUp = (e: ReactPointerEvent) => {
+    if (!gestureRef.current) return;
+    gestureRef.current = null;
+    setDragging(false);
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
   };
 
   const fetchDetail = useCallback((id: string, refresh: boolean) => {
@@ -174,46 +291,40 @@ function TrackInfoPanel({
     }
   };
 
-  if (collapsed) {
-    return (
-      <div className="track-info-panel collapsed">
-        <button
-          type="button"
-          className="tip-toggle"
-          onClick={onToggleCollapsed}
-          aria-label="Expand track info panel"
-          title="Show track info"
-        >
-          ⓘ
-        </button>
-      </div>
-    );
+  const style: CSSProperties = {};
+  if (pos) {
+    style.left = pos.x;
+    style.top = pos.y;
+    style.right = "auto";
+    style.bottom = "auto";
+  }
+  if (size) {
+    style.width = size.w;
+    style.height = size.h;
+    style.maxHeight = "none";
   }
 
   return (
     <aside
-      className="track-info-panel"
+      className={`track-info-panel${dragging ? " dragging" : ""}`}
       aria-label="Track info"
       ref={panelRef}
-      style={
-        size
-          ? ({
-              width: size.w,
-              height: size.h,
-              maxHeight: "none",
-            } as CSSProperties)
-          : undefined
-      }
+      style={style}
     >
-      {/* Top-left resize grip (panel is pinned bottom-right). Pointer-only. */}
+      {/* Bottom-right resize grip. Pointer-only. */}
       <div
         className="tip-resize"
-        onPointerDown={onResizeDown}
-        onPointerMove={onResizeMove}
-        onPointerUp={onResizeUp}
+        onPointerDown={onResizePointerDown}
+        onPointerMove={onGesturePointerMove}
+        onPointerUp={onGesturePointerUp}
         aria-hidden="true"
       />
-      <header className="tip-header">
+      <header
+        className="tip-header"
+        onPointerDown={onHeaderPointerDown}
+        onPointerMove={onGesturePointerMove}
+        onPointerUp={onGesturePointerUp}
+      >
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">
           {canShowNowPlaying && onShowNowPlaying && (
@@ -248,9 +359,9 @@ function TrackInfoPanel({
           <button
             type="button"
             className="tip-toggle"
-            onClick={onToggleCollapsed}
-            aria-label="Collapse track info panel"
-            title="Collapse"
+            onClick={onClose}
+            aria-label="Close track info panel"
+            title="Close"
           >
             ×
           </button>
