@@ -23,9 +23,19 @@ trivially per-user, and isolate corruption blast radius.
 
 SQLAlchemy 2.0 async with `aiosqlite`. SQLite is the default because
 Pigify is intended to run as a single Docker image with a mounted data
-volume — no separate database server required. The data-access layer
-(`backend/app/db/repositories/`) avoids SQLite-only features so swapping
-in Postgres is a configuration change, not a rewrite:
+volume — no separate database server required.
+
+In practice Pigify is **SQLite-only**: a self-hosted deploy is capped at
+**5 users** by Spotify's Development Mode, far below the scale (multi-user,
+heavy writes, tens of millions of scrobbles) at which Postgres would earn
+its keep, so a Postgres instance is pure cost until Spotify **Extended Quota
+Mode** (~250k MAU). Postgres support is therefore **deferred** — see
+[ADR-0003](adr/0003-sqlite-only-until-extended-quota-mode.md).
+
+The data-access layer (`backend/app/db/repositories/`) nonetheless avoids
+SQLite-only features, so the URL-swap is kept available as cheap insurance.
+Should Extended Quota Mode ever be reached, moving to Postgres is a
+configuration change, not a rewrite:
 
 - Install `asyncpg` (runtime) and `psycopg[binary]` (migrations) — they
   are not bundled by default since Pigify ships SQLite-first.

@@ -254,14 +254,19 @@ reused by the in-browser-playback feature under *Product roadmap*.)
       schema reference from `docs/ROADMAP.md` Milestone 4 — to a
       readthedocs.io page: pick the generator (MkDocs vs Sphinx), add a
       `.readthedocs.yaml`, and link the site from the README.
-- [ ] **Document obtaining Last.fm credentials.** Add how to get a Last.fm
-      API key + shared secret to `.env.example` and/or the integrations/setup
-      docs, so the optional scrobbling/enrichment setup is self-serve.
-- [ ] **Clarify database support.** `.env.example` says `SYSTEM_DATABASE_URL`
-      can point at Postgres and `docs/ROADMAP.md` states Postgres is already
-      supported, but only SQLite is exercised today. Verify whether Postgres
-      actually works (engine + migrations) and document accurately — note
-      SQLite-only if it isn't wired, or confirm and cover Postgres if it is.
+- [x] **Document obtaining Last.fm credentials.** The obtain URL
+      (`https://www.last.fm/api/account/create`, which issues both the API key
+      and shared secret) is documented in `docs/INTEGRATIONS.md › Last.fm` and
+      now pointed to from `.env.example`'s Last.fm section, so the optional
+      scrobbling/enrichment setup is self-serve.
+- [x] **Clarify database support.** Resolved by **ADR-0003**: pigify is
+      **SQLite-only**, with Postgres deferred until Spotify Extended Quota
+      Mode (the Dev-Mode 5-user cap makes Postgres-scale load unreachable, so
+      a Postgres instance is pure cost). The "Postgres already supported"
+      claims were corrected to "latent / deferred" across `.env.example`,
+      `docs/DATABASE.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, and
+      `.claude/CONVENTIONS.md`. Verifying the Postgres path is moot under the
+      cap, so it is dropped, not done.
 - [ ] **Document the access / onboarding model.** It spans two independent
       gates and is Spotify-policy-dependent, so it is non-obvious:
       - **Spotify dashboard *User Management*** (Spotify-side; blocks OAuth
