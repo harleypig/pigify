@@ -342,8 +342,7 @@ function TrackInfoPanel({
       ref={panelRef}
       style={style}
     >
-      {/* Resize handles on every edge + corner. Pointer-only; the
-          bottom-right one carries the visible grip cue (CSS). */}
+      {/* Resize handles on every edge + corner. Pointer-only, invisible. */}
       {RESIZE_HANDLES.map((dir) => (
         <div
           key={dir}

@@ -39,8 +39,8 @@
 
 /* Resize handles — invisible grab strips on every edge and corner. The panel
    is anchored top-left, so each handle drags its named edge while the
-   opposite edge stays put. Corners sit above the edges; the bottom-right one
-   carries the visible day-glo grip cue. Edges inset 12px to clear corners. */
+   opposite edge stays put. Corners sit above the edges; edges inset 12px to
+   clear the corners. */
 .tip-rz {
   position: absolute;
   z-index: 3;
@@ -101,24 +101,10 @@
 .tip-rz-se {
   bottom: 0;
   right: 0;
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   z-index: 4;
   cursor: nwse-resize;
-}
-.tip-rz-se::before {
-  content: "";
-  position: absolute;
-  bottom: 4px;
-  right: 4px;
-  width: 7px;
-  height: 7px;
-  border-bottom: 2px solid rgba(var(--brand-accent-rgb), 0.45);
-  border-right: 2px solid rgba(var(--brand-accent-rgb), 0.45);
-  border-radius: 0 0 3px 0;
-}
-.tip-rz-se:hover::before {
-  border-color: var(--brand-accent-bright);
 }
 
 .tip-header {

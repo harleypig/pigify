@@ -230,9 +230,9 @@ authored on the brand from the start.
 - [x] **Resize from any edge or corner.** Done: invisible grab handles on all
       four edges (single-direction) and four corners (diagonal); top/left
       handles move the anchor while the opposite edge stays put, so position
-      and size update together, clamped on-screen and persisted. The
-      bottom-right corner keeps the visible grip cue; the body gained a thin
-      accent scrollbar so it coexists with the right-edge handle.
+      and size update together, clamped on-screen and persisted. The body
+      gained a thin accent scrollbar so it coexists with the right-edge
+      handle.
 - [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
       row that opens the Track Info panel — the same affordance the
       now-playing bar already has ("Show track info"). Keep the existing

@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Drop the bottom-right resize grip mark.",
       "Resize the floating panel from any edge or corner.",
       "Track Info — edge/corner resize + Grokipedia provider.",
       "Make the Track Info panel a floating window.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Fix .claude version drift and the stale Biome claim.",
       "Silent Spotify token refresh to keep sessions alive.",
       "Silently refresh the Spotify token to keep sessions alive.",
-      "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
-      "…and 228 earlier changes."
+      "…and 229 earlier changes."
     ]
   },
   {
