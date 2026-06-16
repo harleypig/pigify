@@ -290,8 +290,8 @@ authored on the brand from the start.
       "contact us for pricing" — likely too costly here. Ask anyway: email
       them describing pigify as a **small open-source project** and request
       pricing/terms for low-volume, non-commercial use. If affordable, it
-      could replace the search-only links with inline facts; if not, record the
-      decline as an `ICEBOX:` and keep the links.
+      could replace the search-only links with inline facts; if not, record
+      the decline as an `ICEBOX:` and keep the links.
 
 ## Settings
 
