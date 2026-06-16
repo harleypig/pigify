@@ -332,6 +332,44 @@ today.
         session key). Adds scrobbling, now-playing, personal play counts, and
         Favorites (loved-tracks) sync.
 
+## MusicBrainz
+
+pigify uses the **MusicBrainz Web Service** (`/ws/2`) to resolve a Spotify
+track → MBID (ISRC-first, then a fuzzy artist+title recording search) for the
+Track Info panel and enrichment (`backend/app/services/musicbrainz.py`). It is
+a real public API with extensive docs, but — unlike Spotify — has **no global
+agent rule or skill yet**. These are **global-config tasks** (they land in the
+dotfiles repo via `claude-audit` + `ship-pr`, surfaced from here like the
+nginx rule was), per the tool-rule-coverage policy in `CLAUDE.md`.
+
+- [ ] **Global `rules/musicbrainz.md`** (detection-activated, modelled on
+      `rules/spotify.md`). Ground it in the current official docs
+      (<https://musicbrainz.org/doc/MusicBrainz_API>) and cover: the `/ws/2`
+      endpoints + `fmt=json`; lookup vs search vs browse; the `inc=`
+      sub-resource params; the **strict ~1 req/s rate limit** and the
+      **required descriptive `User-Agent`** (app + contact) — abusing either
+      gets the client blocked; ISRC-first resolution then fuzzy fallback;
+      reads need **no auth** (public, CC0 data); caching / don't-rehammer +
+      attribution.
+- [ ] **`musicbrainz-patterns` skill** (mirroring `spotify-patterns`): the
+      rate-limited async client (semaphore + ≥1 s spacing), ISRC→recording
+      resolution, the fuzzy artist+title fallback, parsing
+      releases/release-groups/ISRCs/tags/work-rels, and the **MBID-keyed
+      adjacent services** — Cover Art Archive (album art), AcousticBrainz
+      (frozen audio features — see the audio-features Watch item),
+      ListenBrainz, Picard/AcoustID (acoustic fingerprinting; out of scope —
+      needs raw audio).
+- [ ] **Align pigify's client to the rule once written.** Audit
+      `musicbrainz.py` against `rules/musicbrainz.md`: the `User-Agent`
+      contact is a placeholder (`dev@pigify.local`) and the semaphore is `2`
+      while the
+      docs say ~1 req/s — reconcile (concurrency vs spacing). Record any
+      repo-specific bits in `.claude/CONVENTIONS.md`.
+- [ ] **Decide whether a `musicbrainz-audit` skill is warranted.** Likely not
+      — MusicBrainz is stable, with no Spotify-style deprecation churn — so
+      probably **Off** (rule + patterns suffice). Record the decision either
+      way.
+
 ## Smart Filters (recipes)
 
 The "Smart Filters" feature — the `RecipesSidebar` panel and the
