@@ -55,6 +55,21 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(user.email, "alice@example.com")
 
     @respx.mock
+    async def test_retries_on_429_then_succeeds(self) -> None:
+        # An HTTP 429 with Retry-After is retried (Retry-After "0" → no real
+        # wait), and the subsequent 200 is returned. Regression for the
+        # rate-limit handling (Spotify audit #2).
+        route = respx.get(f"{BASE}/me").mock(
+            side_effect=[
+                httpx.Response(429, headers={"Retry-After": "0"}),
+                httpx.Response(200, json={"id": "user-1", "display_name": "A"}),
+            ]
+        )
+        user = await self.svc.get_current_user()
+        self.assertEqual(user.id, "user-1")
+        self.assertEqual(route.call_count, 2)  # retried exactly once
+
+    @respx.mock
     async def test_refresh_access_token(self) -> None:
         route = respx.post(SpotifyService.TOKEN_URL).mock(
             return_value=httpx.Response(

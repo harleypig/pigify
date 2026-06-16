@@ -70,12 +70,14 @@ now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
       `backend/app/api/auth.py` (+ a regression test guarding them).
       **Requires a logout/login to re-consent** before the grant includes
       them; confirm a reorder / recipe-materialize succeeds afterward.
-- [ ] **(High) Add Spotify 429 / `Retry-After` handling.** The HTTP layer
-      (`spotify.py` `_get`/`_put`/`_post`/`_delete` + the shared client) has no
-      rate-limit branch (the repo's backoff is all Last.fm scrobble-queue).
-      *rules/spotify.md › Rate limiting.* A burst (parallel mount fan-out, big
-      playlist hydrate) risks throttling/ban. Fix with the `spotify-patterns`
-      429 recipe: honor `Retry-After`, then exponential backoff.
+- [x] **(High) Add Spotify 429 / `Retry-After` handling.** Done — all Spotify
+      Web API calls (`_get`/`_put`/`_post`/`_put_json`/`_delete`) now route
+      through `_send_with_retry` (`spotify.py`): on HTTP 429 it honors
+      `Retry-After`, otherwise exponential backoff (1→2→4s), bounded (4
+      attempts, 30s/wait cap) so a request can't hang. *rules/spotify.md ›
+      Rate limiting.* Regression test added
+      (`test_retries_on_429_then_succeeds`). The token endpoints
+      (accounts.spotify.com) are left direct — out of scope, lower frequency.
 - [ ] **(High, product decision) Deprecated `/audio-analysis`.**
       `spotify.py:276` (`get_audio_analysis`) drives the now-playing waveform
       (`player.py:122-134`). Deprecated 2024-11-27 — 404 for new apps, no

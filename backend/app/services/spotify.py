@@ -4,11 +4,15 @@ Spotify API service wrapper using spotipy.
 
 import asyncio
 import base64
+import logging
+from typing import Any
 
 import httpx
 
 from app.config import settings
 from app.models.playlist import Playlist, Track, User
+
+logger = logging.getLogger(__name__)
 
 
 class SpotifyError(Exception):
@@ -42,6 +46,49 @@ async def close_shared_client() -> None:
     if _shared_client is not None and not _shared_client.is_closed:
         await _shared_client.aclose()
     _shared_client = None
+
+
+# Spotify rate limiting: on HTTP 429, honor the Retry-After header (seconds),
+# otherwise fall back to exponential backoff. Bounded so a request can't hang
+# indefinitely behind a long Retry-After — past the cap the 429 is returned
+# and the caller's raise_for_status surfaces it.
+_RATE_LIMIT_MAX_ATTEMPTS = 4
+_RATE_LIMIT_MAX_WAIT_S = 30.0
+
+
+async def _send_with_retry(
+    client: httpx.AsyncClient, method: str, url: str, **kwargs: Any
+) -> httpx.Response:
+    """Send ``method url``, retrying on HTTP 429.
+
+    Honors the ``Retry-After`` header when present, otherwise an exponential
+    backoff (1→2→4s). Returns the final response — which may still be a 429
+    after the attempt cap — so the caller handles it exactly as before.
+    """
+    backoff = 1.0
+    for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS - 1):
+        response = await client.request(method, url, **kwargs)
+        if response.status_code != 429:
+            return response
+
+        retry_after = response.headers.get("Retry-After", "")
+        wait = min(
+            float(retry_after) if retry_after.isdigit() else backoff,
+            _RATE_LIMIT_MAX_WAIT_S,
+        )
+        logger.warning(
+            "Spotify 429 on %s %s; retrying in %.0fs (attempt %d/%d)",
+            method,
+            url,
+            wait,
+            attempt + 1,
+            _RATE_LIMIT_MAX_ATTEMPTS,
+        )
+        await asyncio.sleep(wait)
+        backoff *= 2
+
+    # Final attempt — no retry after this one.
+    return await client.request(method, url, **kwargs)
 
 
 class SpotifyService:
@@ -137,7 +184,9 @@ class SpotifyService:
         """Make GET request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.get(url, headers=self.headers, params=params)
+        response = await _send_with_retry(
+            client, "GET", url, headers=self.headers, params=params
+        )
         if response.status_code == 204:
             return None
         response.raise_for_status()
@@ -149,7 +198,9 @@ class SpotifyService:
         """Make PUT request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.put(url, headers=self.headers, json=body, params=params)
+        response = await _send_with_retry(
+            client, "PUT", url, headers=self.headers, json=body, params=params
+        )
         response.raise_for_status()
 
     async def _post(
@@ -158,8 +209,8 @@ class SpotifyService:
         """Make POST request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.post(
-            url, headers=self.headers, json=body, params=params
+        response = await _send_with_retry(
+            client, "POST", url, headers=self.headers, json=body, params=params
         )
         response.raise_for_status()
         if response.status_code == 204 or not response.content:
@@ -176,7 +227,9 @@ class SpotifyService:
         like playlist reorder that return a snapshot_id)."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.put(url, headers=self.headers, json=body, params=params)
+        response = await _send_with_retry(
+            client, "PUT", url, headers=self.headers, json=body, params=params
+        )
         response.raise_for_status()
         if response.status_code == 204 or not response.content:
             return None
@@ -189,7 +242,9 @@ class SpotifyService:
         """Make DELETE request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.delete(url, headers=self.headers, params=params)
+        response = await _send_with_retry(
+            client, "DELETE", url, headers=self.headers, params=params
+        )
         response.raise_for_status()
 
     # --- Saved tracks (favorites) ---
