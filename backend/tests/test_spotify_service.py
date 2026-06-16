@@ -83,6 +83,21 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(tracks[0].id, "t-1")
 
     @respx.mock
+    async def test_remove_items_from_playlist(self) -> None:
+        # Foundational delete-tracks call: DELETE /items with an items body +
+        # snapshot_id, returning the new snapshot_id.
+        route = respx.delete(f"{BASE}/playlists/pl-1/items").mock(
+            return_value=httpx.Response(200, json={"snapshot_id": "snap-2"})
+        )
+        snap = await self.svc.remove_items_from_playlist(
+            "pl-1", [{"uri": "spotify:track:t1"}], snapshot_id="snap-1"
+        )
+        self.assertEqual(snap, "snap-2")
+        content = route.calls.last.request.content
+        self.assertIn(b"spotify:track:t1", content)
+        self.assertIn(b'"snapshot_id":"snap-1"', content)
+
+    @respx.mock
     async def test_refresh_access_token(self) -> None:
         route = respx.post(SpotifyService.TOKEN_URL).mock(
             return_value=httpx.Response(

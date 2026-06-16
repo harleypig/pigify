@@ -373,6 +373,12 @@ function TrackList({
     }
   };
 
+  // ICEBOX: per-row "remove track" action (delete from the playlist) goes
+  // here / on the row. Calls apiService.removePlaylistItems (to be added);
+  // pass the track uri + its position for row-level removal, plus the
+  // playlist snapshot_id. Only on editable playlists. See TODO.md "Delete
+  // playlist tracks".
+
   // Mouse selection model: a plain click single-selects, Ctrl toggles the
   // one row, Shift selects the range from the anchor (the last single/Ctrl
   // click) to this row in either direction. Selection is keyed by rowKeys so

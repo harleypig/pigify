@@ -687,6 +687,13 @@ def _coalesce_reorder_ops(ops: list[dict[str, int]]) -> list[dict[str, int]]:
     return out
 
 
+# ICEBOX: remove tracks from a playlist (delete playlist items). The service
+# call exists (SpotifyService.remove_items_from_playlist); a DELETE/POST
+# endpoint goes here, taking the items (uri, optional positions) + the
+# playlist snapshot_id, and calling it. Design fork: remove-by-URI (all
+# occurrences) vs by-position (a specific row). Scope is ready (audit #1).
+# See TODO.md "Delete playlist tracks". Needed by the rules-engine
+# remove_from / move actions (ROADMAP) and a per-row "remove" UI action.
 @router.post("/{playlist_id}/reorder")
 async def reorder_playlist(request: Request, playlist_id: str, body: ReorderRequest):
     """

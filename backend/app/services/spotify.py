@@ -247,6 +247,25 @@ class SpotifyService:
         )
         response.raise_for_status()
 
+    async def _delete_json(
+        self, endpoint: str, body: dict | None = None
+    ) -> dict | None:
+        """DELETE with a JSON body, returning the JSON response (for endpoints
+        like playlist-item removal that take an ``items`` body and return a
+        ``snapshot_id``)."""
+        url = f"{self.BASE_URL}{endpoint}"
+        client = await get_shared_client()
+        response = await _send_with_retry(
+            client, "DELETE", url, headers=self.headers, json=body
+        )
+        response.raise_for_status()
+        if response.status_code == 204 or not response.content:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
+
     # --- Saved tracks (favorites) ---
 
     async def check_saved_tracks(self, track_ids: list[str]) -> list[bool]:
@@ -400,6 +419,41 @@ class SpotifyService:
             if not chunk:
                 continue
             await self._post(f"/playlists/{playlist_id}/items", body={"uris": chunk})
+
+    async def remove_items_from_playlist(
+        self,
+        playlist_id: str,
+        items: list[dict[str, Any]],
+        snapshot_id: str | None = None,
+    ) -> str | None:
+        """Remove items from a playlist (DELETE /playlists/{id}/items).
+
+        Foundational call for a future "remove track" / rules-engine
+        ``remove_from`` action — not yet wired to an API endpoint or UI (see
+        the `ICEBOX:` markers and `TODO.md` "Delete playlist tracks").
+
+        ``items`` mirrors Spotify's body — a list of ``{"uri": ...}`` objects.
+        **Design fork the caller decides:** add ``"positions": [n, ...]`` to an
+        item to remove a *specific row* (row-level removal / de-dup); omit it to
+        remove **all occurrences** of that URI. Pass the playlist's
+        ``snapshot_id`` to delete against a known version (so a concurrent
+        change can't make you remove the wrong row). Batches at the 100-item
+        cap; returns the final ``snapshot_id``. Requires the
+        ``playlist-modify-*`` scope (already requested) and an editable
+        playlist.
+        """
+        snap = snapshot_id
+        for i in range(0, len(items), 100):
+            chunk = items[i : i + 100]
+            if not chunk:
+                continue
+            body: dict[str, Any] = {"items": chunk}
+            if snap:
+                body["snapshot_id"] = snap
+            data = await self._delete_json(f"/playlists/{playlist_id}/items", body=body)
+            if data and data.get("snapshot_id"):
+                snap = data["snapshot_id"]
+        return snap
 
     async def pause_playback(self) -> None:
         """Pause playback."""

@@ -281,6 +281,20 @@ Track Info refinements, ordered simplest → most complex:
 
 **Deferred from batch 2 (capture only, build later):**
 
+- [ ] **Delete playlist tracks.** Remove track(s) from a playlist (DELETE
+      `/playlists/{id}/items`). **Scaffolded** — the service call exists
+      (`SpotifyService.remove_items_from_playlist`, with a test), and the
+      remaining integration points are marked with `ICEBOX:`: the backend
+      endpoint (`playlists.py`), `removePlaylistItems` (`api.ts`), and a per-row
+      remove action (`TrackList.tsx`). To finish: wire those three. **Design
+      fork:** remove a *specific row* (uri + `positions`) vs *all occurrences*
+      of a uri — choose per surface (a row action = positions; de-dup = either).
+      Considerations: pass the playlist `snapshot_id` (so a concurrent change
+      can't delete the wrong row), the 100-item cap (batched), editable
+      playlists only (else 403), a confirm/undo (destructive); the
+      `playlist-modify-*` scope is ready (audit #1). **Scenarios driving it:**
+      the rules-engine `remove_from` / move actions (`docs/ROADMAP.md`), per-row
+      curation, de-duplication, and post-reorder cleanup.
 - [ ] **Persist the sort setup.** The current sort spec (selected fields /
       order / applied preset) should survive a refresh and logout/login, like
       the selected playlist and column choices already do (localStorage).
