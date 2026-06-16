@@ -86,8 +86,9 @@ un-deprecated them, or an open alternative's status changed; then update the
 - [ ] **Version tagging** *(do this LAST — after the Track-Info-panel tasks)*.
       Adopt a documented tag-driven versioning scheme modeled on
       `../scripturestudy-app` (its `.claude/CONVENTIONS.md` "Versioning &
-      tagging") and the global `ship-pr` Step 6 / `git.md` tag hygiene: version
-      derived from git tags via `git describe` rather than a committed file,
+      tagging") and the global `ship-pr` Step 6 / `git.md` tag hygiene:
+      version derived from git tags via `git describe` rather than a committed
+      file,
       bumping = creating a tag at the PR's merge commit, and the tag is what
       builds + pushes the images. Decide single-stream (`v*`, both images) vs
       per-component streams (`backend/v*` / `frontend/v*`) — pigify currently
@@ -95,8 +96,8 @@ un-deprecated them, or an open alternative's status changed; then update the
       **The display already exists:** Settings › About › the "Versions" card
       shows Frontend / Backend version **+ Git commit**, fed by
       `__APP_VERSION__` (frontend build-time global) and `getVersionInfo()`
-      (backend), and the compose build passes `GIT_HASH` / `APP_VERSION` args —
-      which just default empty today. So the work is the scheme that
+      (backend), and the compose build passes `GIT_HASH` / `APP_VERSION`
+      args — which just default empty today. So the work is the scheme that
       **populates** those from `git describe` at build time, so the About card
       shows the real **version + hash**. Then expand the thin
       `.claude/CONVENTIONS.md` "Versioning" section to match.
@@ -172,8 +173,8 @@ authored on the brand from the start.
       badge) when its `explicit` field is true.
 - [ ] **Custom duration icon/display** *(low priority)*. Some tracks show a
       bespoke duration glyph instead of the time — e.g. *"Jedi Temple March -
-      Order 66 … Epic Imperial Version"* by Planistec renders a **lightsabre**.
-      Support it **if possible** — first verify whether any API actually
+      Order 66 … Epic Imperial Version"* by Planistec renders a
+      **lightsabre**. Support it **if possible** — first verify whether any API
       exposes such a per-track duration icon/visual (Spotify Web API track
       object? somewhere else); if nothing exposes it, record that as an
       `ICEBOX:` limitation rather than guessing.
