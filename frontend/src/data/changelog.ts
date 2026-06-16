@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Per-row info icon to open the Track Info panel.",
       "Drop the bottom-right resize grip mark.",
       "Resize the floating panel from any edge or corner.",
       "Track Info — edge/corner resize + Grokipedia provider.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Spotify audit: scopes, rate limiting, Feb-2026 endpoint migrations + decisions.",
       "Fix .claude version drift and the stale Biome claim.",
       "Silent Spotify token refresh to keep sessions alive.",
-      "Silently refresh the Spotify token to keep sessions alive.",
-      "…and 229 earlier changes."
+      "…and 230 earlier changes."
     ]
   },
   {

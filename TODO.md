@@ -233,10 +233,10 @@ authored on the brand from the start.
       and size update together, clamped on-screen and persisted. The body
       gained a thin accent scrollbar so it coexists with the right-edge
       handle.
-- [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
-      row that opens the Track Info panel — the same affordance the
-      now-playing bar already has ("Show track info"). Keep the existing
-      right-click-the-name shortcut; the icon just makes it discoverable.
+- [x] **Info icon on track rows.** Done: a dim ⓘ button sits in each row's
+      trailing gutter (under the column chooser), brightening on hover; it
+      opens the Track Info panel for that row (`onTrackFocus`) without
+      playing. The right-click-the-name shortcut still works.
 - [ ] **Share to social media.** Beyond the direct Spotify link (shipped),
       add sharing to the various social-media services — but only via methods
       that don't require **the app** to be authenticated to those services

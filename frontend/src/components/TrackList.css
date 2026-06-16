@@ -392,6 +392,44 @@
   color: var(--brand-ink-dim);
 }
 
+/* Per-row info action, in the trailing gutter under the column chooser.
+   Always present (dim) for discoverability; brightens on row/button focus. */
+.track-info-btn {
+  justify-self: center;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--brand-ink-dim);
+  font-size: 14px;
+  line-height: 1;
+  border-radius: var(--brand-radius-sm);
+  cursor: pointer;
+  opacity: 0.5;
+  transition:
+    color 0.15s,
+    opacity 0.15s,
+    background-color 0.15s;
+}
+.track-item:hover .track-info-btn {
+  opacity: 0.9;
+}
+.track-info-btn:hover {
+  color: var(--brand-accent-bright);
+  background: rgba(var(--brand-accent-rgb), 0.12);
+  opacity: 1;
+}
+.track-info-btn:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 1px;
+  opacity: 1;
+}
+
 /* ── States: mono "equipment label" voice ── */
 .track-list-loading,
 .track-list-error {
