@@ -338,6 +338,27 @@ present in some tiers.
       rename touches the frontend, the API routes, and the backend, so weigh
       the churn.
 
+**Filter & sort controls:**
+
+A bucket has two distinct steps that are easy to confuse: **Filter** *collects*
+the tracks, **Sort by** *orders* them. (Range needs like "duration < 5 min"
+are Filter, not Sort.)
+
+- [ ] **Show a default filter row (like the default sort).** The builder shows
+      a Sort by row by default but hides filtering behind **+ Add filter**, so
+      the Filter step is easy to miss — the Filter-vs-Sort split only becomes
+      clear after clicking it. Show one empty filter row by default, mirroring
+      the default sort row, so both steps are visible up front.
+- [ ] **Allow multiple "Sort by" fields.** Sort by takes a single field today;
+      allow several applied in order (multi-level sort, like the track-list
+      `SortMenu`) — add / remove / reorder sort keys, each with its own
+      direction.
+- [ ] **Evaluate per-field sort modifiers.** Sort by offers a blanket
+      ascending / descending, but not every field wants the same modifier —
+      some may want none or a field-specific control. Audit the sort fields
+      and decide whether asc/desc fits each, or whether some need a tailored
+      modifier.
+
 **Source selection:**
 
 - [ ] **Playlist-type checkboxes in the source section.** Add a checkbox list
