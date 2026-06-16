@@ -271,14 +271,13 @@ authored on the brand from the start.
       Wikipedia** and **Album on Wikipedia** search links (links only, no
       content download), and the **+ expander only shows when an article
       exists** (otherwise just the search link).
-- [ ] **Grokipedia support.** Add Grokipedia (xAI's encyclopedia) as a
-      track-detail content provider alongside Wikipedia — a section in the
-      panel, folded into the `/api/integrations/track-detail` aggregator with
-      its own tier, like the other providers. **Verify feasibility first**
-      (per the "check the API before building" discipline): confirm it exposes
-      a usable public API / query method and check its terms (AI-generated
-      content, attribution, caching). If there's no API, record that as an
-      `ICEBOX:` limitation rather than building a scraper.
+- [x] **Grokipedia support (free search).** Done: a Grokipedia block in the
+      panel with a blurb and a free **search** link
+      (`https://grokipedia.com/search?q=…`). Verified: Grokipedia has **no
+      free API** — programmatic content needs a paid Grok / xAI account — so
+      we link its free search rather than fold it in as a data provider. The
+      paid
+      API path is its own item (see *Provider API rules & skills › Grok*).
 - [x] **Songfacts.com link.** Done: a Songfacts block in the Track Info panel
       with a short blurb (no free/open API → links, not inline facts) and two
       **search** links — by song and by artist. Songfacts' native search is
@@ -412,6 +411,18 @@ the Track Info panel (`backend/app/services/wikipedia.py`):
 **Last.fm** is a candidate too — its auth + public/connected tiers and
 scrobbling API are covered *functionally* in the *Last.fm* section, but there
 is no agent `rules/lastfm.md`. Decide if it warrants one alongside the above.
+
+**Grok (xAI)** — the paid API behind Grokipedia content (the free
+`grokipedia.com/search` link is already shipped; this is the API path):
+
+- [ ] **`rules/grok.md` + a `grok-patterns` skill** for the **xAI Grok API**
+      (needs an account + API key; per-token pricing). Cover: auth / key
+      sourcing via the file-or-env secret pattern (never client-side), the
+      OpenAI-compatible endpoint + model IDs, rate/usage limits and cost
+      controls, and the terms (AI-generated content, attribution, no training
+      on others' data). Then, *if* an account is in scope, pull Grokipedia
+      content inline (replacing the search link); otherwise keep the search
+      link and record the cost decision.
 
 ## Smart Filters (recipes)
 
@@ -568,6 +579,18 @@ placeholder kind) — these gate sharing a real demo; then **join flow +
 capacity**; then **owner-bypass** and the admin surface it enables. The
 resumable-session item rides along with the safety work.
 
+- [ ] **Per-user, per-service account sharing — gate, don't block.** *(later)*
+      Today every allowed user implicitly shares the **owner's** linked
+      accounts (Last.fm, the app-level provider keys, …) through the `.env` /
+      owner-token setup — fine for, say, the owner's kids; wrong for a group
+      of friends, who should use their own. Make it a **gate the owner
+      controls, per user *and* per service**: for each allowed user the owner
+      picks — service by service (Last.fm, MusicBrainz, …) — whether they ride
+      on the owner's account or must connect/enter their own. This needs
+      **onboarding + Settings to let a user enter their own
+      credentials/secrets** per service, and the backend to resolve "owner's
+      vs this user's" per request.
+      Builds on the access model + `ALLOWED_SPOTIFY_IDS` work below.
 - [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
       demo page → a form collecting **Name + Email only** (what the Spotify
       dashboard's User Management needs). Do NOT ask for the Spotify user ID —

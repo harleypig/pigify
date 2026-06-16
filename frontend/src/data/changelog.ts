@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Grokipedia free-search link.",
+      "Wrap the Songfacts contact item at 78 cols.",
       "Wikipedia resolution fallbacks + album/band links.",
       "Songfacts block with song + artist search links.",
       "Notify when playback isn't on pigify.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Expand Smart Filters backlog (builder CRUD, sources, lifecycle).",
       "Capture Smart Filters (recipes) backlog.",
       "Bring the recipe builder onto the day-glo console brand.",
-      "Drop dead .user-name-btn rules.",
-      "Keep the account name visible on hover.",
-      "…and 240 earlier changes."
+      "…and 242 earlier changes."
     ]
   },
   {

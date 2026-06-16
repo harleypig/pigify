@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   escapeHtml,
   formatDuration,
+  grokipediaSearchUrl,
   highlightJson,
   providerSearchUrl,
   songfactsSearchUrl,
@@ -102,6 +103,14 @@ describe("wikipediaSearchUrl", () => {
   it("builds a Wikipedia full-text search link", () => {
     expect(wikipediaSearchUrl("Discovery album")).toBe(
       "https://en.wikipedia.org/w/index.php?search=Discovery%20album",
+    );
+  });
+});
+
+describe("grokipediaSearchUrl", () => {
+  it("builds a Grokipedia search link", () => {
+    expect(grokipediaSearchUrl("Aerodynamic Daft Punk")).toBe(
+      "https://grokipedia.com/search?q=Aerodynamic%20Daft%20Punk",
     );
   });
 });

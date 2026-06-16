@@ -27,6 +27,15 @@ export function wikipediaSearchUrl(query: string): string {
 }
 
 /**
+ * A Grokipedia search link. Grokipedia (xAI's encyclopedia) has no free API —
+ * programmatic content needs a paid Grok/xAI account — but its web search is
+ * free, so we link that.
+ */
+export function grokipediaSearchUrl(query: string): string {
+  return `https://grokipedia.com/search?q=${encodeURIComponent(query.trim())}`;
+}
+
+/**
  * Build a link to a provider's search page, pre-filled with the track. Shown
  * when a provider returns no result, so the user can look it up manually.
  */

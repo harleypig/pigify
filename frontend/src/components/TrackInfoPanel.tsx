@@ -11,6 +11,7 @@ import {
 import { apiService, type TrackDetail } from "../services/api";
 import {
   formatDuration,
+  grokipediaSearchUrl,
   highlightJson,
   providerSearchUrl,
   type SearchProvider,
@@ -992,6 +993,28 @@ function TrackInfoPanel({
                   </p>
                 )}
               </SectionFrame>
+            )}
+
+            {detail.spotify && (
+              <section className="tip-section">
+                <h4 className="tip-sec-head">
+                  <span className="tip-sec-title">Grokipedia</span>
+                </h4>
+                <p className="tip-meta">
+                  Grokipedia (xAI's encyclopedia) has no free API — programmatic
+                  access needs a paid Grok account — so we link its free search.
+                </p>
+                <div className="tip-head-actions">
+                  <a
+                    className="tip-extlink"
+                    href={grokipediaSearchUrl(`${sTitle} ${sArtist}`)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Search Grokipedia
+                  </a>
+                </div>
+              </section>
             )}
           </>
         )}
