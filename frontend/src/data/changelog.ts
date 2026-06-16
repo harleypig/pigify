@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Keep the account name visible on hover.",
       "Bring the account menu onto the day-glo console brand.",
       "Note the no-LASTFM_API_KEY case in the public-Last.fm item.",
       "Capture Last.fm + Settings backlog items.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Record in-browser playback status (machine-DRM blocker, not a bug).",
       "Trim verbose Web Playback debug logs.",
       "More Web Playback diagnostics (secure context, token, autoplay).",
-      "Allow autoplay + encrypted-media so the Web Playback SDK can connect.",
-      "…and 215 earlier changes."
+      "…and 216 earlier changes."
     ]
   },
   {
