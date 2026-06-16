@@ -9,7 +9,12 @@ import {
   useState,
 } from "react";
 import { apiService, type TrackDetail } from "../services/api";
-import { formatDuration, highlightJson } from "./TrackInfoPanel.helpers";
+import {
+  formatDuration,
+  highlightJson,
+  providerSearchUrl,
+  type SearchProvider,
+} from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
 
 const PANEL_SIZE_KEY = "pigify.trackInfoPanel.size";
@@ -92,6 +97,40 @@ function errMsg(e: unknown): string {
 
 function Spinner() {
   return <span className="tip-spinner" aria-hidden="true" />;
+}
+
+const PROVIDER_LABEL: Record<SearchProvider, string> = {
+  musicbrainz: "MusicBrainz",
+  wikipedia: "Wikipedia",
+  lastfm: "Last.fm",
+};
+
+// "Nothing found" line with a link to the provider's search page so the user
+// can look it up by hand.
+function NoResult({
+  message,
+  provider,
+  artist,
+  title,
+}: {
+  message: string;
+  provider: SearchProvider;
+  artist: string;
+  title: string;
+}) {
+  return (
+    <p className="tip-meta">
+      {message}{" "}
+      <a
+        className="tip-extlink"
+        href={providerSearchUrl(provider, artist, title)}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Search {PROVIDER_LABEL[provider]}
+      </a>
+    </p>
+  );
 }
 
 // A provider section: a mono "equipment label" header carrying its own ↻
@@ -470,6 +509,10 @@ function TrackInfoPanel({
     style.maxHeight = "none";
   }
 
+  // Artist + title for the per-provider "Search …" fallback links.
+  const sArtist = detail.spotify?.artists?.[0] ?? "";
+  const sTitle = detail.spotify?.name ?? "";
+
   // Per-section objects for the "Show raw" view (each shows its own spinner).
   const rawBlocks: { key: SectionKey; label: string; value: unknown }[] = [
     {
@@ -765,7 +808,12 @@ function TrackInfoPanel({
                     </>
                   )
                 ) : (
-                  <p className="tip-meta">No Last.fm data for this track.</p>
+                  <NoResult
+                    message="No Last.fm data for this track."
+                    provider="lastfm"
+                    artist={sArtist}
+                    title={sTitle}
+                  />
                 )}
               </SectionFrame>
             )}
@@ -818,7 +866,12 @@ function TrackInfoPanel({
                     )}
                   </>
                 ) : (
-                  <p className="tip-meta">No MusicBrainz match.</p>
+                  <NoResult
+                    message="No MusicBrainz match."
+                    provider="musicbrainz"
+                    artist={sArtist}
+                    title={sTitle}
+                  />
                 )}
               </SectionFrame>
             )}
@@ -863,7 +916,12 @@ function TrackInfoPanel({
                     </>
                   )
                 ) : (
-                  <p className="tip-meta">No Wikipedia article found.</p>
+                  <NoResult
+                    message="No Wikipedia article found."
+                    provider="wikipedia"
+                    artist={sArtist}
+                    title={sTitle}
+                  />
                 )}
               </SectionFrame>
             )}

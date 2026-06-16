@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "\"Search <provider>\" link when a provider has no result.",
       "A−/A+ text-size control on the panel.",
       "Add a MusicBrainz section (rule + skill + alignment).",
       "Wrap the duration-icon item at 78 cols.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Bring the account menu onto the day-glo console brand.",
       "Note the no-LASTFM_API_KEY case in the public-Last.fm item.",
       "Capture Last.fm + Settings backlog items.",
-      "Bring the Settings panel onto the day-glo console brand.",
-      "…and 236 earlier changes."
+      "…and 237 earlier changes."
     ]
   },
   {

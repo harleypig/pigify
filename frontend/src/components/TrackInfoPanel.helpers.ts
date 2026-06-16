@@ -8,6 +8,32 @@ export function formatDuration(ms?: number): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 }
 
+export type SearchProvider = "musicbrainz" | "wikipedia" | "lastfm";
+
+/**
+ * Build a link to a provider's search page, pre-filled with the track. Shown
+ * when a provider returns no result, so the user can look it up manually.
+ */
+export function providerSearchUrl(
+  provider: SearchProvider,
+  artist: string,
+  title: string,
+): string {
+  const both = `${artist} ${title}`.trim();
+  switch (provider) {
+    case "musicbrainz":
+      return `https://musicbrainz.org/search?query=${encodeURIComponent(
+        both,
+      )}&type=recording`;
+    case "wikipedia":
+      return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(
+        `${title} ${artist} song`.trim(),
+      )}`;
+    case "lastfm":
+      return `https://www.last.fm/search?q=${encodeURIComponent(both)}`;
+  }
+}
+
 /** Escape the three HTML-significant characters for safe text interpolation. */
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

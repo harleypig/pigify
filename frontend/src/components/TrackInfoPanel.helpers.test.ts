@@ -3,6 +3,7 @@ import {
   escapeHtml,
   formatDuration,
   highlightJson,
+  providerSearchUrl,
 } from "./TrackInfoPanel.helpers";
 
 describe("formatDuration", () => {
@@ -46,5 +47,31 @@ describe("highlightJson", () => {
     const html = highlightJson({ x: "<script>" });
     expect(html).toContain("&lt;script&gt;");
     expect(html).not.toContain("<script>");
+  });
+});
+
+describe("providerSearchUrl", () => {
+  it("builds a recording search for MusicBrainz", () => {
+    expect(providerSearchUrl("musicbrainz", "Daft Punk", "Aerodynamic")).toBe(
+      "https://musicbrainz.org/search?query=Daft%20Punk%20Aerodynamic&type=recording",
+    );
+  });
+
+  it("appends 'song' for Wikipedia and queries title first", () => {
+    expect(providerSearchUrl("wikipedia", "Daft Punk", "Aerodynamic")).toBe(
+      "https://en.wikipedia.org/w/index.php?search=Aerodynamic%20Daft%20Punk%20song",
+    );
+  });
+
+  it("builds a Last.fm search", () => {
+    expect(providerSearchUrl("lastfm", "Daft Punk", "Aerodynamic")).toBe(
+      "https://www.last.fm/search?q=Daft%20Punk%20Aerodynamic",
+    );
+  });
+
+  it("trims gracefully when artist or title is missing", () => {
+    expect(providerSearchUrl("lastfm", "", "Aerodynamic")).toBe(
+      "https://www.last.fm/search?q=Aerodynamic",
+    );
   });
 });
