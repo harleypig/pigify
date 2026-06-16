@@ -53,6 +53,21 @@ There is no automated SQLite → Postgres migrator yet; the documented
 path is to dump each per-user file via `sqlite3 .dump` and replay into
 the target.
 
+### Other backends (contributions welcome)
+
+Postgres is *our* next backend (see ADR-0003), but nothing in the design
+ties the URL-swap to it specifically. Because all data access goes through
+the repository layer (`backend/app/db/repositories/`) over SQLAlchemy, a
+contributor could add support for **any database SQLAlchemy can drive**
+(MySQL / MariaDB, etc.) by supplying the dialect URL plus any
+dialect-specific migration tweaks — no app rewrite required. A
+**non-relational / NoSQL** store is a different matter: the layer assumes
+SQL, so that would be a genuine port, not a configuration swap, and is not
+currently in scope.
+
+Such a backend is welcome as a PR, provided it **ships its own tests** for
+the new database **and** passes the existing suite as it stands at the time.
+
 ## Migrations
 
 Alembic with **two environments**:
