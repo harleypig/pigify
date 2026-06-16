@@ -272,7 +272,14 @@ today.
       `sort_fields.py`) and the Track Info panel; **extend** it where it isn't
       yet — global play count / listeners as track-list **columns**, tags as a
       filter/facet. Personal play counts (`lastfm_user_playcount`) stay gated
-      to a connected account.
+      to a connected account. **No bundled key:** even public Last.fm needs an
+      app `LASTFM_API_KEY`, and pigify deliberately ships **none** — we won't
+      embed our own credentials to grant universal public access. So with no
+      key configured the `none` tier (no Last.fm at all) is the *correct*
+      state, not a bug; this fix applies only once the deployer supplies their
+      own key. Surface that "bring your own Last.fm API key" requirement in
+      the setup / UI (ties to the tier-docs item below, and the credential
+      steps in `docs/INTEGRATIONS.md` / `.env.example`).
 - [ ] **Document public vs connected Last.fm (what each requires).** Spell out
       the two tiers in `docs/INTEGRATIONS.md` (and the Connections / About UI
       where it helps):
