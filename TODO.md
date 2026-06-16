@@ -14,9 +14,13 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       handler; a dead token mid-use now logs the user out instead of tripping
       the login screen's "backend down" probe. Regression tests in
       `test_api_player.py` / `test_api_playlists.py` (401 → 401, non-401 →
-      502). *Not touched: `favorites.py` / `integrations.py` / `recipes.py`
-      still have their own wrappers — out of scope here; the global handler
-      protects any raw httpx error that escapes them.*
+      502). Extended to the remaining routers: `recipes.py` had 2 blanket-500
+      wrappers around playback (dropped, + a 401 regression test);
+      `favorites.py` and `integrations.py` were already compliant — their
+      Spotify calls propagate to the global handler, and their only `except`
+      blocks are deliberate best-effort degradation (the loved-state bulk
+      check, the queue spillover) or specific `LastFMError → 502`, not the
+      blanket-500 anti-pattern.
 
 ## Spotify audit (2026-06-12)
 

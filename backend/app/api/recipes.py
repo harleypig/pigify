@@ -324,10 +324,7 @@ async def play_recipe(
     if not uris:
         raise HTTPException(400, "Recipe resolved to zero playable tracks")
 
-    try:
-        queued = await _play_uris(spotify, uris, body.device_id)
-    except Exception as e:
-        raise HTTPException(500, f"Failed to start playback: {e}") from e
+    queued = await _play_uris(spotify, uris, body.device_id)
 
     return PlayResponse(
         started=True,
@@ -345,10 +342,7 @@ async def play_adhoc(request: Request, recipe: Recipe, device_id: str | None = N
     uris = [t.uri for t in result.tracks if t.uri]
     if not uris:
         raise HTTPException(400, "Recipe resolved to zero playable tracks")
-    try:
-        queued = await _play_uris(spotify, uris, device_id)
-    except Exception as e:
-        raise HTTPException(500, f"Failed to start playback: {e}") from e
+    queued = await _play_uris(spotify, uris, device_id)
     return PlayResponse(
         started=True,
         track_count=len(uris),
