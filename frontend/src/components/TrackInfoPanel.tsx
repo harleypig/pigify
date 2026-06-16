@@ -14,9 +14,13 @@ import "./TrackInfoPanel.css";
 
 const PANEL_SIZE_KEY = "pigify.trackInfoPanel.size";
 const PANEL_POS_KEY = "pigify.trackInfoPanel.pos";
+const PANEL_FONT_KEY = "pigify.trackInfoPanel.fontScale";
 const MIN_W = 280;
 const MIN_H = 200;
 const EDGE = 8; // keep this gap from the viewport edges
+const FONT_MIN = 0.8;
+const FONT_MAX = 1.6;
+const FONT_STEP = 0.1;
 
 interface Size {
   w: number;
@@ -166,7 +170,26 @@ function TrackInfoPanel({
   const [shared, setShared] = useState(false);
   // Wikipedia starts collapsed; opened on demand via the "+" toggle.
   const [wikiOpen, setWikiOpen] = useState(false);
+  // Body text scale (A− / A+), persisted. Applied as `zoom` on the body so
+  // text + spacing scale together; the header chrome stays fixed.
+  const [fontScale, setFontScale] = useState<number>(
+    () => readStored<number>(PANEL_FONT_KEY) ?? 1,
+  );
   const reqRef = useRef(0);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PANEL_FONT_KEY, JSON.stringify(fontScale));
+    } catch {
+      /* ignore */
+    }
+  }, [fontScale]);
+
+  const adjustFont = (delta: number) =>
+    setFontScale(
+      (s) =>
+        Math.round(Math.min(FONT_MAX, Math.max(FONT_MIN, s + delta)) * 10) / 10,
+    );
 
   // Floating-window geometry, both persisted: a top-left position and a size.
   // Drag the header to move; drag the bottom-right grip to resize. `null`
@@ -432,7 +455,9 @@ function TrackInfoPanel({
     }
   };
 
-  const style: CSSProperties = {};
+  const style: CSSProperties & Record<"--tip-scale", number> = {
+    "--tip-scale": fontScale,
+  };
   if (pos) {
     style.left = pos.x;
     style.top = pos.y;
@@ -483,6 +508,26 @@ function TrackInfoPanel({
       >
         <span className="tip-title-tag">Track info</span>
         <div className="tip-header-actions">
+          <button
+            type="button"
+            className="tip-toggle tip-font"
+            onClick={() => adjustFont(-FONT_STEP)}
+            disabled={fontScale <= FONT_MIN}
+            aria-label="Decrease text size"
+            title="Decrease text size"
+          >
+            A−
+          </button>
+          <button
+            type="button"
+            className="tip-toggle tip-font"
+            onClick={() => adjustFont(FONT_STEP)}
+            disabled={fontScale >= FONT_MAX}
+            aria-label="Increase text size"
+            title="Increase text size"
+          >
+            A+
+          </button>
           {canShowNowPlaying && onShowNowPlaying && (
             <button
               type="button"

@@ -183,11 +183,19 @@
 .tip-nowplaying {
   font-size: 15px;
 }
+/* A− / A+ text-size controls — smaller, bolder than the icon toggles. */
+.tip-font {
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .tip-body {
   overflow-y: auto;
   padding: 12px 14px 16px;
   flex: 1;
+  /* Body text scale (A− / A+). `zoom` scales text + spacing together; the
+     header chrome stays fixed. Graceful no-op on engines without `zoom`. */
+  zoom: var(--tip-scale, 1);
   /* Thin accent scrollbar so it coexists with the right-edge resize handle. */
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--brand-accent-rgb), 0.35) transparent;

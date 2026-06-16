@@ -14,6 +14,11 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "A−/A+ text-size control on the panel.",
+      "Add a MusicBrainz section (rule + skill + alignment).",
+      "Wrap the duration-icon item at 78 cols.",
+      "Wrap versioning + duration-icon items at 78 cols.",
+      "Versioning (do last) + custom duration-icon backlog.",
       "Load each provider section independently, with spinners.",
       "Per-row info icon to open the Track Info panel.",
       "Drop the bottom-right resize grip mark.",
@@ -34,12 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Note the no-LASTFM_API_KEY case in the public-Last.fm item.",
       "Capture Last.fm + Settings backlog items.",
       "Bring the Settings panel onto the day-glo console brand.",
-      "Prune backlog, record SQLite-only decision (ADR-0003).",
-      "Bump the backend group across 1 directory with 4 updates.",
-      "Bump the frontend group across 1 directory with 4 updates.",
-      "Spotify audit: scopes, rate limiting, Feb-2026 endpoint migrations + decisions.",
-      "Fix .claude version drift and the stale Biome claim.",
-      "…and 231 earlier changes."
+      "…and 236 earlier changes."
     ]
   },
   {

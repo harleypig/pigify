@@ -258,9 +258,12 @@ authored on the brand from the start.
       that don't require **the app** to be authenticated to those services
       (web share intents / share URLs, or the Web Share API), not server-side
       posting that needs our own credentials.
-- [ ] **Font-size control + default.** Add increase/decrease font-size
-      buttons in the track-info panel, plus a default-size setting in
-      Settings (when we get to the settings pass).
+- [ ] **Font-size control + default.** Shipped: **A− / A+** buttons in the
+      track-info panel header scale the body text (CSS `zoom` driven by
+      `--tip-scale`, clamped 0.8–1.6), persisted
+      (`pigify.trackInfoPanel.fontScale`); the header chrome stays fixed.
+      **Remaining:** a default-size setting in Settings (the settings pass)
+      that seeds the initial scale.
 - [ ] **Wikipedia link resolution + album/band links.** Improve how the
       Wikipedia link is chosen: if the song's page isn't found, fall back to
       searching by band, or album + song. Also add separate Wikipedia links
