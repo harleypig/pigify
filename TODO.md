@@ -51,73 +51,17 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Spotify audit (2026-06-12)
 
-Findings from the `/spotify-audit` run (2026-06-12) against `rules/spotify.md`.
-**Status: resolved.** Every actionable finding is fixed (#1 scopes, #2 rate
-limiting, #6/#7 the Feb-2026 endpoint migrations) or consciously deferred (#8
-verified clean, #5 declined — **ADR-0002**, #3/#4 deprecated-audio on the
-per-run **Watch** list below, #9/#10 Info, verify-manually). Completed items
-are kept marked `[x]` for the record. Already-clean items (PKCE-not-required
-confidential backend, secret handling, `127.0.0.1` redirect, proactive token
-refresh, now-playing relinking, the Web Playback SDK/EME setup) were never
-relisted.
+The `/spotify-audit` run (2026-06-12) against `rules/spotify.md`. The
+actionable findings shipped: playlist-modify scopes, 429/`Retry-After`
+handling, the Feb-2026 `/items` + `/me/library` migrations, the `market`
+decision (**ADR-0002**), and the verified `/me/tracks*` batch cap — see the
+merged history. Only the open follow-ups remain.
 
-### High
-
-- [x] **(High) Add the missing `playlist-modify` scopes.** The requested
-      scopes omitted `playlist-modify-public` / `playlist-modify-private`, yet
-      the app writes playlists — `add_tracks_to_playlist` (`spotify.py:347`),
-      `reorder_playlist_item` (`:548`), recipe materialize (`:560-563`) — which
-      403 without them. *rules/spotify.md › Scopes.* Both added to
-      `backend/app/api/auth.py` (+ a regression test guarding them).
-      **Requires a logout/login to re-consent** before the grant includes
-      them; confirm a reorder / recipe-materialize succeeds afterward.
-- [x] **(High) Add Spotify 429 / `Retry-After` handling.** Done — all Spotify
-      Web API calls (`_get`/`_put`/`_post`/`_put_json`/`_delete`) now route
-      through `_send_with_retry` (`spotify.py`): on HTTP 429 it honors
-      `Retry-After`, otherwise exponential backoff (1→2→4s), bounded (4
-      attempts, 30s/wait cap) so a request can't hang. *rules/spotify.md ›
-      Rate limiting.* Regression test added
-      (`test_retries_on_429_then_succeeds`). The token endpoints
-      (accounts.spotify.com) are left direct — out of scope, lower frequency.
-
-### Medium
-
-- [x] **(Medium) Pass a `market` param — declined (documented).** Decided
-      **not** to add `market`/`from_token` to track-data reads: it would relink
-      tracks to the user's market and break the bulk loved-state check (it keys
-      on the playlist track id; `/me/library/contains` wants the original) —
-      re-introducing the now-playing relinking bug for marginal gain (pigify
-      shows mostly own, playable playlists; playback auto-relinks; `is_playable`
-      isn't surfaced). Decision recorded in **ADR-0002**
-      (`docs/adr/0002-no-market-param-on-track-reads.md`); the `is_playable`
-      item below is the revisit trigger. *rules/spotify.md › Track relinking.*
-- [x] **(Medium) Legacy `/me/tracks` save/remove/contains.** Done — migrated
-      `check_saved_tracks`, `save_tracks`, `remove_saved_tracks` to the unified
-      **`/me/library`** (+ `/contains`) endpoints (Feb 2026 wave).
-      *rules/spotify.md › Endpoints.* **Not a pure rename:** the unified
-      endpoints take track **URIs** (not ids) via the `uris` query param,
-      capped at **40** (was 50) — pigify now builds `spotify:track:{id}` URIs
-      (`_track_uris`) and chunks at 40; the `contains` boolean array still
-      aligns to input order. Regression test added
-      (`test_check_saved_tracks_uses_library_contains_by_uri`). *Out of scope
-      here, possible follow-up:* `GET /me/tracks` (the paginated saved-tracks
-      read, `get_saved_tracks`) is unchanged — re-check whether it too needs
-      the `/me/library` migration.
-- [x] **(Medium) `/playlists/{id}/tracks` → `/items`.** Done — all six
-      playlist track-management calls (read / reorder / add) in `spotify.py`
-      now use `/playlists/{id}/items`. This is the **February 2026 migration**
-      (Spotify renamed `/tracks` → `/items`; `/tracks` is deprecated and on a
-      removal clock), not just a preference. pigify uses GET/POST/PUT only — no
-      DELETE of playlist items — so the DELETE body-param `tracks`→`items`
-      rename doesn't apply; bodies/responses are otherwise unchanged.
-      *rules/spotify.md › Endpoints.* Regression test added
-      (`test_get_playlist_tracks_uses_items_endpoint`).
-- [x] **(Medium) Verify the `/me/tracks*` batch cap — clean.** Chunked at 50
-      (`:202,:217,:225`). Verified against the official docs (Context7): the
-      library endpoints `/me/tracks/contains`, `PUT`/`DELETE /me/tracks` all
-      cap at **50 ids**, so pigify's chunk size is correct. (The earlier "20"
-      was the *catalog* `/tracks` multi-get, which pigify doesn't use — it only
-      calls a single `/tracks/{id}`.) No change needed.
+- [ ] **Migrate `GET /me/tracks` (the saved-tracks read)?** The
+      save/remove/contains writes moved to `/me/library`; the paginated
+      saved-tracks read (`get_saved_tracks`, `GET /me/tracks`) was out of scope
+      and is unchanged — re-check whether it too needs the unified-library
+      migration. *rules/spotify.md › Endpoints.*
 
 ### Info (verify manually)
 
