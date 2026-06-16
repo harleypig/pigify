@@ -5,15 +5,18 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Bugs
 
-- [ ] **Centralise Spotify-`401` → `401` across the API.** `/api/auth/me`
-      already translates an upstream Spotify `401` to a clean `401` (+ session
-      clear), but the blanket-`500`-on-any-exception pattern still exists in
-      `backend/app/api/playlists.py` and `player.py`, so once a session's
-      token dies mid-use those endpoints still return `500` instead of a
-      clean `401`. Translate an upstream `httpx.HTTPStatusError(401)` to a
-      `401` (+ `clear_session`) in one place — an exception handler or a
-      shared dependency — rather than per-endpoint, and drop the duplicated
-      try/except 500 wrappers.
+- [x] **Centralise Spotify-`401` → `401` across the API.** Done: one
+      app-wide `httpx.HTTPStatusError` handler
+      (`backend/app/api/errors.py`, wired in `main.py`) translates an upstream
+      `401` to a clean `401` + `clear_session`, and any other upstream status
+      to `502`. Dropped the 14 blanket-`500` try/except wrappers in
+      `playlists.py` (6) and `player.py` (8) so the upstream error reaches the
+      handler; a dead token mid-use now logs the user out instead of tripping
+      the login screen's "backend down" probe. Regression tests in
+      `test_api_player.py` / `test_api_playlists.py` (401 → 401, non-401 →
+      502). *Not touched: `favorites.py` / `integrations.py` / `recipes.py`
+      still have their own wrappers — out of scope here; the global handler
+      protects any raw httpx error that escapes them.*
 
 ## Spotify audit (2026-06-12)
 

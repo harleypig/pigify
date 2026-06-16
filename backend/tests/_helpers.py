@@ -23,6 +23,7 @@ import tempfile
 import unittest
 from typing import Any
 
+import httpx
 from sqlalchemy import create_engine
 
 from app.config import settings
@@ -104,6 +105,17 @@ class IsolatedDBTestCase(unittest.IsolatedAsyncioTestCase):
 # --------------------------------------------------------------------------
 # Sample factories for the Spotify/Last.fm dict shapes.
 # --------------------------------------------------------------------------
+
+
+def spotify_http_error(status: int) -> httpx.HTTPStatusError:
+    """An ``httpx.HTTPStatusError`` as the Spotify service raises it.
+
+    Mirrors ``response.raise_for_status()`` for the given upstream status, so
+    tests can exercise the centralised error handler (e.g. a 401 dead token).
+    """
+    request = httpx.Request("GET", "https://api.spotify.com/v1/me")
+    response = httpx.Response(status, request=request)
+    return httpx.HTTPStatusError(f"{status}", request=request, response=response)
 
 
 def spotify_track_item(

@@ -5,7 +5,7 @@ Works across all active devices (desktop, mobile, etc.).
 
 import contextlib
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
 from app.auth.session import require_fresh_token as _get_token
@@ -24,27 +24,21 @@ class PlayRequest(BaseModel):
 async def get_playback_state(request: Request):
     """Get current playback state across all devices."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        state = await spotify.get_playback_state()
-        # Hook into the scrobbling pipeline. Never raises.
-        with contextlib.suppress(Exception):
-            await scrobbler.process_state(request, state)
-        if state is None:
-            return {"is_playing": False, "item": None, "device": None, "progress_ms": 0}
-        return state
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    state = await spotify.get_playback_state()
+    # Hook into the scrobbling pipeline. Never raises.
+    with contextlib.suppress(Exception):
+        await scrobbler.process_state(request, state)
+    if state is None:
+        return {"is_playing": False, "item": None, "device": None, "progress_ms": 0}
+    return state
 
 
 @router.put("/play")
 async def play(request: Request, body: PlayRequest = PlayRequest()):  # noqa: B008
     """Start or resume playback, optionally for a specific track URI."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        await spotify.play_track(track_uri=body.track_uri, device_id=body.device_id)
-        return {"status": "playing"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    await spotify.play_track(track_uri=body.track_uri, device_id=body.device_id)
+    return {"status": "playing"}
 
 
 @router.get("/devices")
@@ -52,10 +46,7 @@ async def get_devices(request: Request):
     """List the user's available Spotify Connect devices (incl. this browser
     once the Web Playback SDK has registered it)."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        return {"devices": await spotify.get_devices()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    return {"devices": await spotify.get_devices()}
 
 
 class TransferRequest(BaseModel):
@@ -67,55 +58,40 @@ class TransferRequest(BaseModel):
 async def transfer(request: Request, body: TransferRequest):
     """Transfer playback to a device (e.g. 'play here' in the browser)."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        await spotify.transfer_playback(body.device_id, body.play)
-        return {"status": "transferred"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    await spotify.transfer_playback(body.device_id, body.play)
+    return {"status": "transferred"}
 
 
 @router.put("/pause")
 async def pause(request: Request):
     """Pause playback."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        await spotify.pause_playback()
-        return {"status": "paused"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    await spotify.pause_playback()
+    return {"status": "paused"}
 
 
 @router.post("/next")
 async def next_track(request: Request):
     """Skip to next track."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        await spotify.next_track()
-        return {"status": "skipped"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    await spotify.next_track()
+    return {"status": "skipped"}
 
 
 @router.post("/previous")
 async def previous_track(request: Request):
     """Skip to previous track."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        await spotify.previous_track()
-        return {"status": "rewound"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    await spotify.previous_track()
+    return {"status": "rewound"}
 
 
 @router.put("/seek")
 async def seek(request: Request, position_ms: int = Query(..., ge=0)):
     """Seek to a position in the current track."""
     spotify = SpotifyService(await _get_token(request))
-    try:
-        await spotify._put("/me/player/seek", params={"position_ms": position_ms})
-        return {"status": "ok", "position_ms": position_ms}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    await spotify._put("/me/player/seek", params={"position_ms": position_ms})
+    return {"status": "ok", "position_ms": position_ms}
 
 
 @router.get("/analysis/{track_id}")

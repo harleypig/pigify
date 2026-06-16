@@ -19,6 +19,7 @@ from app.api import (
     recipes,
     version,
 )
+from app.api.errors import register_error_handlers
 from app.config import settings
 from app.db.bootstrap import bootstrap as db_bootstrap
 from app.db.engines import dispose_all as db_dispose_all
@@ -95,6 +96,10 @@ app.include_router(favorites.router, prefix="/api/favorites", tags=["favorites"]
 app.include_router(health.router, prefix="/api/health", tags=["health"])
 app.include_router(recipes.router, prefix="/api/recipes", tags=["recipes"])
 app.include_router(version.router, prefix="/api/version", tags=["version"])
+
+# Translate an upstream Spotify 401 (dead token) to a clean 401 + session
+# clear in one place, instead of per-endpoint try/except wrappers.
+register_error_handlers(app)
 
 
 @app.get("/health")

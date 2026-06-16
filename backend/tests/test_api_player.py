@@ -16,12 +16,17 @@ from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import player as player_mod
+from app.api.errors import register_error_handlers
+from tests._helpers import spotify_http_error
 
 
 def _build_app() -> FastAPI:
     app = FastAPI()
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(player_mod.router, prefix="/api/player")
+    # Same centralised upstream-error handling as the real app, so the 401
+    # dead-token path can be exercised here.
+    register_error_handlers(app)
     return app
 
 
@@ -36,7 +41,9 @@ def _make_spotify(**methods) -> tuple[MagicMock, MagicMock]:
 
 class PlayerApiTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.client = TestClient(_build_app())
+        # raise_server_exceptions=False so an uncaught error surfaces as the
+        # 500 *response* Starlette produces in production, not a re-raise.
+        self.client = TestClient(_build_app(), raise_server_exceptions=False)
 
     # ----- state ----------------------------------------------------------
 
@@ -198,6 +205,36 @@ class PlayerApiTest(unittest.TestCase):
             resp = self.client.put("/api/player/pause")
 
         self.assertEqual(resp.status_code, 500)
+
+    def test_pause_spotify_401_returns_401_not_500(self) -> None:
+        # A dead token mid-use: the upstream 401 must surface as a clean 401
+        # (handled centrally), not the old blanket 500. Regression for the
+        # "Centralise Spotify-401" bug.
+        cls, _ = _make_spotify(
+            pause_playback=AsyncMock(side_effect=spotify_http_error(401))
+        )
+
+        with (
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
+            patch.object(player_mod, "SpotifyService", cls),
+        ):
+            resp = self.client.put("/api/player/pause")
+
+        self.assertEqual(resp.status_code, 401)
+
+    def test_devices_spotify_502_on_other_upstream_error(self) -> None:
+        # A non-401 upstream failure is a bad-gateway condition, not our 500.
+        cls, _ = _make_spotify(
+            get_devices=AsyncMock(side_effect=spotify_http_error(503))
+        )
+
+        with (
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
+            patch.object(player_mod, "SpotifyService", cls),
+        ):
+            resp = self.client.get("/api/player/devices")
+
+        self.assertEqual(resp.status_code, 502)
 
 
 if __name__ == "__main__":
