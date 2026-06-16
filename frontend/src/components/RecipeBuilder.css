@@ -87,7 +87,12 @@
   margin: 6px 0;
 }
 .bucket-row label {
-  width: 88px;
+  /* Caption + its nested control sit inline on one row. The old fixed 88px
+     width squeezed the <select>/<input> onto a second line, which left the
+     sort-direction dropdown (a sibling) visually offset above it. */
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--brand-ink-dim);
   font-size: 13px;
 }

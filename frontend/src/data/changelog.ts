@@ -14,6 +14,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Align the Sort by / Take / Source row controls.",
+      "Expand Smart Filters backlog (builder CRUD, sources, lifecycle).",
+      "Capture Smart Filters (recipes) backlog.",
       "Bring the recipe builder onto the day-glo console brand.",
       "Drop dead .user-name-btn rules.",
       "Keep the account name visible on hover.",
@@ -36,10 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Carry the day-glo console brand onto the love control.",
       "Flag nginx rule/skill gap for the next claude-audit.",
       "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
-      "Play-button overlay on the playlist cover.",
-      "Remove the dead Player component.",
-      "Record in-browser playback status (machine-DRM blocker, not a bug).",
-      "…and 218 earlier changes."
+      "…and 221 earlier changes."
     ]
   },
   {
