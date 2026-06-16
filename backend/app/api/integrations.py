@@ -349,6 +349,15 @@ async def combined_track_detail(
         False,
         description="Bypass the per-user enrichment cache and refetch every provider.",
     ),
+    sections: str = Query(
+        "all",
+        description=(
+            "Comma-separated sections to include: base, lastfm, musicbrainz, "
+            "wikipedia. 'all' (default) returns everything; requesting one lets "
+            "the UI load each provider independently so a slow one never blocks "
+            "the rest."
+        ),
+    ),
 ):
     """
     One-shot endpoint that gathers everything we can about a Spotify track
@@ -371,8 +380,14 @@ async def combined_track_detail(
     primary_artist = artists[0] if artists else ""
     isrc = (track.get("external_ids") or {}).get("isrc")
 
-    out: dict[str, Any] = {
-        "spotify": {
+    # Which sections to build. The default "all" preserves the one-shot
+    # behaviour; the UI requests sections individually for per-section loading.
+    want = {s.strip() for s in sections.split(",") if s.strip()} or {"all"}
+    everything = "all" in want
+
+    out: dict[str, Any] = {}
+    if everything or "base" in want:
+        out["spotify"] = {
             "id": track.get("id"),
             "name": title,
             "artists": artists,
@@ -382,23 +397,23 @@ async def combined_track_detail(
             "explicit": track.get("explicit"),
             "isrc": isrc,
             "external_url": (track.get("external_urls") or {}).get("spotify"),
-        },
+        }
         # Only surface connections that are actually available. A provider
         # at tier "none" (e.g. Last.fm when it isn't configured/connected)
         # is omitted entirely, matching this endpoint's degradation policy
         # so the payload never carries an empty, disabled provider object.
-        "connections": {
+        out["connections"] = {
             k: v.model_dump()
             for k, v in (await get_all_connections(request)).items()
             if v.tier != "none"
-        },
-    }
+        }
 
-    lfm_conn = await get_connection(request, "lastfm")
+    want_lastfm = everything or "lastfm" in want
+    lfm_conn = await get_connection(request, "lastfm") if want_lastfm else None
     pa_key = f"{primary_artist.lower()}|{title.lower()}"
 
     async with user_session_scope(spotify_user_id) as db:
-        if lfm_conn.tier != "none" and primary_artist and title:
+        if lfm_conn and lfm_conn.tier != "none" and primary_artist and title:
             username = (
                 lfm_conn.connected_account if lfm_conn.tier == "authenticated" else None
             )
@@ -488,7 +503,7 @@ async def combined_track_detail(
 
         # MusicBrainz is always public. Prefer ISRC as the cache key when
         # available since it's a stable identifier; fall back to artist|title.
-        if primary_artist or isrc:
+        if (everything or "musicbrainz" in want) and (primary_artist or isrc):
             mb_key = f"isrc:{isrc}" if isrc else f"at:{pa_key}"
             cached_mb = (
                 None
@@ -514,7 +529,7 @@ async def combined_track_detail(
                 out["musicbrainz"] = mb
 
         # Wikipedia trivia/context — also fully public.
-        if primary_artist and title:
+        if (everything or "wikipedia" in want) and primary_artist and title:
             cached_wiki = (
                 None
                 if refresh

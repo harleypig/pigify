@@ -409,13 +409,20 @@ export const apiService = {
     return r.data;
   },
 
+  // Fetch a track's detail. `sections` (comma-separated: base, lastfm,
+  // musicbrainz, wikipedia; default "all") lets the UI load each provider
+  // independently so a slow one never blocks the rest — hence the partial
+  // return. `refresh` bypasses the per-user enrichment cache.
   async getTrackDetail(
     spotifyTrackId: string,
-    opts: { refresh?: boolean } = {},
-  ): Promise<TrackDetail> {
+    opts: { refresh?: boolean; sections?: string } = {},
+  ): Promise<Partial<TrackDetail>> {
+    const params: Record<string, string | boolean> = {};
+    if (opts.refresh) params.refresh = true;
+    if (opts.sections) params.sections = opts.sections;
     const response = await apiClient.get(
       `/api/integrations/track-detail/${spotifyTrackId}`,
-      { params: opts.refresh ? { refresh: true } : undefined },
+      { params: Object.keys(params).length ? params : undefined },
     );
     return response.data;
   },

@@ -29,12 +29,25 @@ describe("TrackInfoPanel", () => {
     getTrackDetail.mockResolvedValue(detail);
   });
 
-  it("fetches and shows track detail", async () => {
+  it("fetches each section independently and shows the base header", async () => {
     render(<TrackInfoPanel trackId="t1" onClose={vi.fn()} />);
 
     expect(await screen.findByText("Detail Track")).toBeInTheDocument();
     expect(screen.getByText(/The Artist/)).toBeInTheDocument();
-    expect(getTrackDetail).toHaveBeenCalledWith("t1", { refresh: false });
+    // Base + the always-public providers each load as their own request, so a
+    // slow one never blocks the rest.
+    expect(getTrackDetail).toHaveBeenCalledWith("t1", {
+      sections: "base",
+      refresh: false,
+    });
+    expect(getTrackDetail).toHaveBeenCalledWith("t1", {
+      sections: "musicbrainz",
+      refresh: false,
+    });
+    expect(getTrackDetail).toHaveBeenCalledWith("t1", {
+      sections: "wikipedia",
+      refresh: false,
+    });
   });
 
   it("shows the empty state when no track is selected", () => {

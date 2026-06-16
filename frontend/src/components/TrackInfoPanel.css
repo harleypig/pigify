@@ -210,6 +210,7 @@
   border-top: 1px solid rgba(var(--brand-accent-rgb), 0.12);
 }
 .tip-head-section {
+  position: relative;
   margin-top: 0;
   padding-top: 0;
   border-top: none;
@@ -284,6 +285,79 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  /* Title group on the left, per-section ↻ on the right. */
+  justify-content: space-between;
+}
+.tip-sec-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Per-section refresh ↻ — small, dim, blue on hover (matches the header
+   toggles). The head section's variant floats top-right of that block. */
+.tip-sec-refresh {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--brand-ink-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 6px;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.tip-sec-refresh:hover:not(:disabled) {
+  color: var(--brand-accent-bright);
+  background: rgba(var(--brand-accent-rgb), 0.12);
+}
+.tip-sec-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tip-head-refresh {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+}
+
+/* Per-section loading line: a spinning ring + "Loading…", in the dim voice. */
+.tip-loading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--brand-ink-dim);
+  font-size: 13px;
+  margin: 4px 0;
+}
+.tip-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-top-color: var(--brand-accent-bright);
+  animation: tip-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes tip-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tip-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Raw view: one block per section so each shows its own loading state. */
+.tip-raw-block + .tip-raw-block {
+  margin-top: 10px;
 }
 
 /* Wikipedia accordion: a "+" / "−" toggle that gates the (collapsed by

@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type ReactNode,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -65,6 +66,78 @@ const RESIZE_HANDLES: ResizeDir[] = [
   "sw",
 ];
 
+// Each provider section loads independently so a slow one never blocks the
+// rest. "base" is the Spotify header + provider tiers; the others are the
+// individual providers.
+type SectionKey = "base" | "lastfm" | "musicbrainz" | "wikipedia";
+type SectionStatus = "idle" | "loading" | "done" | "error";
+const IDLE_STATUS: Record<SectionKey, SectionStatus> = {
+  base: "idle",
+  lastfm: "idle",
+  musicbrainz: "idle",
+  wikipedia: "idle",
+};
+
+function errMsg(e: unknown): string {
+  const x = e as {
+    response?: { data?: { detail?: string } };
+    message?: string;
+  };
+  return x?.response?.data?.detail || x?.message || "Failed to load";
+}
+
+function Spinner() {
+  return <span className="tip-spinner" aria-hidden="true" />;
+}
+
+// A provider section: a mono "equipment label" header carrying its own ↻
+// refresh, then a per-section spinner / error / content body.
+function SectionFrame({
+  title,
+  tier,
+  status,
+  error,
+  onRefresh,
+  children,
+}: {
+  title: ReactNode;
+  tier?: ReactNode;
+  status: SectionStatus;
+  error?: string;
+  onRefresh: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="tip-section">
+      <h4 className="tip-sec-head">
+        <span className="tip-sec-title">
+          {title}
+          {tier}
+        </span>
+        <button
+          type="button"
+          className="tip-sec-refresh"
+          onClick={onRefresh}
+          disabled={status === "loading"}
+          title="Refresh this section"
+          aria-label="Refresh this section"
+        >
+          {status === "loading" ? "…" : "↻"}
+        </button>
+      </h4>
+      {status === "loading" ? (
+        <p className="tip-loading">
+          <Spinner /> Loading…
+        </p>
+      ) : status === "error" ? (
+        <p className="tip-error">{error}</p>
+      ) : (
+        children
+      )}
+    </section>
+  );
+}
+
 interface Props {
   trackId: string | null;
   // Close (un-mount) the panel. There is no minimized state — reopen from the
@@ -83,13 +156,14 @@ function TrackInfoPanel({
   onShowNowPlaying,
   canShowNowPlaying,
 }: Props) {
-  const [data, setData] = useState<TrackDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Detail accumulates sections as they arrive; status/errors track each one.
+  const [detail, setDetail] = useState<Partial<TrackDetail>>({});
+  const [status, setStatus] =
+    useState<Record<SectionKey, SectionStatus>>(IDLE_STATUS);
+  const [errors, setErrors] = useState<Partial<Record<SectionKey, string>>>({});
   const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   // Wikipedia starts collapsed; opened on demand via the "+" toggle.
   const [wikiOpen, setWikiOpen] = useState(false);
   const reqRef = useRef(0);
@@ -244,51 +318,88 @@ function TrackInfoPanel({
     }
   };
 
-  const fetchDetail = useCallback((id: string, refresh: boolean) => {
-    const reqId = ++reqRef.current;
-    if (refresh) setRefreshing(true);
-    else setLoading(true);
-    setError(null);
-    apiService
-      .getTrackDetail(id, { refresh })
-      .then((d) => {
-        if (reqRef.current === reqId) setData(d);
-      })
-      .catch((e) => {
-        if (reqRef.current === reqId) {
-          setError(e?.response?.data?.detail || e.message || "Failed to load");
-          if (!refresh) setData(null);
-        }
-      })
-      .finally(() => {
-        if (reqRef.current === reqId) {
-          setLoading(false);
-          setRefreshing(false);
+  // Fetch one section in isolation and merge it in. `reqId` guards against a
+  // stale track — results from a superseded load are dropped.
+  const fetchSection = useCallback(
+    (id: string, key: SectionKey, refresh: boolean, reqId: number) =>
+      apiService
+        .getTrackDetail(id, { sections: key, refresh })
+        .then((d) => {
+          if (reqRef.current !== reqId) return d;
+          setDetail((prev) => ({ ...prev, ...d }));
+          setStatus((s) => ({ ...s, [key]: "done" }));
+          return d;
+        })
+        .catch((e) => {
+          if (reqRef.current === reqId) {
+            setErrors((er) => ({ ...er, [key]: errMsg(e) }));
+            setStatus((s) => ({ ...s, [key]: "error" }));
+          }
+          return {} as Partial<TrackDetail>;
+        }),
+    [],
+  );
+
+  // Load every section for a track. Base + the always-public providers fire
+  // immediately in parallel; Last.fm fires once base reveals it's available.
+  const loadAll = useCallback(
+    (id: string, refresh: boolean) => {
+      const reqId = ++reqRef.current;
+      setDetail({});
+      setErrors({});
+      setStatus({
+        base: "loading",
+        lastfm: "idle",
+        musicbrainz: "loading",
+        wikipedia: "loading",
+      });
+      fetchSection(id, "musicbrainz", refresh, reqId);
+      fetchSection(id, "wikipedia", refresh, reqId);
+      fetchSection(id, "base", refresh, reqId).then((d) => {
+        if (reqRef.current !== reqId) return;
+        const tier = d.connections?.lastfm?.tier;
+        if (tier && tier !== "none") {
+          setStatus((s) => ({ ...s, lastfm: "loading" }));
+          fetchSection(id, "lastfm", refresh, reqId);
         }
       });
-  }, []);
+    },
+    [fetchSection],
+  );
 
   useEffect(() => {
     // New track: re-collapse Wikipedia so it never auto-expands.
     setWikiOpen(false);
     if (!trackId) {
-      setData(null);
-      setError(null);
+      setDetail({});
+      setErrors({});
+      setStatus(IDLE_STATUS);
       return;
     }
-    fetchDetail(trackId, false);
-  }, [trackId, fetchDetail]);
+    loadAll(trackId, false);
+  }, [trackId, loadAll]);
 
+  const anyLoading = Object.values(status).some((s) => s === "loading");
+
+  // Re-fetch a single section (its own ↻ button).
+  const refreshSection = (key: SectionKey) => {
+    if (!trackId || status[key] === "loading") return;
+    setStatus((s) => ({ ...s, [key]: "loading" }));
+    setErrors((er) => ({ ...er, [key]: undefined }));
+    fetchSection(trackId, key, true, reqRef.current);
+  };
+
+  // Main ↻: re-fetch every section.
   const handleRefresh = () => {
-    if (trackId && !refreshing && !loading) fetchDetail(trackId, true);
+    if (trackId && !anyLoading) loadAll(trackId, true);
   };
 
   // Share the track. For now the shared payload is just the Spotify link:
   // prefer the native share sheet (Web Share API), falling back to copying
   // the link to the clipboard. Per-service social sharing is a later TODO.
   const handleShare = async () => {
-    if (!data?.spotify.external_url) return;
-    const { external_url, name, artists } = data.spotify;
+    if (!detail.spotify?.external_url) return;
+    const { external_url, name, artists } = detail.spotify;
     const payload = {
       title: name,
       text: `${name} — ${artists.join(", ")}`,
@@ -312,9 +423,8 @@ function TrackInfoPanel({
   };
 
   const handleCopy = async () => {
-    if (!data) return;
     try {
-      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      await navigator.clipboard.writeText(JSON.stringify(detail, null, 2));
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch (e) {
@@ -334,6 +444,18 @@ function TrackInfoPanel({
     style.height = size.h;
     style.maxHeight = "none";
   }
+
+  // Per-section objects for the "Show raw" view (each shows its own spinner).
+  const rawBlocks: { key: SectionKey; label: string; value: unknown }[] = [
+    {
+      key: "base",
+      label: "spotify + connections",
+      value: { spotify: detail.spotify, connections: detail.connections },
+    },
+    { key: "lastfm", label: "lastfm", value: detail.lastfm },
+    { key: "musicbrainz", label: "musicbrainz", value: detail.musicbrainz },
+    { key: "wikipedia", label: "wikipedia", value: detail.wikipedia },
+  ];
 
   return (
     <aside
@@ -376,11 +498,11 @@ function TrackInfoPanel({
             type="button"
             className="tip-toggle tip-refresh"
             onClick={handleRefresh}
-            disabled={!trackId || loading || refreshing}
-            aria-label="Refresh cached track info"
-            title="Force a fresh lookup, bypassing the cache"
+            disabled={!trackId || anyLoading}
+            aria-label="Refresh all track info"
+            title="Force a fresh lookup of every section, bypassing the cache"
           >
-            {refreshing ? "…" : "↻"}
+            {anyLoading ? "…" : "↻"}
           </button>
           <label className="tip-raw-toggle" title="Toggle raw JSON view">
             <input
@@ -404,197 +526,261 @@ function TrackInfoPanel({
 
       <div className="tip-body">
         {!trackId && <p className="tip-empty">No track selected.</p>}
-        {trackId && loading && <p className="tip-empty">Loading…</p>}
-        {trackId && error && <p className="tip-error">{error}</p>}
 
-        {data && showRaw && (
+        {trackId && showRaw && (
           <div className="tip-raw">
             <button type="button" className="tip-copy" onClick={handleCopy}>
               {copied ? "Copied!" : "Copy JSON"}
             </button>
-            <pre
-              className="tip-json"
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: highlightJson HTML-escapes input before highlighting; renders app-owned track JSON
-              dangerouslySetInnerHTML={{ __html: highlightJson(data) }}
-            />
+            {rawBlocks.map(({ key, label, value }) => (
+              <div key={key} className="tip-raw-block">
+                <h5 className="tip-h5">{label}</h5>
+                {status[key] === "loading" ? (
+                  <p className="tip-loading">
+                    <Spinner /> Loading…
+                  </p>
+                ) : status[key] === "idle" ? (
+                  <p className="tip-meta">—</p>
+                ) : status[key] === "error" ? (
+                  <p className="tip-error">{errors[key]}</p>
+                ) : (
+                  <pre
+                    className="tip-json"
+                    // biome-ignore lint/security/noDangerouslySetInnerHtml: highlightJson HTML-escapes input before highlighting; renders app-owned track JSON
+                    dangerouslySetInnerHTML={{ __html: highlightJson(value) }}
+                  />
+                )}
+              </div>
+            ))}
           </div>
         )}
 
-        {data && !showRaw && (
+        {trackId && !showRaw && (
           <>
             <section className="tip-section tip-head-section">
-              <h3 className="tip-track-name">{data.spotify.name}</h3>
-              <p className="tip-sub">
-                {data.spotify.artists.join(", ")}
-                {data.spotify.album ? ` · ${data.spotify.album}` : ""}
-              </p>
-              <p className="tip-meta">
-                {formatDuration(data.spotify.duration_ms)}
-                {data.spotify.release_date
-                  ? ` · ${data.spotify.release_date}`
-                  : ""}
-                {data.spotify.isrc ? ` · ISRC ${data.spotify.isrc}` : ""}
-                {data.spotify.explicit ? " · explicit" : ""}
-              </p>
-              {data.spotify.external_url && (
-                <div className="tip-head-actions">
-                  <a
-                    className="tip-extlink"
-                    href={data.spotify.external_url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open in Spotify
-                  </a>
-                  <button
-                    type="button"
-                    className="tip-share"
-                    onClick={handleShare}
-                    title="Share this track (copies the Spotify link)"
-                    aria-label="Share this track"
-                  >
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <circle cx="18" cy="5" r="3" />
-                      <circle cx="6" cy="12" r="3" />
-                      <circle cx="18" cy="19" r="3" />
-                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                    </svg>
-                    <span>{shared ? "Link copied!" : "Share"}</span>
-                  </button>
-                </div>
+              <button
+                type="button"
+                className="tip-sec-refresh tip-head-refresh"
+                onClick={() => refreshSection("base")}
+                disabled={status.base === "loading"}
+                title="Refresh track info"
+                aria-label="Refresh track info"
+              >
+                {status.base === "loading" ? "…" : "↻"}
+              </button>
+              {status.base === "loading" && (
+                <p className="tip-loading">
+                  <Spinner /> Loading…
+                </p>
+              )}
+              {status.base === "error" && (
+                <p className="tip-error">{errors.base}</p>
+              )}
+              {detail.spotify && (
+                <>
+                  <h3 className="tip-track-name">{detail.spotify.name}</h3>
+                  <p className="tip-sub">
+                    {detail.spotify.artists.join(", ")}
+                    {detail.spotify.album ? ` · ${detail.spotify.album}` : ""}
+                  </p>
+                  <p className="tip-meta">
+                    {formatDuration(detail.spotify.duration_ms)}
+                    {detail.spotify.release_date
+                      ? ` · ${detail.spotify.release_date}`
+                      : ""}
+                    {detail.spotify.isrc
+                      ? ` · ISRC ${detail.spotify.isrc}`
+                      : ""}
+                    {detail.spotify.explicit ? " · explicit" : ""}
+                  </p>
+                  {detail.spotify.external_url && (
+                    <div className="tip-head-actions">
+                      <a
+                        className="tip-extlink"
+                        href={detail.spotify.external_url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open in Spotify
+                      </a>
+                      <button
+                        type="button"
+                        className="tip-share"
+                        onClick={handleShare}
+                        title="Share this track (copies the Spotify link)"
+                        aria-label="Share this track"
+                      >
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <circle cx="18" cy="5" r="3" />
+                          <circle cx="6" cy="12" r="3" />
+                          <circle cx="18" cy="19" r="3" />
+                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                        </svg>
+                        <span>{shared ? "Link copied!" : "Share"}</span>
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </section>
 
-            {data.lastfm && (
-              <section className="tip-section">
-                <h4>
-                  Last.fm
-                  <span className={`tip-tier tip-tier-${data.lastfm.tier}`}>
-                    {data.lastfm.tier === "authenticated"
-                      ? "connected"
-                      : "public"}
-                  </span>
-                </h4>
-                {data.lastfm.error ? (
-                  <p className="tip-meta">Lookup failed: {data.lastfm.error}</p>
+            {status.lastfm !== "idle" && (
+              <SectionFrame
+                title="Last.fm"
+                tier={
+                  detail.lastfm && (
+                    <span className={`tip-tier tip-tier-${detail.lastfm.tier}`}>
+                      {detail.lastfm.tier === "authenticated"
+                        ? "connected"
+                        : "public"}
+                    </span>
+                  )
+                }
+                status={status.lastfm}
+                error={errors.lastfm}
+                onRefresh={() => refreshSection("lastfm")}
+              >
+                {detail.lastfm ? (
+                  detail.lastfm.error ? (
+                    <p className="tip-meta">
+                      Lookup failed: {detail.lastfm.error}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="tip-stats">
+                        {detail.lastfm.user_playcount != null && (
+                          <span>
+                            Your plays:{" "}
+                            <strong>{detail.lastfm.user_playcount}</strong>
+                            {detail.lastfm.user_loved ? " ♥" : ""}
+                          </span>
+                        )}
+                        {detail.lastfm.playcount != null && (
+                          <span>
+                            Global plays:{" "}
+                            <strong>
+                              {detail.lastfm.playcount.toLocaleString()}
+                            </strong>
+                          </span>
+                        )}
+                        {detail.lastfm.listeners != null && (
+                          <span>
+                            Listeners:{" "}
+                            <strong>
+                              {detail.lastfm.listeners.toLocaleString()}
+                            </strong>
+                          </span>
+                        )}
+                      </p>
+                      {detail.lastfm.tags && detail.lastfm.tags.length > 0 && (
+                        <div className="tip-tags">
+                          {detail.lastfm.tags.map((t) => (
+                            <span key={t} className="tip-tag">
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {detail.lastfm.summary && (
+                        <p className="tip-summary">{detail.lastfm.summary}</p>
+                      )}
+                      {detail.lastfm.similar &&
+                        detail.lastfm.similar.length > 0 && (
+                          <>
+                            <h5 className="tip-h5">Similar tracks</h5>
+                            <ul className="tip-similar">
+                              {detail.lastfm.similar.map((s) => (
+                                <li key={`${s.name}-${s.artist}`}>
+                                  <a
+                                    href={s.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    {s.name}
+                                  </a>{" "}
+                                  <span className="tip-similar-artist">
+                                    — {s.artist}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+                    </>
+                  )
                 ) : (
+                  <p className="tip-meta">No Last.fm data for this track.</p>
+                )}
+              </SectionFrame>
+            )}
+
+            {status.musicbrainz !== "idle" && (
+              <SectionFrame
+                title="MusicBrainz"
+                tier={<span className="tip-tier tip-tier-public">public</span>}
+                status={status.musicbrainz}
+                error={errors.musicbrainz}
+                onRefresh={() => refreshSection("musicbrainz")}
+              >
+                {detail.musicbrainz ? (
                   <>
                     <p className="tip-stats">
-                      {data.lastfm.user_playcount != null && (
+                      <span>
+                        MBID: <code>{detail.musicbrainz.mbid}</code>
+                      </span>
+                      {detail.musicbrainz.isrcs.length > 0 && (
                         <span>
-                          Your plays:{" "}
-                          <strong>{data.lastfm.user_playcount}</strong>
-                          {data.lastfm.user_loved ? " ♥" : ""}
-                        </span>
-                      )}
-                      {data.lastfm.playcount != null && (
-                        <span>
-                          Global plays:{" "}
-                          <strong>
-                            {data.lastfm.playcount.toLocaleString()}
-                          </strong>
-                        </span>
-                      )}
-                      {data.lastfm.listeners != null && (
-                        <span>
-                          Listeners:{" "}
-                          <strong>
-                            {data.lastfm.listeners.toLocaleString()}
-                          </strong>
+                          ISRCs: {detail.musicbrainz.isrcs.join(", ")}
                         </span>
                       )}
                     </p>
-                    {data.lastfm.tags && data.lastfm.tags.length > 0 && (
+                    {detail.musicbrainz.releases.length > 0 && (
+                      <>
+                        <h5 className="tip-h5">Releases</h5>
+                        <ul className="tip-releases">
+                          {detail.musicbrainz.releases.slice(0, 8).map((r) => (
+                            <li key={r.mbid}>
+                              {r.title}
+                              {r.date ? ` (${r.date})` : ""}
+                              {r.country ? ` · ${r.country}` : ""}
+                              {r.release_group_type
+                                ? ` · ${r.release_group_type}`
+                                : ""}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {detail.musicbrainz.tags.length > 0 && (
                       <div className="tip-tags">
-                        {data.lastfm.tags.map((t) => (
+                        {detail.musicbrainz.tags.map((t) => (
                           <span key={t} className="tip-tag">
                             {t}
                           </span>
                         ))}
                       </div>
                     )}
-                    {data.lastfm.summary && (
-                      <p className="tip-summary">{data.lastfm.summary}</p>
-                    )}
-                    {data.lastfm.similar && data.lastfm.similar.length > 0 && (
-                      <>
-                        <h5 className="tip-h5">Similar tracks</h5>
-                        <ul className="tip-similar">
-                          {data.lastfm.similar.map((s) => (
-                            <li key={`${s.name}-${s.artist}`}>
-                              <a href={s.url} target="_blank" rel="noreferrer">
-                                {s.name}
-                              </a>{" "}
-                              <span className="tip-similar-artist">
-                                — {s.artist}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </>
-                    )}
                   </>
+                ) : (
+                  <p className="tip-meta">No MusicBrainz match.</p>
                 )}
-              </section>
+              </SectionFrame>
             )}
 
-            {data.musicbrainz && (
-              <section className="tip-section">
-                <h4>
-                  MusicBrainz
-                  <span className="tip-tier tip-tier-public">public</span>
-                </h4>
-                <p className="tip-stats">
-                  <span>
-                    MBID: <code>{data.musicbrainz.mbid}</code>
-                  </span>
-                  {data.musicbrainz.isrcs.length > 0 && (
-                    <span>ISRCs: {data.musicbrainz.isrcs.join(", ")}</span>
-                  )}
-                </p>
-                {data.musicbrainz.releases.length > 0 && (
-                  <>
-                    <h5 className="tip-h5">Releases</h5>
-                    <ul className="tip-releases">
-                      {data.musicbrainz.releases.slice(0, 8).map((r) => (
-                        <li key={r.mbid}>
-                          {r.title}
-                          {r.date ? ` (${r.date})` : ""}
-                          {r.country ? ` · ${r.country}` : ""}
-                          {r.release_group_type
-                            ? ` · ${r.release_group_type}`
-                            : ""}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-                {data.musicbrainz.tags.length > 0 && (
-                  <div className="tip-tags">
-                    {data.musicbrainz.tags.map((t) => (
-                      <span key={t} className="tip-tag">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
-
-            {data.wikipedia && (
-              <section className="tip-section">
-                <h4 className="tip-wiki-head">
+            {status.wikipedia !== "idle" && (
+              <SectionFrame
+                title={
                   <button
                     type="button"
                     className="tip-wiki-toggle"
@@ -606,31 +792,35 @@ function TrackInfoPanel({
                     </span>
                     Wikipedia
                   </button>
-                  <span className="tip-tier tip-tier-public">public</span>
-                </h4>
-                {wikiOpen && (
-                  <>
-                    {data.wikipedia.description && (
-                      <p className="tip-meta">{data.wikipedia.description}</p>
-                    )}
-                    <p className="tip-summary">{data.wikipedia.extract}</p>
-                    <a
-                      className="tip-extlink"
-                      href={data.wikipedia.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Read on Wikipedia
-                    </a>
-                  </>
+                }
+                tier={<span className="tip-tier tip-tier-public">public</span>}
+                status={status.wikipedia}
+                error={errors.wikipedia}
+                onRefresh={() => refreshSection("wikipedia")}
+              >
+                {detail.wikipedia ? (
+                  wikiOpen && (
+                    <>
+                      {detail.wikipedia.description && (
+                        <p className="tip-meta">
+                          {detail.wikipedia.description}
+                        </p>
+                      )}
+                      <p className="tip-summary">{detail.wikipedia.extract}</p>
+                      <a
+                        className="tip-extlink"
+                        href={detail.wikipedia.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Read on Wikipedia
+                      </a>
+                    </>
+                  )
+                ) : (
+                  <p className="tip-meta">No Wikipedia article found.</p>
                 )}
-              </section>
-            )}
-
-            {!data.lastfm && !data.musicbrainz && !data.wikipedia && (
-              <p className="tip-meta">
-                No external metadata providers available for this track.
-              </p>
+              </SectionFrame>
             )}
           </>
         )}
