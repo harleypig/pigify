@@ -15,6 +15,7 @@ import {
   providerSearchUrl,
   type SearchProvider,
   songfactsSearchUrl,
+  wikipediaSearchUrl,
 } from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
 
@@ -510,9 +511,10 @@ function TrackInfoPanel({
     style.maxHeight = "none";
   }
 
-  // Artist + title for the per-provider "Search …" fallback links.
+  // Artist + title (+ album) for the per-provider "Search …" / Wikipedia links.
   const sArtist = detail.spotify?.artists?.[0] ?? "";
   const sTitle = detail.spotify?.name ?? "";
+  const sAlbum = detail.spotify?.album ?? "";
 
   // Per-section objects for the "Show raw" view (each shows its own spinner).
   const rawBlocks: { key: SectionKey; label: string; value: unknown }[] = [
@@ -724,6 +726,38 @@ function TrackInfoPanel({
               )}
             </section>
 
+            {/* Songfacts is always just links (no API), and identical for every
+                track, so keep it up top where it won't be lost below the fold. */}
+            {detail.spotify && (
+              <section className="tip-section">
+                <h4 className="tip-sec-head">
+                  <span className="tip-sec-title">Songfacts</span>
+                </h4>
+                <p className="tip-meta">
+                  Songfacts has no public API, so we link its search rather than
+                  show facts inline.
+                </p>
+                <div className="tip-head-actions">
+                  <a
+                    className="tip-extlink"
+                    href={songfactsSearchUrl("songs", sTitle)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Search by song
+                  </a>
+                  <a
+                    className="tip-extlink"
+                    href={songfactsSearchUrl("artists", sArtist)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Search by artist
+                  </a>
+                </div>
+              </section>
+            )}
+
             {status.lastfm !== "idle" && (
               <SectionFrame
                 title="Last.fm"
@@ -880,81 +914,84 @@ function TrackInfoPanel({
             {status.wikipedia !== "idle" && (
               <SectionFrame
                 title={
-                  <button
-                    type="button"
-                    className="tip-wiki-toggle"
-                    onClick={() => setWikiOpen((o) => !o)}
-                    aria-expanded={wikiOpen}
-                  >
-                    <span className="tip-wiki-sign" aria-hidden="true">
-                      {wikiOpen ? "−" : "+"}
-                    </span>
-                    Wikipedia
-                  </button>
+                  // The +/− expander only appears when there's an article to
+                  // expand; otherwise it's a plain label with the search link.
+                  detail.wikipedia ? (
+                    <button
+                      type="button"
+                      className="tip-wiki-toggle"
+                      onClick={() => setWikiOpen((o) => !o)}
+                      aria-expanded={wikiOpen}
+                    >
+                      <span className="tip-wiki-sign" aria-hidden="true">
+                        {wikiOpen ? "−" : "+"}
+                      </span>
+                      Wikipedia
+                    </button>
+                  ) : (
+                    "Wikipedia"
+                  )
                 }
                 tier={<span className="tip-tier tip-tier-public">public</span>}
                 status={status.wikipedia}
                 error={errors.wikipedia}
                 onRefresh={() => refreshSection("wikipedia")}
               >
-                {detail.wikipedia ? (
-                  wikiOpen && (
-                    <>
-                      {detail.wikipedia.description && (
-                        <p className="tip-meta">
-                          {detail.wikipedia.description}
+                {detail.wikipedia
+                  ? wikiOpen && (
+                      <>
+                        {detail.wikipedia.description && (
+                          <p className="tip-meta">
+                            {detail.wikipedia.description}
+                          </p>
+                        )}
+                        <p className="tip-summary">
+                          {detail.wikipedia.extract}
                         </p>
-                      )}
-                      <p className="tip-summary">{detail.wikipedia.extract}</p>
+                        <a
+                          className="tip-extlink"
+                          href={detail.wikipedia.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Read on Wikipedia
+                        </a>
+                      </>
+                    )
+                  : sTitle && (
+                      <NoResult
+                        message="No song article found."
+                        provider="wikipedia"
+                        artist={sArtist}
+                        title={sTitle}
+                      />
+                    )}
+                {/* Album + band links (search only, no content download). */}
+                {(sArtist || sAlbum) && (
+                  <p className="tip-wiki-links">
+                    {sArtist && (
                       <a
                         className="tip-extlink"
-                        href={detail.wikipedia.url}
+                        href={wikipediaSearchUrl(sArtist)}
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Read on Wikipedia
+                        Band on Wikipedia
                       </a>
-                    </>
-                  )
-                ) : (
-                  <NoResult
-                    message="No Wikipedia article found."
-                    provider="wikipedia"
-                    artist={sArtist}
-                    title={sTitle}
-                  />
+                    )}
+                    {sAlbum && (
+                      <a
+                        className="tip-extlink"
+                        href={wikipediaSearchUrl(`${sAlbum} album`)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Album on Wikipedia
+                      </a>
+                    )}
+                  </p>
                 )}
               </SectionFrame>
-            )}
-
-            {detail.spotify && (
-              <section className="tip-section">
-                <h4 className="tip-sec-head">
-                  <span className="tip-sec-title">Songfacts</span>
-                </h4>
-                <p className="tip-meta">
-                  Songfacts has no public API, so we link its search rather than
-                  show facts inline.
-                </p>
-                <div className="tip-head-actions">
-                  <a
-                    className="tip-extlink"
-                    href={songfactsSearchUrl("songs", sTitle)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Search by song
-                  </a>
-                  <a
-                    className="tip-extlink"
-                    href={songfactsSearchUrl("artists", sArtist)}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Search by artist
-                  </a>
-                </div>
-              </section>
             )}
           </>
         )}

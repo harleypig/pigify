@@ -5,6 +5,7 @@ import {
   highlightJson,
   providerSearchUrl,
   songfactsSearchUrl,
+  wikipediaSearchUrl,
 } from "./TrackInfoPanel.helpers";
 
 describe("formatDuration", () => {
@@ -93,6 +94,14 @@ describe("songfactsSearchUrl", () => {
   it("drops apostrophes and hyphenates other punctuation", () => {
     expect(songfactsSearchUrl("songs", "Don't Stop Me Now")).toBe(
       "https://www.songfacts.com/search/songs/dont-stop-me-now",
+    );
+  });
+});
+
+describe("wikipediaSearchUrl", () => {
+  it("builds a Wikipedia full-text search link", () => {
+    expect(wikipediaSearchUrl("Discovery album")).toBe(
+      "https://en.wikipedia.org/w/index.php?search=Discovery%20album",
     );
   });
 });

@@ -292,7 +292,11 @@ async def wikipedia_track(spotify_track_id: str, request: Request):
     primary_artist = artists[0] if artists else ""
     title = track.get("name", "")
 
-    article = await wikipedia.resolve_song_article(artist=primary_artist, title=title)
+    article = await wikipedia.resolve_song_article(
+        artist=primary_artist,
+        title=title,
+        album=(track.get("album") or {}).get("name"),
+    )
     if not article:
         raise HTTPException(404, "No Wikipedia article found for this track")
     return {"tier": "public", **article}
@@ -539,7 +543,9 @@ async def combined_track_detail(
                 article = cached_wiki.get("article")
             else:
                 article = await wikipedia.resolve_song_article(
-                    artist=primary_artist, title=title
+                    artist=primary_artist,
+                    title=title,
+                    album=(track.get("album") or {}).get("name"),
                 )
                 if article:
                     await enrichment_cache.put(

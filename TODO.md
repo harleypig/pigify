@@ -264,10 +264,13 @@ authored on the brand from the start.
       (`pigify.trackInfoPanel.fontScale`); the header chrome stays fixed.
       **Remaining:** a default-size setting in Settings (the settings pass)
       that seeds the initial scale.
-- [ ] **Wikipedia link resolution + album/band links.** Improve how the
-      Wikipedia link is chosen: if the song's page isn't found, fall back to
-      searching by band, or album + song. Also add separate Wikipedia links
-      for the **album** and the **band** — links only, no content download.
+- [x] **Wikipedia link resolution + album/band links.** Done: the song-article
+      resolver falls back through looser queries — song → album+song →
+      artist/band (`resolve_song_article`, with the album now passed through)
+      — so a non-obvious title still resolves. The panel adds **Band on
+      Wikipedia** and **Album on Wikipedia** search links (links only, no
+      content download), and the **+ expander only shows when an article
+      exists** (otherwise just the search link).
 - [ ] **Grokipedia support.** Add Grokipedia (xAI's encyclopedia) as a
       track-detail content provider alongside Wikipedia — a section in the
       panel, folded into the `/api/integrations/track-detail` aggregator with
@@ -277,11 +280,18 @@ authored on the brand from the start.
       content, attribution, caching). If there's no API, record that as an
       `ICEBOX:` limitation rather than building a scraper.
 - [x] **Songfacts.com link.** Done: a Songfacts block in the Track Info panel
-      with a short blurb (no public API → links not inline facts) and two
+      with a short blurb (no free/open API → links, not inline facts) and two
       **search** links — by song and by artist. Songfacts' native search is
       path-based (`/search/songs/<slug>`, `/search/artists/<slug>`; a `?q=`
       param does **not** work — verified), so we link the search rather than
-      resolve a direct article (no API to confirm one exists).
+      resolve a direct article. (A *paid* API exists — see the contact item.)
+- [ ] **Contact Songfacts about API access.** Songfacts *does* have an API
+      (<https://www.songfacts.com/blog/pages/songfacts-api>), but it's
+      "contact us for pricing" — likely too costly here. Ask anyway: email
+      them describing pigify as a **small open-source project** and request
+      pricing/terms for low-volume, non-commercial use. If affordable, it
+      could replace the search-only links with inline facts; if not, record the
+      decline as an `ICEBOX:` and keep the links.
 
 ## Settings
 
@@ -338,15 +348,18 @@ today.
         session key). Adds scrobbling, now-playing, personal play counts, and
         Favorites (loved-tracks) sync.
 
-## MusicBrainz
+## Provider API rules & skills
 
-pigify uses the **MusicBrainz Web Service** (`/ws/2`) to resolve a Spotify
-track → MBID (ISRC-first, then a fuzzy artist+title recording search) for the
-Track Info panel and enrichment (`backend/app/services/musicbrainz.py`). It is
-a real public API with extensive docs, but — unlike Spotify — has **no global
-agent rule or skill yet**. These are **global-config tasks** (they land in the
-dotfiles repo via `claude-audit` + `ship-pr`, surfaced from here like the
-nginx rule was), per the tool-rule-coverage policy in `CLAUDE.md`.
+pigify integrates several external data APIs that — unlike Spotify — have **no
+global agent rule or skill yet** (MusicBrainz, Wikipedia, and arguably
+Last.fm). Each is a real public API with docs worth codifying. These are
+**global-config tasks** (they land in the dotfiles repo via `claude-audit` +
+`ship-pr`, surfaced from here like the nginx rule was), per the
+tool-rule-coverage policy in `CLAUDE.md`.
+
+**MusicBrainz** — resolves a Spotify track → MBID (ISRC-first, then a fuzzy
+artist+title recording search) for the Track Info panel and enrichment
+(`backend/app/services/musicbrainz.py`):
 
 - [ ] **Global `rules/musicbrainz.md`** (detection-activated, modelled on
       `rules/spotify.md`). Ground it in the current official docs
@@ -375,6 +388,30 @@ nginx rule was), per the tool-rule-coverage policy in `CLAUDE.md`.
       — MusicBrainz is stable, with no Spotify-style deprecation churn — so
       probably **Off** (rule + patterns suffice). Record the decision either
       way.
+
+**Wikipedia** — resolves a Spotify track → article via the MediaWiki APIs for
+the Track Info panel (`backend/app/services/wikipedia.py`):
+
+- [ ] **Global `rules/wikipedia.md`** (detection-activated). Ground it in the
+      official docs and cover: the **MediaWiki Action API**
+      (`/w/api.php?action=query&list=search`) and the **REST v1 summary**
+      (`/api/rest_v1/page/summary/{title}`) — both key-free; the **Wikimedia
+      User-Agent policy** (a descriptive UA with contact is required, else you
+      get blocked); search → summary resolution + disambiguation/empty-extract
+      guards; caching + attribution; out of scope (edits, talk pages, full
+      HTML, Wikidata).
+- [ ] **`wikipedia-patterns` skill**: the search→summary resolver with the
+      fallback queries (song → album+song → artist/band), the title↔slug
+      handling, the `_is_useful_summary` guard, and the search-link builders
+      the panel uses (song / album / band).
+- [ ] **Align pigify's client + decide on a `wikipedia-audit` skill.** Audit
+      `wikipedia.py` against the rule (its UA is the placeholder
+      `dev@pigify.local`). A dedicated audit skill is likely **Off** (the APIs
+      are stable). Record the decision.
+
+**Last.fm** is a candidate too — its auth + public/connected tiers and
+scrobbling API are covered *functionally* in the *Last.fm* section, but there
+is no agent `rules/lastfm.md`. Decide if it warrants one alongside the above.
 
 ## Smart Filters (recipes)
 

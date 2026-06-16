@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Wikipedia resolution fallbacks + album/band links.",
       "Songfacts block with song + artist search links.",
       "Notify when playback isn't on pigify.",
       "\"Search <provider>\" link when a provider has no result.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Bring the recipe builder onto the day-glo console brand.",
       "Drop dead .user-name-btn rules.",
       "Keep the account name visible on hover.",
-      "Bring the account menu onto the day-glo console brand.",
-      "…and 239 earlier changes."
+      "…and 240 earlier changes."
     ]
   },
   {

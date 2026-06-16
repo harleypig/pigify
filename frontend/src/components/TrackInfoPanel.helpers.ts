@@ -19,6 +19,13 @@ function slug(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/** A Wikipedia full-text search link for an arbitrary query. */
+export function wikipediaSearchUrl(query: string): string {
+  return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(
+    query.trim(),
+  )}`;
+}
+
 /**
  * Build a link to a provider's search page, pre-filled with the track. Shown
  * when a provider returns no result, so the user can look it up manually.
@@ -35,9 +42,7 @@ export function providerSearchUrl(
         both,
       )}&type=recording`;
     case "wikipedia":
-      return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(
-        `${title} ${artist} song`.trim(),
-      )}`;
+      return wikipediaSearchUrl(`${title} ${artist} song`);
     case "lastfm":
       return `https://www.last.fm/search?q=${encodeURIComponent(both)}`;
   }

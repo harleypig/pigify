@@ -403,6 +403,14 @@
   background: rgba(var(--brand-accent-rgb), 0.12);
 }
 
+/* Album + band links — a small links row below the article / search link. */
+.tip-wiki-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+}
+
 .tip-tier {
   font-family: var(--brand-font-mono);
   font-size: 9px;
