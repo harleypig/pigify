@@ -51,6 +51,20 @@ function clampPos(p: Pos, w: number, h: number): Pos {
   };
 }
 
+// Resize directions: each handle names the edge(s) it drags. A letter present
+// means that edge moves — "n"/"s" vertical, "e"/"w" horizontal, corners both.
+type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+const RESIZE_HANDLES: ResizeDir[] = [
+  "n",
+  "s",
+  "e",
+  "w",
+  "ne",
+  "nw",
+  "se",
+  "sw",
+];
+
 interface Props {
   trackId: string | null;
   // Close (un-mount) the panel. There is no minimized state — reopen from the
@@ -94,6 +108,7 @@ function TrackInfoPanel({
   // Origin of the active pointer gesture, shared by move and resize.
   const gestureRef = useRef<{
     mode: "move" | "resize";
+    dir: ResizeDir | null;
     px: number;
     py: number;
     x: number;
@@ -154,6 +169,7 @@ function TrackInfoPanel({
     e.currentTarget.setPointerCapture(e.pointerId);
     gestureRef.current = {
       mode: "move",
+      dir: null,
       px: e.clientX,
       py: e.clientY,
       x: r.left,
@@ -164,7 +180,7 @@ function TrackInfoPanel({
     setDragging(true);
   };
 
-  const onResizePointerDown = (e: ReactPointerEvent) => {
+  const onResizePointerDown = (e: ReactPointerEvent, dir: ResizeDir) => {
     const el = panelRef.current;
     if (!el) return;
     e.preventDefault();
@@ -172,6 +188,7 @@ function TrackInfoPanel({
     e.currentTarget.setPointerCapture(e.pointerId);
     gestureRef.current = {
       mode: "resize",
+      dir,
       px: e.clientX,
       py: e.clientY,
       x: r.left,
@@ -188,17 +205,31 @@ function TrackInfoPanel({
     const dy = e.clientY - g.py;
     if (g.mode === "move") {
       setPos(clampPos({ x: g.x + dx, y: g.y + dy }, g.w, g.h));
-    } else {
-      // Top-left anchored, so the bottom-right grip grows toward the pointer.
-      const w = Math.max(
-        MIN_W,
-        Math.min(window.innerWidth - g.x - EDGE, g.w + dx),
-      );
-      const h = Math.max(
-        MIN_H,
-        Math.min(window.innerHeight - g.y - EDGE, g.h + dy),
-      );
-      setSize({ w, h });
+      return;
+    }
+    // Resize: each named edge moves toward the pointer; the opposite edge
+    // stays put, so dragging a top/left edge also shifts the anchor.
+    const dir = g.dir ?? "se";
+    const right = g.x + g.w;
+    const bottom = g.y + g.h;
+    let { x, y, w, h } = g;
+    if (dir.includes("e")) {
+      w = Math.max(MIN_W, Math.min(window.innerWidth - g.x - EDGE, g.w + dx));
+    }
+    if (dir.includes("w")) {
+      x = Math.max(EDGE, Math.min(right - MIN_W, g.x + dx));
+      w = right - x;
+    }
+    if (dir.includes("s")) {
+      h = Math.max(MIN_H, Math.min(window.innerHeight - g.y - EDGE, g.h + dy));
+    }
+    if (dir.includes("n")) {
+      y = Math.max(EDGE, Math.min(bottom - MIN_H, g.y + dy));
+      h = bottom - y;
+    }
+    setSize({ w, h });
+    if (dir.includes("w") || dir.includes("n")) {
+      setPos({ x, y });
     }
   };
 
@@ -311,14 +342,18 @@ function TrackInfoPanel({
       ref={panelRef}
       style={style}
     >
-      {/* Bottom-right resize grip. Pointer-only. */}
-      <div
-        className="tip-resize"
-        onPointerDown={onResizePointerDown}
-        onPointerMove={onGesturePointerMove}
-        onPointerUp={onGesturePointerUp}
-        aria-hidden="true"
-      />
+      {/* Resize handles on every edge + corner. Pointer-only; the
+          bottom-right one carries the visible grip cue (CSS). */}
+      {RESIZE_HANDLES.map((dir) => (
+        <div
+          key={dir}
+          className={`tip-rz tip-rz-${dir}`}
+          onPointerDown={(e) => onResizePointerDown(e, dir)}
+          onPointerMove={onGesturePointerMove}
+          onPointerUp={onGesturePointerUp}
+          aria-hidden="true"
+        />
+      ))}
       <header
         className="tip-header"
         onPointerDown={onHeaderPointerDown}

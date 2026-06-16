@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Resize the floating panel from any edge or corner.",
+      "Track Info — edge/corner resize + Grokipedia provider.",
       "Make the Track Info panel a floating window.",
       "Day-glo console rollout: Settings, UserMenu, RecipeBuilder + fixes.",
       "Track Info floating panel + unify the two Sort by UIs.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Silent Spotify token refresh to keep sessions alive.",
       "Silently refresh the Spotify token to keep sessions alive.",
       "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
-      "Record loved-state/auth fixes, nginx gap, visibility poll.",
-      "Record the single-worker Spotify token-refresh decision.",
-      "…and 226 earlier changes."
+      "…and 228 earlier changes."
     ]
   },
   {
