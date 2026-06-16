@@ -83,15 +83,23 @@ un-deprecated them, or an open alternative's status changed; then update the
 
 ## Build, release & infra
 
-- [ ] **Version tagging.** Adopt a documented tag-driven versioning scheme
-      modeled on `../scripturestudy-app` (its `.claude/CONVENTIONS.md`
-      "Versioning & tagging"): version derived from git tags via
-      `git describe` rather than a committed file, bumping = creating a tag
-      at the PR's merge commit, and the tag is what builds + pushes the
-      images. Decide single-stream (`v*`, both images) vs per-component
-      streams (`backend/v*` / `frontend/v*`) — pigify currently builds both
-      images from one `v*` tag. Then expand the thin `.claude/CONVENTIONS.md`
-      "Versioning" section to match.
+- [ ] **Version tagging** *(do this LAST — after the Track-Info-panel tasks)*.
+      Adopt a documented tag-driven versioning scheme modeled on
+      `../scripturestudy-app` (its `.claude/CONVENTIONS.md` "Versioning &
+      tagging") and the global `ship-pr` Step 6 / `git.md` tag hygiene: version
+      derived from git tags via `git describe` rather than a committed file,
+      bumping = creating a tag at the PR's merge commit, and the tag is what
+      builds + pushes the images. Decide single-stream (`v*`, both images) vs
+      per-component streams (`backend/v*` / `frontend/v*`) — pigify currently
+      builds both images from one `v*` tag.
+      **The display already exists:** Settings › About › the "Versions" card
+      shows Frontend / Backend version **+ Git commit**, fed by
+      `__APP_VERSION__` (frontend build-time global) and `getVersionInfo()`
+      (backend), and the compose build passes `GIT_HASH` / `APP_VERSION` args —
+      which just default empty today. So the work is the scheme that
+      **populates** those from `git describe` at build time, so the About card
+      shows the real **version + hash**. Then expand the thin
+      `.claude/CONVENTIONS.md` "Versioning" section to match.
 
 ## Theming & branding
 
@@ -162,6 +170,13 @@ authored on the brand from the start.
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Custom duration icon/display** *(low priority)*. Some tracks show a
+      bespoke duration glyph instead of the time — e.g. *"Jedi Temple March -
+      Order 66 … Epic Imperial Version"* by Planistec renders a **lightsabre**.
+      Support it **if possible** — first verify whether any API actually
+      exposes such a per-track duration icon/visual (Spotify Web API track
+      object? somewhere else); if nothing exposes it, record that as an
+      `ICEBOX:` limitation rather than guessing.
 - [ ] **Surface `is_playable` (grey out unplayable rows).** Show which tracks
       are unplayable in the user's market (greyed row / badge). This is the
       **revisit trigger for ADR-0002** (no `market` on track reads): building
