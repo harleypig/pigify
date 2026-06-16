@@ -127,6 +127,12 @@ relevant code + here). These are Spotify-API facts (true for any Spotify app),
 kept local for now — promotable to the global `rules/spotify.md` if a second
 Spotify repo appears.
 
+**Decision — no `market` on track-data reads.** Track-data reads (playlist
+tracks, single track) deliberately omit `market` / `from_token`: it would
+relink ids and break the bulk loved-state check for marginal gain. Full
+rationale, alternatives, and the revisit trigger live in
+**[ADR-0002](../docs/adr/0002-no-market-param-on-track-reads.md)**.
+
 ## Versioning
 
 App version comes from `package.json` / git tags; the short commit hash

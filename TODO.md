@@ -82,10 +82,15 @@ now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
 
 ### Medium
 
-- [ ] **(Medium) Pass a `market` param.** No `market`/`from_token` anywhere
-      (confirmed). *rules/spotify.md › Track relinking.* For a playback app,
-      unplayable-in-market tracks surface, and it's why relinking only bit the
-      now-playing path. Add `market=from_token` to catalogue/library reads.
+- [x] **(Medium) Pass a `market` param — declined (documented).** Decided
+      **not** to add `market`/`from_token` to track-data reads: it would relink
+      tracks to the user's market and break the bulk loved-state check (it keys
+      on the playlist track id; `/me/library/contains` wants the original) —
+      re-introducing the now-playing relinking bug for marginal gain (pigify
+      shows mostly own, playable playlists; playback auto-relinks; `is_playable`
+      isn't surfaced). Decision recorded in **ADR-0002**
+      (`docs/adr/0002-no-market-param-on-track-reads.md`); the `is_playable`
+      item below is the revisit trigger. *rules/spotify.md › Track relinking.*
 - [x] **(Medium) Legacy `/me/tracks` save/remove/contains.** Done — migrated
       `check_saved_tracks`, `save_tracks`, `remove_saved_tracks` to the unified
       **`/me/library`** (+ `/contains`) endpoints (Feb 2026 wave).
@@ -316,6 +321,13 @@ Track Info refinements, ordered simplest → most complex:
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Surface `is_playable` (grey out unplayable rows).** Show which tracks
+      are unplayable in the user's market (greyed row / badge). This is the
+      **revisit trigger for ADR-0002** (no `market` on track reads): building
+      it requires passing `market=from_token` on the track reads **and** — in
+      the same change — surfacing `linked_from.id` and rekeying the bulk
+      loved-state check on `linked_from_id ?? id` (so relinking doesn't break
+      the loved hearts). Do the two together, never `market` alone.
 - [ ] **Play-button overlay on the playlist cover.** Show a play-button
       overlay on the playlist cover image (beside the title) — e.g. on hover —
       that starts playing the playlist when clicked. Reuses the existing
