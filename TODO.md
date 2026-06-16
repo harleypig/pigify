@@ -227,6 +227,12 @@ authored on the brand from the start.
       panel (it un-mounts; reopen from the now-playing ⓘ or by clicking a
       track), and open/closed persists across sessions
       (`pigify.trackInfoPanel.open`).
+- [ ] **Resize from any edge or corner.** The floating panel resizes only from
+      the bottom-right grip today. Add resize handles on **all four edges**
+      (each resizes in that one direction) and **all four corners** (diagonal,
+      in that direction). Top/left handles also move the top-left anchor (the
+      opposite edge stays put), so position and size update together — keep
+      both clamped on-screen and persisted, as the current grip does.
 - [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
       row that opens the Track Info panel — the same affordance the
       now-playing bar already has ("Show track info"). Keep the existing
@@ -243,6 +249,14 @@ authored on the brand from the start.
       Wikipedia link is chosen: if the song's page isn't found, fall back to
       searching by band, or album + song. Also add separate Wikipedia links
       for the **album** and the **band** — links only, no content download.
+- [ ] **Grokipedia support.** Add Grokipedia (xAI's encyclopedia) as a
+      track-detail content provider alongside Wikipedia — a section in the
+      panel, folded into the `/api/integrations/track-detail` aggregator with
+      its own tier, like the other providers. **Verify feasibility first**
+      (per the "check the API before building" discipline): confirm it exposes
+      a usable public API / query method and check its terms (AI-generated
+      content, attribution, caching). If there's no API, record that as an
+      `ICEBOX:` limitation rather than building a scraper.
 - [ ] **Songfacts.com link.** Add a per-track songfacts.com link — a direct
       link if it can be resolved, otherwise a "Search songfacts.com for
       <song>" link.
