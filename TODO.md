@@ -174,8 +174,8 @@ authored on the brand from the start.
 - [ ] **Custom duration icon/display** *(low priority)*. Some tracks show a
       bespoke duration glyph instead of the time — e.g. *"Jedi Temple March -
       Order 66 … Epic Imperial Version"* by Planistec renders a
-      **lightsabre**. Support it **if possible** — first verify whether any API
-      exposes such a per-track duration icon/visual (Spotify Web API track
+      **lightsabre**. Support it **if possible** — first verify whether any
+      API exposes such a per-track duration icon/visual (Spotify Web API track
       object? somewhere else); if nothing exposes it, record that as an
       `ICEBOX:` limitation rather than guessing.
 - [ ] **Surface `is_playable` (grey out unplayable rows).** Show which tracks
