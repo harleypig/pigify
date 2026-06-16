@@ -53,13 +53,13 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 Findings from the `/spotify-audit` run (2026-06-12) against `rules/spotify.md`.
 **Status: resolved.** Every actionable finding is fixed (#1 scopes, #2 rate
-limiting, #6/#7 the Feb-2026 endpoint migrations) or consciously deferred:
-#8 verified clean; #5 declined (**ADR-0002**); #3/#4 deprecated-audio moved to
-the per-run **Watch** list below; #9/#10 are Info (verify-manually). Completed
-items are kept marked `[x]` for the record. Already-clean items
-(PKCE-not-required confidential backend, secret handling, `127.0.0.1` redirect,
-proactive token refresh, now-playing relinking, the Web Playback SDK/EME setup)
-were never relisted.
+limiting, #6/#7 the Feb-2026 endpoint migrations) or consciously deferred (#8
+verified clean, #5 declined — **ADR-0002**, #3/#4 deprecated-audio on the
+per-run **Watch** list below, #9/#10 Info, verify-manually). Completed items
+are kept marked `[x]` for the record. Already-clean items (PKCE-not-required
+confidential backend, secret handling, `127.0.0.1` redirect, proactive token
+refresh, now-playing relinking, the Web Playback SDK/EME setup) were never
+relisted.
 
 ### High
 
