@@ -124,15 +124,14 @@ no order is required.
 
 **Already on the brand:** Login, Now-Playing bar, app shell (`App.css`),
 Recipes sidebar, Playlist selector, `TrackList`, `TrackInfoPanel`,
-`SortMenu`, `HeartButton`, `SettingsPanel`. (`Player` was removed as dead
-code, superseded by `NowPlayingBar`; its `spotifyService` Web Playback SDK
-layer lives on, reused by the in-browser-playback feature under *Product
-roadmap*.)
+`SortMenu`, `HeartButton`, `SettingsPanel`, `UserMenu`. (`Player` was
+removed as dead code, superseded by `NowPlayingBar`; its `spotifyService`
+Web Playback SDK layer lives on, reused by the in-browser-playback feature
+under *Product roadmap*.)
 
 **Remaining (hard-coded colours → day-glo console):**
 
 - [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
-- [ ] **`UserMenu`** — the account menu.
 
 **Deferred TrackList / Track Info items (capture only, build later):**
 

@@ -14,6 +14,9 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Bring the account menu onto the day-glo console brand.",
+      "Note the no-LASTFM_API_KEY case in the public-Last.fm item.",
+      "Capture Last.fm + Settings backlog items.",
       "Bring the Settings panel onto the day-glo console brand.",
       "Prune backlog, record SQLite-only decision (ADR-0003).",
       "Bump the backend group across 1 directory with 4 updates.",
@@ -36,10 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Trim verbose Web Playback debug logs.",
       "More Web Playback diagnostics (secure context, token, autoplay).",
       "Allow autoplay + encrypted-media so the Web Playback SDK can connect.",
-      "Add Web Playback ready/connect diagnostics.",
-      "Check off logout-return-to-login bug.",
-      "Always return to login on logout, even if the API call fails.",
-      "…and 212 earlier changes."
+      "…and 215 earlier changes."
     ]
   },
   {
