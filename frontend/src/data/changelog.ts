@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Bring the recipe builder onto the day-glo console brand.",
       "Drop dead .user-name-btn rules.",
       "Keep the account name visible on hover.",
       "Bring the account menu onto the day-glo console brand.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Play-button overlay on the playlist cover.",
       "Remove the dead Player component.",
       "Record in-browser playback status (machine-DRM blocker, not a bug).",
-      "Trim verbose Web Playback debug logs.",
-      "…and 217 earlier changes."
+      "…and 218 earlier changes."
     ]
   },
   {

@@ -124,14 +124,14 @@ no order is required.
 
 **Already on the brand:** Login, Now-Playing bar, app shell (`App.css`),
 Recipes sidebar, Playlist selector, `TrackList`, `TrackInfoPanel`,
-`SortMenu`, `HeartButton`, `SettingsPanel`, `UserMenu`. (`Player` was
-removed as dead code, superseded by `NowPlayingBar`; its `spotifyService`
-Web Playback SDK layer lives on, reused by the in-browser-playback feature
-under *Product roadmap*.)
+`SortMenu`, `HeartButton`, `SettingsPanel`, `UserMenu`, `RecipeBuilder`.
+(`Player` was removed as dead code, superseded by `NowPlayingBar`; its
+`spotifyService` Web Playback SDK layer lives on, reused by the
+in-browser-playback feature under *Product roadmap*.)
 
-**Remaining (hard-coded colours → day-glo console):**
-
-- [ ] **`RecipeBuilder`** — the visual recipe / filter builder.
+**Remaining:** none — the day-glo console rollout is **complete**; every
+component surface is on the `--brand-*` tokens. Any new component should be
+authored on the brand from the start.
 
 **Deferred TrackList / Track Info items (capture only, build later):**
 
