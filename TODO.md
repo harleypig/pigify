@@ -83,15 +83,20 @@ un-deprecated them, or an open alternative's status changed; then update the
 
 ## Build, release & infra
 
-- [ ] **Version tagging.** Adopt a documented tag-driven versioning scheme
-      modeled on `../scripturestudy-app` (its `.claude/CONVENTIONS.md`
-      "Versioning & tagging"): version derived from git tags via
-      `git describe` rather than a committed file, bumping = creating a tag
-      at the PR's merge commit, and the tag is what builds + pushes the
-      images. Decide single-stream (`v*`, both images) vs per-component
-      streams (`backend/v*` / `frontend/v*`) — pigify currently builds both
-      images from one `v*` tag. Then expand the thin `.claude/CONVENTIONS.md`
-      "Versioning" section to match.
+- [x] **Version tagging.** Done: **per-component semver streams** tagged
+      `backend/vX.Y.Z` / `frontend/vX.Y.Z` (the user's choice over
+      single-stream). The version comes from the latest stream tag via
+      `git describe`, not a committed file — `APP_VERSION` env (CI) wins,
+      then `git describe --match 'backend/v*'` / `'frontend/v*'`, then the
+      `version` field as a dev-only fallback (`backend/app/api/version.py`,
+      `frontend/vite.config.ts`; the `version=` in `main.py` / `pyproject.toml`
+      / `package.json` are marked dev-fallback-only). The build hash is
+      per-component (`git log -1 --format=%h -- backend` / `-- frontend`) via
+      `GIT_HASH`. CI triggers on `backend/v*` + `frontend/v*` and the
+      `release` job builds + pushes only the matching image (non-matching
+      matrix leg = green no-op). Documented in `.claude/CONVENTIONS.md`
+      "Versioning"; regression tests in `backend/tests/test_api_version.py`.
+      The About card (Settings › About) now shows the real version + hash.
 
 ## Theming & branding
 
@@ -162,6 +167,13 @@ authored on the brand from the start.
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Custom duration icon/display** *(low priority)*. Some tracks show a
+      bespoke duration glyph instead of the time — e.g. *"Jedi Temple March -
+      Order 66 … Epic Imperial Version"* by Planistec renders a
+      **lightsabre**. Support it **if possible** — first verify whether any
+      API exposes such a per-track duration icon/visual (Spotify Web API track
+      object? somewhere else); if nothing exposes it, record that as an
+      `ICEBOX:` limitation rather than guessing.
 - [ ] **Surface `is_playable` (grey out unplayable rows).** Show which tracks
       are unplayable in the user's market (greyed row / badge). This is the
       **revisit trigger for ADR-0002** (no `market` on track reads): building
@@ -218,34 +230,64 @@ authored on the brand from the start.
 
 ## Track info panel
 
-- [ ] **Make the Track Info panel float / draggable.** It's pinned
-      bottom-right (`position: fixed`) and only resizable (top-left grip)
-      today; let the user **drag it anywhere** on the page and persist its
-      position alongside the already-persisted size.
-- [ ] **Persist open/closed state; drop the minimize-to-icon.** Remember
-      whether the panel is open across sessions — reopen it on login if it was
-      open at logout. And **remove the collapse-to-icon** behaviour (the
-      `collapsed` minimized box, bottom-right): open vs closed is the only
-      state, with no minimized icon.
-- [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
-      row that opens the Track Info panel — the same affordance the
-      now-playing bar already has ("Show track info"). Keep the existing
-      right-click-the-name shortcut; the icon just makes it discoverable.
-- [ ] **Share to social media.** Beyond the direct Spotify link (shipped),
-      add sharing to the various social-media services — but only via methods
-      that don't require **the app** to be authenticated to those services
-      (web share intents / share URLs, or the Web Share API), not server-side
-      posting that needs our own credentials.
-- [ ] **Font-size control + default.** Add increase/decrease font-size
-      buttons in the track-info panel, plus a default-size setting in
-      Settings (when we get to the settings pass).
-- [ ] **Wikipedia link resolution + album/band links.** Improve how the
-      Wikipedia link is chosen: if the song's page isn't found, fall back to
-      searching by band, or album + song. Also add separate Wikipedia links
-      for the **album** and the **band** — links only, no content download.
-- [ ] **Songfacts.com link.** Add a per-track songfacts.com link — a direct
-      link if it can be resolved, otherwise a "Search songfacts.com for
-      <song>" link.
+- [x] **Make the Track Info panel float / draggable.** Done: the panel is a
+      floating window — drag the header to move it anywhere, drag the
+      bottom-right grip to resize, both clamped on-screen and persisted
+      (`pigify.trackInfoPanel.pos` / `.size`).
+- [x] **Persist open/closed state; drop the minimize-to-icon.** Done: the
+      `collapsed` minimize-to-icon state is gone — the × button closes the
+      panel (it un-mounts; reopen from the now-playing ⓘ or by clicking a
+      track), and open/closed persists across sessions
+      (`pigify.trackInfoPanel.open`).
+- [x] **Resize from any edge or corner.** Done: invisible grab handles on all
+      four edges (single-direction) and four corners (diagonal); top/left
+      handles move the anchor while the opposite edge stays put, so position
+      and size update together, clamped on-screen and persisted. The body
+      gained a thin accent scrollbar so it coexists with the right-edge
+      handle.
+- [x] **Info icon on track rows.** Done: a dim ⓘ button sits in each row's
+      trailing gutter (under the column chooser), brightening on hover; it
+      opens the Track Info panel for that row (`onTrackFocus`) without
+      playing. The right-click-the-name shortcut still works.
+- [x] **Share to social media.** Done: the Share button opens a popover with
+      per-service **intent / share URLs** (X, Facebook, Reddit, WhatsApp,
+      Telegram, Bluesky, Email), the **Web Share API** ("Device…", when
+      available), and **Copy link** — all auth-free, no server-side posting
+      (`SHARE_TARGETS` in the tested helpers). Mastodon is omitted (no
+      instance-agnostic share URL).
+- [ ] **Font-size control + default.** Shipped: **A− / A+** buttons in the
+      track-info panel header scale the body text (CSS `zoom` driven by
+      `--tip-scale`, clamped 0.8–1.6), persisted
+      (`pigify.trackInfoPanel.fontScale`); the header chrome stays fixed.
+      **Remaining:** a default-size setting in Settings (the settings pass)
+      that seeds the initial scale.
+- [x] **Wikipedia link resolution + album/band links.** Done: the song-article
+      resolver falls back through looser queries — song → album+song →
+      artist/band (`resolve_song_article`, with the album now passed through)
+      — so a non-obvious title still resolves. The panel adds **Band on
+      Wikipedia** and **Album on Wikipedia** search links (links only, no
+      content download), and the **+ expander only shows when an article
+      exists** (otherwise just the search link).
+- [x] **Grokipedia support (free search).** Done: a Grokipedia block in the
+      panel with a blurb and a free **search** link
+      (`https://grokipedia.com/search?q=…`). Verified: Grokipedia has **no
+      free API** — programmatic content needs a paid Grok / xAI account — so
+      we link its free search rather than fold it in as a data provider. The
+      paid
+      API path is its own item (see *Provider API rules & skills › Grok*).
+- [x] **Songfacts.com link.** Done: a Songfacts block in the Track Info panel
+      with a short blurb (no free/open API → links, not inline facts) and two
+      **search** links — by song and by artist. Songfacts' native search is
+      path-based (`/search/songs/<slug>`, `/search/artists/<slug>`; a `?q=`
+      param does **not** work — verified), so we link the search rather than
+      resolve a direct article. (A *paid* API exists — see the contact item.)
+- [ ] **Contact Songfacts about API access.** Songfacts *does* have an API
+      (<https://www.songfacts.com/blog/pages/songfacts-api>), but it's
+      "contact us for pricing" — likely too costly here. Ask anyway: email
+      them describing pigify as a **small open-source project** and request
+      pricing/terms for low-volume, non-commercial use. If affordable, it
+      could replace the search-only links with inline facts; if not, record
+      the decline as an `ICEBOX:` and keep the links.
 
 ## Settings
 
@@ -301,6 +343,83 @@ today.
         auth session) **and** the user linking their Last.fm account (OAuth →
         session key). Adds scrobbling, now-playing, personal play counts, and
         Favorites (loved-tracks) sync.
+
+## Provider API rules & skills
+
+pigify integrates several external data APIs that — unlike Spotify — have **no
+global agent rule or skill yet** (MusicBrainz, Wikipedia, and arguably
+Last.fm). Each is a real public API with docs worth codifying. These are
+**global-config tasks** (they land in the dotfiles repo via `claude-audit` +
+`ship-pr`, surfaced from here like the nginx rule was), per the
+tool-rule-coverage policy in `CLAUDE.md`.
+
+**MusicBrainz** — resolves a Spotify track → MBID (ISRC-first, then a fuzzy
+artist+title recording search) for the Track Info panel and enrichment
+(`backend/app/services/musicbrainz.py`):
+
+- [ ] **Global `rules/musicbrainz.md`** (detection-activated, modelled on
+      `rules/spotify.md`). Ground it in the current official docs
+      (<https://musicbrainz.org/doc/MusicBrainz_API>) and cover: the `/ws/2`
+      endpoints + `fmt=json`; lookup vs search vs browse; the `inc=`
+      sub-resource params; the **strict ~1 req/s rate limit** and the
+      **required descriptive `User-Agent`** (app + contact) — abusing either
+      gets the client blocked; ISRC-first resolution then fuzzy fallback;
+      reads need **no auth** (public, CC0 data); caching / don't-rehammer +
+      attribution.
+- [ ] **`musicbrainz-patterns` skill** (mirroring `spotify-patterns`): the
+      rate-limited async client (semaphore + ≥1 s spacing), ISRC→recording
+      resolution, the fuzzy artist+title fallback, parsing
+      releases/release-groups/ISRCs/tags/work-rels, and the **MBID-keyed
+      adjacent services** — Cover Art Archive (album art), AcousticBrainz
+      (frozen audio features — see the audio-features Watch item),
+      ListenBrainz, Picard/AcoustID (acoustic fingerprinting; out of scope —
+      needs raw audio).
+- [ ] **Align pigify's client to the rule once written.** Audit
+      `musicbrainz.py` against `rules/musicbrainz.md`: the `User-Agent`
+      contact is a placeholder (`dev@pigify.local`) and the semaphore is `2`
+      while the
+      docs say ~1 req/s — reconcile (concurrency vs spacing). Record any
+      repo-specific bits in `.claude/CONVENTIONS.md`.
+- [ ] **Decide whether a `musicbrainz-audit` skill is warranted.** Likely not
+      — MusicBrainz is stable, with no Spotify-style deprecation churn — so
+      probably **Off** (rule + patterns suffice). Record the decision either
+      way.
+
+**Wikipedia** — resolves a Spotify track → article via the MediaWiki APIs for
+the Track Info panel (`backend/app/services/wikipedia.py`):
+
+- [ ] **Global `rules/wikipedia.md`** (detection-activated). Ground it in the
+      official docs and cover: the **MediaWiki Action API**
+      (`/w/api.php?action=query&list=search`) and the **REST v1 summary**
+      (`/api/rest_v1/page/summary/{title}`) — both key-free; the **Wikimedia
+      User-Agent policy** (a descriptive UA with contact is required, else you
+      get blocked); search → summary resolution + disambiguation/empty-extract
+      guards; caching + attribution; out of scope (edits, talk pages, full
+      HTML, Wikidata).
+- [ ] **`wikipedia-patterns` skill**: the search→summary resolver with the
+      fallback queries (song → album+song → artist/band), the title↔slug
+      handling, the `_is_useful_summary` guard, and the search-link builders
+      the panel uses (song / album / band).
+- [ ] **Align pigify's client + decide on a `wikipedia-audit` skill.** Audit
+      `wikipedia.py` against the rule (its UA is the placeholder
+      `dev@pigify.local`). A dedicated audit skill is likely **Off** (the APIs
+      are stable). Record the decision.
+
+**Last.fm** is a candidate too — its auth + public/connected tiers and
+scrobbling API are covered *functionally* in the *Last.fm* section, but there
+is no agent `rules/lastfm.md`. Decide if it warrants one alongside the above.
+
+**Grok (xAI)** — the paid API behind Grokipedia content (the free
+`grokipedia.com/search` link is already shipped; this is the API path):
+
+- [ ] **`rules/grok.md` + a `grok-patterns` skill** for the **xAI Grok API**
+      (needs an account + API key; per-token pricing). Cover: auth / key
+      sourcing via the file-or-env secret pattern (never client-side), the
+      OpenAI-compatible endpoint + model IDs, rate/usage limits and cost
+      controls, and the terms (AI-generated content, attribution, no training
+      on others' data). Then, *if* an account is in scope, pull Grokipedia
+      content inline (replacing the search link); otherwise keep the search
+      link and record the cost decision.
 
 ## Smart Filters (recipes)
 
@@ -457,6 +576,22 @@ placeholder kind) — these gate sharing a real demo; then **join flow +
 capacity**; then **owner-bypass** and the admin surface it enables. The
 resumable-session item rides along with the safety work.
 
+- [ ] **Per-user, per-service account sharing — gate, don't block.** *(later)*
+      Today every allowed user implicitly shares the **owner's** linked
+      accounts (Last.fm, the app-level provider keys, …) through the `.env` /
+      owner-token setup — fine for, say, the owner's kids; wrong for a group
+      of friends, who should use their own. Make it a **gate the owner
+      controls, per user *and* per service**: for each allowed user the owner
+      picks — service by service (Last.fm, MusicBrainz, …) — whether they ride
+      on the owner's account or must connect/enter their own. This needs
+      **onboarding + Settings to let a user enter their own
+      credentials/secrets** per service, and the backend to resolve "owner's
+      vs this user's" per request. **Riding along is an *option*, not a
+      forcing:** a user the owner *permits* to use the owner's account can
+      still choose to use **their own** secrets per service — if a user has
+      supplied their own, those win over the owner's regardless of the
+      coattails permission.
+      Builds on the access model + `ALLOWED_SPOTIFY_IDS` work below.
 - [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
       demo page → a form collecting **Name + Email only** (what the Spotify
       dashboard's User Management needs). Do NOT ask for the Spotify user ID —
@@ -558,6 +693,15 @@ See `docs/ROADMAP.md`. High-level outstanding:
       by the Web API (`/me/player` / `/me/player/devices`). Future work.
       *(Subsumed by the shipped in-browser-playback device popup — that popup
       shows the active device.)*
+- [ ] **Notify when playback isn't on pigify.** When the active device is
+      **not** the pigify browser player (a phone, the desktop app, another
+      Connect device — `/me/player` `device.id` ≠ our SDK `device_id`), show a
+      **noticeable but unobtrusive** indicator — e.g. a lit accent on the
+      now-playing bar's device control + the device name, **not** the
+      full-width page-spanning banner the Spotify app uses. It should be easy
+      to glance and ideally one click to transfer playback here (reuses the
+      device-popup transfer). Pairs with the *"Playing on device" indicator*
+      above.
 - [ ] **In-app feedback → GitHub issue.** Add a feedback option that files an
       issue in a configured repository. Make the destination **configurable**
       so a third-party deployer points it at **their own** repo (and can

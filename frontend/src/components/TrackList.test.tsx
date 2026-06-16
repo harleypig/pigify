@@ -209,4 +209,26 @@ describe("TrackList", () => {
     expect(onTrackFocus).toHaveBeenCalledWith("id1");
     expect(onTrackSelect).not.toHaveBeenCalled();
   });
+
+  it("opens the track info panel from the per-row info button without playing", async () => {
+    getAllPlaylistTracks.mockResolvedValue(TRACKS);
+    const onTrackSelect = vi.fn();
+    const onTrackFocus = vi.fn();
+
+    render(
+      <TrackList
+        playlistId="pl1"
+        onTrackSelect={onTrackSelect}
+        onTrackFocus={onTrackFocus}
+      />,
+    );
+
+    await screen.findByRole("button", { name: "Song One" });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show info for Song One" }),
+    );
+
+    expect(onTrackFocus).toHaveBeenCalledWith("id1");
+    expect(onTrackSelect).not.toHaveBeenCalled();
+  });
 });

@@ -739,6 +739,21 @@ function TrackList({
                 {formatDuration(track.duration_ms)}
               </div>
             )}
+            {/* Always-present info action in the trailing gutter (aligns under
+                the column chooser). Opens the Track Info panel for this row;
+                the right-click-the-name shortcut still works too. */}
+            <button
+              type="button"
+              className="track-info-btn"
+              title="Show track info"
+              aria-label={`Show info for ${track.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTrackFocus?.(track.id);
+              }}
+            >
+              ⓘ
+            </button>
           </div>
         ))}
       </div>

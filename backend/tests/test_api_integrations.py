@@ -250,6 +250,74 @@ class IntegrationsApiTest(unittest.TestCase):
         self.assertNotIn("lastfm", body["connections"])
         self.assertNotIn("lastfm", body)
 
+    def test_combined_detail_sections_param_scopes_response(self) -> None:
+        """`sections=base` returns only the header + connections and touches no
+        provider; requesting one provider returns just that section — so the UI
+        can load each independently."""
+        track = {
+            "id": "tid",
+            "name": "Song",
+            "artists": [{"name": "Artist"}],
+            "album": {"name": "Album", "release_date": "2020"},
+            "duration_ms": 1000,
+            "explicit": False,
+            "external_ids": {},
+            "external_urls": {"spotify": "http://x"},
+        }
+        conns = {
+            "spotify": ConnectionStatus(
+                service="spotify",
+                tier="authenticated",
+                display_name="Spotify",
+                connected_account="me",
+            ),
+            "lastfm": _conn("none"),
+        }
+        mb_summary = {"mbid": "mbid-1", "isrcs": [], "releases": [], "tags": []}
+
+        with (
+            patch.object(
+                integ_mod, "get_all_connections", AsyncMock(return_value=conns)
+            ),
+            patch.object(
+                integ_mod, "get_connection", AsyncMock(return_value=_conn("none"))
+            ),
+            patch.object(
+                integ_mod.SpotifyService,
+                "get_track",
+                AsyncMock(return_value=track),
+            ),
+            patch.object(
+                integ_mod.musicbrainz,
+                "resolve_spotify_track",
+                AsyncMock(return_value=mb_summary),
+            ) as mb_mock,
+            patch.object(
+                integ_mod.wikipedia,
+                "resolve_song_article",
+                AsyncMock(return_value=None),
+            ) as wiki_mock,
+        ):
+            client = self._client()
+            client.post("/__test__/session", json={"access_token": "tok"})
+            base = client.get("/api/integrations/track-detail/tid?sections=base").json()
+            # The base request must not fetch any provider.
+            mb_mock.assert_not_called()
+            wiki_mock.assert_not_called()
+            mb = client.get(
+                "/api/integrations/track-detail/tid?sections=musicbrainz"
+            ).json()
+
+        # base: header + connections only, no provider sections.
+        self.assertIn("spotify", base)
+        self.assertIn("connections", base)
+        self.assertNotIn("musicbrainz", base)
+        self.assertNotIn("wikipedia", base)
+        # musicbrainz request: just that section, no base.
+        self.assertIn("musicbrainz", mb)
+        self.assertNotIn("spotify", mb)
+        self.assertEqual(mb["musicbrainz"]["mbid"], "mbid-1")
+
     # ----- enrichment-cache delete validation -----------------------------
 
     def test_cache_delete_requires_auth(self) -> None:

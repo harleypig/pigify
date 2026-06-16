@@ -26,38 +26,85 @@
   overflow: hidden;
 }
 
-.track-info-panel.collapsed {
-  width: auto;
-  max-height: none;
-  padding: 6px;
-  border-radius: var(--brand-radius-sm);
+/* While dragging: lift the module (deeper shadow, brighter edge) and stop
+   text selection from kicking in mid-drag. */
+.track-info-panel.dragging {
+  user-select: none;
+  border-color: rgba(var(--brand-accent-rgb), 0.55);
+  box-shadow:
+    0 26px 60px -10px rgba(0, 0, 0, 0.9),
+    inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.2),
+    0 0 0 1px rgba(var(--brand-accent-rgb), 0.25);
 }
 
-/* Top-left resize grip — the panel is pinned bottom-right, so dragging the
-   top-left corner up/left grows it. */
-.tip-resize {
+/* Resize handles — invisible grab strips on every edge and corner. The panel
+   is anchored top-left, so each handle drags its named edge while the
+   opposite edge stays put. Corners sit above the edges; edges inset 12px to
+   clear the corners. */
+.tip-rz {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  z-index: 2;
-  cursor: nwse-resize;
+  z-index: 3;
   touch-action: none;
 }
-.tip-resize::before {
-  content: "";
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 7px;
-  height: 7px;
-  border-top: 2px solid rgba(var(--brand-accent-rgb), 0.45);
-  border-left: 2px solid rgba(var(--brand-accent-rgb), 0.45);
-  border-radius: 3px 0 0 0;
+.tip-rz-n {
+  top: 0;
+  left: 12px;
+  right: 12px;
+  height: 6px;
+  cursor: ns-resize;
 }
-.tip-resize:hover::before {
-  border-color: var(--brand-accent-bright);
+.tip-rz-s {
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.tip-rz-e {
+  top: 12px;
+  right: 0;
+  bottom: 12px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.tip-rz-w {
+  top: 12px;
+  left: 0;
+  bottom: 12px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.tip-rz-ne {
+  top: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  z-index: 4;
+  cursor: nesw-resize;
+}
+.tip-rz-nw {
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  z-index: 4;
+  cursor: nwse-resize;
+}
+.tip-rz-sw {
+  bottom: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  z-index: 4;
+  cursor: nesw-resize;
+}
+.tip-rz-se {
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  z-index: 4;
+  cursor: nwse-resize;
 }
 
 .tip-header {
@@ -70,6 +117,10 @@
     var(--brand-navy);
   /* Thin electric-blue power rail along the bottom edge. */
   box-shadow: inset 0 -1px 0 rgba(var(--brand-accent-rgb), 0.3);
+  /* The header is the drag handle for the floating panel. */
+  cursor: move;
+  user-select: none;
+  touch-action: none;
 }
 
 .tip-title-tag {
@@ -132,11 +183,22 @@
 .tip-nowplaying {
   font-size: 15px;
 }
+/* A− / A+ text-size controls — smaller, bolder than the icon toggles. */
+.tip-font {
+  font-size: 12px;
+  font-weight: 700;
+}
 
 .tip-body {
   overflow-y: auto;
   padding: 12px 14px 16px;
   flex: 1;
+  /* Body text scale (A− / A+). `zoom` scales text + spacing together; the
+     header chrome stays fixed. Graceful no-op on engines without `zoom`. */
+  zoom: var(--tip-scale, 1);
+  /* Thin accent scrollbar so it coexists with the right-edge resize handle. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--brand-accent-rgb), 0.35) transparent;
 }
 
 .tip-empty,
@@ -156,6 +218,7 @@
   border-top: 1px solid rgba(var(--brand-accent-rgb), 0.12);
 }
 .tip-head-section {
+  position: relative;
   margin-top: 0;
   padding-top: 0;
   border-top: none;
@@ -219,6 +282,52 @@
   color: var(--brand-accent-bright);
 }
 
+/* Share popover: a small recessed deck-face menu of public share-intent
+   targets (2-col grid keeps it compact so it fits within the panel). */
+.tip-share-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.tip-share-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  min-width: 200px;
+  padding: 4px;
+  background: #0d1020;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
+  border-radius: var(--brand-radius-sm);
+  box-shadow:
+    0 12px 30px -8px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
+}
+.tip-share-item {
+  display: block;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--brand-ink);
+  font-family: var(--brand-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  text-decoration: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.tip-share-item:hover {
+  color: var(--brand-accent-bright);
+  background: rgba(var(--brand-accent-rgb), 0.12);
+}
+
 /* Section titles: mono equipment labels. */
 .tip-section h4 {
   margin: 0 0 8px;
@@ -230,6 +339,79 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  /* Title group on the left, per-section ↻ on the right. */
+  justify-content: space-between;
+}
+.tip-sec-title {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Per-section refresh ↻ — small, dim, blue on hover (matches the header
+   toggles). The head section's variant floats top-right of that block. */
+.tip-sec-refresh {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--brand-ink-dim);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 6px;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.tip-sec-refresh:hover:not(:disabled) {
+  color: var(--brand-accent-bright);
+  background: rgba(var(--brand-accent-rgb), 0.12);
+}
+.tip-sec-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tip-head-refresh {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+}
+
+/* Per-section loading line: a spinning ring + "Loading…", in the dim voice. */
+.tip-loading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--brand-ink-dim);
+  font-size: 13px;
+  margin: 4px 0;
+}
+.tip-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(var(--brand-accent-rgb), 0.25);
+  border-top-color: var(--brand-accent-bright);
+  animation: tip-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes tip-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tip-spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Raw view: one block per section so each shows its own loading state. */
+.tip-raw-block + .tip-raw-block {
+  margin-top: 10px;
 }
 
 /* Wikipedia accordion: a "+" / "−" toggle that gates the (collapsed by
@@ -265,6 +447,14 @@
 .tip-wiki-toggle:hover .tip-wiki-sign {
   border-color: var(--brand-accent);
   background: rgba(var(--brand-accent-rgb), 0.12);
+}
+
+/* Album + band links — a small links row below the article / search link. */
+.tip-wiki-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
 }
 
 .tip-tier {

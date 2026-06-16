@@ -119,6 +119,32 @@ class WikipediaTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(await wiki.resolve_song_article(artist="", title="X"))
 
     @respx.mock
+    async def test_resolve_song_article_falls_back_past_the_song_query(self) -> None:
+        # The primary `… song` query finds nothing; a looser fallback (album /
+        # artist) does — proving resolution doesn't stop at the first query.
+        def api(request: httpx.Request) -> httpx.Response:
+            srsearch = request.url.params.get("srsearch", "")
+            if "song" in srsearch:
+                return httpx.Response(200, json={"query": {"search": []}})
+            return httpx.Response(
+                200,
+                json={"query": {"search": [{"title": "Discovery (album)"}]}},
+            )
+
+        respx.get(API).mock(side_effect=api)
+        respx.get(f"{REST}/page/summary/Discovery_(album)").mock(
+            return_value=httpx.Response(
+                200,
+                json={"title": "Discovery", "extract": "an album", "type": "standard"},
+            )
+        )
+        out = await wiki.resolve_song_article(
+            artist="Daft Punk", title="Aerodynamic", album="Discovery"
+        )
+        assert out is not None
+        self.assertEqual(out["title"], "Discovery")
+
+    @respx.mock
     async def test_resolve_song_article_skips_disambiguation(self) -> None:
         respx.get(API).mock(
             return_value=httpx.Response(

@@ -8,6 +8,137 @@ export function formatDuration(ms?: number): string {
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 }
 
+export type SearchProvider = "musicbrainz" | "wikipedia" | "lastfm";
+
+/** Lowercase, hyphenate runs of non-alphanumerics, drop apostrophes. */
+function slug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/** A Wikipedia full-text search link for an arbitrary query. */
+export function wikipediaSearchUrl(query: string): string {
+  return `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(
+    query.trim(),
+  )}`;
+}
+
+/**
+ * A Grokipedia search link. Grokipedia (xAI's encyclopedia) has no free API —
+ * programmatic content needs a paid Grok/xAI account — but its web search is
+ * free, so we link that.
+ */
+export function grokipediaSearchUrl(query: string): string {
+  return `https://grokipedia.com/search?q=${encodeURIComponent(query.trim())}`;
+}
+
+export interface SharePayload {
+  title: string;
+  text: string;
+  url: string;
+}
+
+export interface ShareTarget {
+  key: string;
+  label: string;
+  href: (p: SharePayload) => string;
+}
+
+// Share via each service's public **intent / share URL** — no app auth or
+// server-side posting (per the TODO constraint). `email` is a mailto: link;
+// the rest open in a new tab.
+export const SHARE_TARGETS: ShareTarget[] = [
+  {
+    key: "x",
+    label: "X",
+    href: (p) =>
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        p.text,
+      )}&url=${encodeURIComponent(p.url)}`,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    href: (p) =>
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(p.url)}`,
+  },
+  {
+    key: "reddit",
+    label: "Reddit",
+    href: (p) =>
+      `https://www.reddit.com/submit?url=${encodeURIComponent(
+        p.url,
+      )}&title=${encodeURIComponent(p.text)}`,
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    href: (p) =>
+      `https://wa.me/?text=${encodeURIComponent(`${p.text} ${p.url}`)}`,
+  },
+  {
+    key: "telegram",
+    label: "Telegram",
+    href: (p) =>
+      `https://t.me/share/url?url=${encodeURIComponent(
+        p.url,
+      )}&text=${encodeURIComponent(p.text)}`,
+  },
+  {
+    key: "bluesky",
+    label: "Bluesky",
+    href: (p) =>
+      `https://bsky.app/intent/compose?text=${encodeURIComponent(
+        `${p.text} ${p.url}`,
+      )}`,
+  },
+  {
+    key: "email",
+    label: "Email",
+    href: (p) =>
+      `mailto:?subject=${encodeURIComponent(
+        p.title,
+      )}&body=${encodeURIComponent(`${p.text}\n${p.url}`)}`,
+  },
+];
+
+/**
+ * Build a link to a provider's search page, pre-filled with the track. Shown
+ * when a provider returns no result, so the user can look it up manually.
+ */
+export function providerSearchUrl(
+  provider: SearchProvider,
+  artist: string,
+  title: string,
+): string {
+  const both = `${artist} ${title}`.trim();
+  switch (provider) {
+    case "musicbrainz":
+      return `https://musicbrainz.org/search?query=${encodeURIComponent(
+        both,
+      )}&type=recording`;
+    case "wikipedia":
+      return wikipediaSearchUrl(`${title} ${artist} song`);
+    case "lastfm":
+      return `https://www.last.fm/search?q=${encodeURIComponent(both)}`;
+  }
+}
+
+/**
+ * Songfacts has no public API and its native search is **path-based, by
+ * kind** — `/search/songs/<slug>` and `/search/artists/<slug>` (a `?q=` query
+ * param does NOT work). We surface both a song-title and an artist search.
+ */
+export function songfactsSearchUrl(
+  kind: "songs" | "artists",
+  name: string,
+): string {
+  return `https://www.songfacts.com/search/${kind}/${slug(name)}`;
+}
+
 /** Escape the three HTML-significant characters for safe text interpolation. */
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
