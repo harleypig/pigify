@@ -118,19 +118,6 @@
   background-color: var(--brand-accent-bright);
 }
 
-.user-info .user-name-btn {
-  background: transparent;
-  color: var(--brand-ink);
-  padding: 0.3rem 0.6rem;
-  font-weight: 600;
-  border-radius: 7px;
-}
-
-.user-info .user-name-btn:hover {
-  background: rgba(var(--brand-accent-rgb), 0.12);
-  color: var(--brand-accent-bright);
-}
-
 /* ---- Scrobble banner: blue info, red stale ---- */
 .scrobble-banner {
   display: flex;

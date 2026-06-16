@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Drop dead .user-name-btn rules.",
       "Keep the account name visible on hover.",
       "Bring the account menu onto the day-glo console brand.",
       "Note the no-LASTFM_API_KEY case in the public-Last.fm item.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Remove the dead Player component.",
       "Record in-browser playback status (machine-DRM blocker, not a bug).",
       "Trim verbose Web Playback debug logs.",
-      "More Web Playback diagnostics (secure context, token, autoplay).",
-      "…and 216 earlier changes."
+      "…and 217 earlier changes."
     ]
   },
   {
