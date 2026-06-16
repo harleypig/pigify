@@ -86,10 +86,18 @@ now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
       (confirmed). *rules/spotify.md › Track relinking.* For a playback app,
       unplayable-in-market tracks surface, and it's why relinking only bit the
       now-playing path. Add `market=from_token` to catalogue/library reads.
-- [ ] **(Medium) Legacy `/me/tracks` save/remove.** `spotify.py:219` (`PUT`),
-      `:227` (`DELETE`), `:205` (`contains`). The per-type Save/Remove Tracks
-      endpoints are deprecated in favor of the unified *Save/Remove Items to
-      Library*. *rules/spotify.md › Endpoints.* Migrate the writes.
+- [x] **(Medium) Legacy `/me/tracks` save/remove/contains.** Done — migrated
+      `check_saved_tracks`, `save_tracks`, `remove_saved_tracks` to the unified
+      **`/me/library`** (+ `/contains`) endpoints (Feb 2026 wave).
+      *rules/spotify.md › Endpoints.* **Not a pure rename:** the unified
+      endpoints take track **URIs** (not ids) via the `uris` query param,
+      capped at **40** (was 50) — pigify now builds `spotify:track:{id}` URIs
+      (`_track_uris`) and chunks at 40; the `contains` boolean array still
+      aligns to input order. Regression test added
+      (`test_check_saved_tracks_uses_library_contains_by_uri`). *Out of scope
+      here, possible follow-up:* `GET /me/tracks` (the paginated saved-tracks
+      read, `get_saved_tracks`) is unchanged — re-check whether it too needs
+      the `/me/library` migration.
 - [x] **(Medium) `/playlists/{id}/tracks` → `/items`.** Done — all six
       playlist track-management calls (read / reorder / add) in `spotify.py`
       now use `/playlists/{id}/items`. This is the **February 2026 migration**

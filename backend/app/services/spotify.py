@@ -91,6 +91,16 @@ async def _send_with_retry(
     return await client.request(method, url, **kwargs)
 
 
+# The unified library endpoints (`/me/library*`, the Feb 2026 replacement for
+# `/me/tracks*`) take Spotify URIs, capped at 40 per request.
+_LIBRARY_MAX_URIS = 40
+
+
+def _track_uris(track_ids: list[str]) -> str:
+    """Comma-joined Spotify track URIs for the unified library endpoints."""
+    return ",".join(f"spotify:track:{tid}" for tid in track_ids)
+
+
 class SpotifyService:
     """Service for interacting with Spotify Web API."""
 
@@ -269,14 +279,19 @@ class SpotifyService:
     # --- Saved tracks (favorites) ---
 
     async def check_saved_tracks(self, track_ids: list[str]) -> list[bool]:
-        """Return whether each given track id is in the user's Saved Tracks."""
+        """Return whether each given track id is saved in the user's library.
+
+        Uses the unified ``GET /me/library/contains`` — the Feb 2026
+        replacement for ``/me/tracks/contains``: track *URIs* (not ids), capped
+        at 40 per call; the boolean array aligns to the input order.
+        """
         if not track_ids:
             return []
         results: list[bool] = []
-        for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i : i + 50]
+        for i in range(0, len(track_ids), _LIBRARY_MAX_URIS):
+            chunk = track_ids[i : i + _LIBRARY_MAX_URIS]
             data = await self._get(
-                "/me/tracks/contains", params={"ids": ",".join(chunk)}
+                "/me/library/contains", params={"uris": _track_uris(chunk)}
             )
             if isinstance(data, list):
                 results.extend(bool(x) for x in data)
@@ -285,20 +300,20 @@ class SpotifyService:
         return results
 
     async def save_tracks(self, track_ids: list[str]) -> None:
-        """Add tracks to the user's Saved Tracks."""
+        """Add tracks to the user's library (unified ``PUT /me/library?uris=``)."""
         if not track_ids:
             return
-        for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i : i + 50]
-            await self._put("/me/tracks", body={"ids": chunk})
+        for i in range(0, len(track_ids), _LIBRARY_MAX_URIS):
+            chunk = track_ids[i : i + _LIBRARY_MAX_URIS]
+            await self._put("/me/library", params={"uris": _track_uris(chunk)})
 
     async def remove_saved_tracks(self, track_ids: list[str]) -> None:
-        """Remove tracks from the user's Saved Tracks."""
+        """Remove tracks from the user's library (``DELETE /me/library?uris=``)."""
         if not track_ids:
             return
-        for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i : i + 50]
-            await self._delete("/me/tracks", params={"ids": ",".join(chunk)})
+        for i in range(0, len(track_ids), _LIBRARY_MAX_URIS):
+            chunk = track_ids[i : i + _LIBRARY_MAX_URIS]
+            await self._delete("/me/library", params={"uris": _track_uris(chunk)})
 
     async def get_saved_tracks(self, max_tracks: int = 500) -> list[dict]:
         """

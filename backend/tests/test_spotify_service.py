@@ -98,6 +98,18 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(b'"snapshot_id":"snap-1"', content)
 
     @respx.mock
+    async def test_check_saved_tracks_uses_library_contains_by_uri(self) -> None:
+        # Feb 2026: /me/tracks/contains -> /me/library/contains, keyed by URI
+        # (not bare id). Regression for Spotify audit #6.
+        route = respx.get(f"{BASE}/me/library/contains").mock(
+            return_value=httpx.Response(200, json=[True, False])
+        )
+        result = await self.svc.check_saved_tracks(["t1", "t2"])
+        self.assertEqual(result, [True, False])
+        uris = route.calls.last.request.url.params.get("uris")
+        self.assertEqual(uris, "spotify:track:t1,spotify:track:t2")
+
+    @respx.mock
     async def test_refresh_access_token(self) -> None:
         route = respx.post(SpotifyService.TOKEN_URL).mock(
             return_value=httpx.Response(
