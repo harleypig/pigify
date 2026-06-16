@@ -589,7 +589,11 @@ resumable-session item rides along with the safety work.
       on the owner's account or must connect/enter their own. This needs
       **onboarding + Settings to let a user enter their own
       credentials/secrets** per service, and the backend to resolve "owner's
-      vs this user's" per request.
+      vs this user's" per request. **Riding along is an *option*, not a
+      forcing:** a user the owner *permits* to use the owner's account can
+      still choose to use **their own** secrets per service — if a user has
+      supplied their own, those win over the owner's regardless of the
+      coattails permission.
       Builds on the access model + `ALLOWED_SPOTIFY_IDS` work below.
 - [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
       demo page → a form collecting **Name + Email only** (what the Spotify
