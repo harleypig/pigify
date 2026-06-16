@@ -399,7 +399,7 @@ class SpotifyService:
             chunk = uris[i : i + 100]
             if not chunk:
                 continue
-            await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
+            await self._post(f"/playlists/{playlist_id}/items", body={"uris": chunk})
 
     async def pause_playback(self) -> None:
         """Pause playback."""
@@ -519,7 +519,7 @@ class SpotifyService:
     ) -> list[Track]:
         """Get a single page of tracks from a playlist."""
         data = await self._get(
-            f"/playlists/{playlist_id}/tracks",
+            f"/playlists/{playlist_id}/items",
             params={"limit": limit, "offset": offset},
         )
         tracks: list[Track] = []
@@ -540,7 +540,7 @@ class SpotifyService:
         page_size = 100
         while True:
             data = await self._get(
-                f"/playlists/{playlist_id}/tracks",
+                f"/playlists/{playlist_id}/items",
                 params={"limit": page_size, "offset": offset},
             )
             items = (data or {}).get("items", []) or []
@@ -600,7 +600,7 @@ class SpotifyService:
         }
         if snapshot_id:
             body["snapshot_id"] = snapshot_id
-        data = await self._put_json(f"/playlists/{playlist_id}/tracks", body=body)
+        data = await self._put_json(f"/playlists/{playlist_id}/items", body=body)
         return (data or {}).get("snapshot_id")
 
     async def replace_playlist_uris(self, playlist_id: str, uris: list[str]) -> None:
@@ -612,7 +612,7 @@ class SpotifyService:
         """
         first = uris[:100]
         # PUT replaces the playlist entirely (even with empty list).
-        await self._put(f"/playlists/{playlist_id}/tracks", body={"uris": first})
+        await self._put(f"/playlists/{playlist_id}/items", body={"uris": first})
         for i in range(100, len(uris), 100):
             chunk = uris[i : i + 100]
-            await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
+            await self._post(f"/playlists/{playlist_id}/items", body={"uris": chunk})

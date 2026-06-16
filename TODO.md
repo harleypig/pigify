@@ -84,12 +84,22 @@ now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
       replacement; already degrades to an empty waveform (`player.py:170`).
       *rules/spotify.md › Endpoints.* Decide: drop the waveform, or confirm the
       Spotify app has pre-existing extended access. Do **not** auto-rewrite.
+      *No open replacement:* the waveform needs per-track time-series loudness/
+      segments; AcousticBrainz's data isn't time-series and Essentia needs the
+      raw audio (which Spotify doesn't provide). Likely a drop.
 - [ ] **(High, product decision) Deprecated `/audio-features`.**
       `spotify.py:519` (`get_audio_features`), used by recipe filtering
       (`recipes.py:241`) and sort-by-audio-feature hydration
       (`playlists.py:414`, `sort_fields.py`). Same deprecation/fate — these
       sort fields / recipe buckets silently can't populate. Decide: remove the
       audio-feature surface, or confirm extended access.
+      *Candidate open replacement:* **AcousticBrainz** (frozen July-2022 dump,
+      keyed by MusicBrainz ID) carries BPM/key/danceability/mood-style
+      descriptors — and pigify **already resolves Spotify track → MBID via
+      MusicBrainz**, so the audio-feature fields could be repopulated by MBID
+      lookup. Caveat: coverage is frozen mid-2022 (older tracks decent, recent
+      releases missing). MusicBrainz itself is metadata-only and does **not**
+      provide these — see `.claude/CONVENTIONS.md` if a limitations note grows.
 
 ### Medium
 
@@ -101,9 +111,15 @@ now-playing relinking, the Web Playback SDK/EME setup) are not relisted.
       `:227` (`DELETE`), `:205` (`contains`). The per-type Save/Remove Tracks
       endpoints are deprecated in favor of the unified *Save/Remove Items to
       Library*. *rules/spotify.md › Endpoints.* Migrate the writes.
-- [ ] **(Medium) `/playlists/{id}/tracks` → `/items`.** Reads + reorder + add
-      use `/tracks` (`:347,:467,:488,:548,:560,:563`); Spotify steers reads
-      toward `/items`. *rules/spotify.md › Endpoints.*
+- [x] **(Medium) `/playlists/{id}/tracks` → `/items`.** Done — all six
+      playlist track-management calls (read / reorder / add) in `spotify.py`
+      now use `/playlists/{id}/items`. This is the **February 2026 migration**
+      (Spotify renamed `/tracks` → `/items`; `/tracks` is deprecated and on a
+      removal clock), not just a preference. pigify uses GET/POST/PUT only — no
+      DELETE of playlist items — so the DELETE body-param `tracks`→`items`
+      rename doesn't apply; bodies/responses are otherwise unchanged.
+      *rules/spotify.md › Endpoints.* Regression test added
+      (`test_get_playlist_tracks_uses_items_endpoint`).
 - [x] **(Medium) Verify the `/me/tracks*` batch cap — clean.** Chunked at 50
       (`:202,:217,:225`). Verified against the official docs (Context7): the
       library endpoints `/me/tracks/contains`, `PUT`/`DELETE /me/tracks` all

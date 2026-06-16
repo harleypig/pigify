@@ -70,6 +70,19 @@ class SpotifyServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(route.call_count, 2)  # retried exactly once
 
     @respx.mock
+    async def test_get_playlist_tracks_uses_items_endpoint(self) -> None:
+        # Spotify renamed /playlists/{id}/tracks -> /items (Feb 2026 migration);
+        # we must call /items. Regression for Spotify audit #7.
+        route = respx.get(f"{BASE}/playlists/pl-1/items").mock(
+            return_value=httpx.Response(
+                200, json={"items": [spotify_track_item(track_id="t-1")]}
+            )
+        )
+        tracks = await self.svc.get_playlist_tracks("pl-1")
+        self.assertTrue(route.called)
+        self.assertEqual(tracks[0].id, "t-1")
+
+    @respx.mock
     async def test_refresh_access_token(self) -> None:
         route = respx.post(SpotifyService.TOKEN_URL).mock(
             return_value=httpx.Response(
