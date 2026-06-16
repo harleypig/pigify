@@ -253,11 +253,12 @@ authored on the brand from the start.
       trailing gutter (under the column chooser), brightening on hover; it
       opens the Track Info panel for that row (`onTrackFocus`) without
       playing. The right-click-the-name shortcut still works.
-- [ ] **Share to social media.** Beyond the direct Spotify link (shipped),
-      add sharing to the various social-media services — but only via methods
-      that don't require **the app** to be authenticated to those services
-      (web share intents / share URLs, or the Web Share API), not server-side
-      posting that needs our own credentials.
+- [x] **Share to social media.** Done: the Share button opens a popover with
+      per-service **intent / share URLs** (X, Facebook, Reddit, WhatsApp,
+      Telegram, Bluesky, Email), the **Web Share API** ("Device…", when
+      available), and **Copy link** — all auth-free, no server-side posting
+      (`SHARE_TARGETS` in the tested helpers). Mastodon is omitted (no
+      instance-agnostic share URL).
 - [ ] **Font-size control + default.** Shipped: **A− / A+** buttons in the
       track-info panel header scale the body text (CSS `zoom` driven by
       `--tip-scale`, clamped 0.8–1.6), persisted

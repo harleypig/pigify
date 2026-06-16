@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Share-to-social popover.",
+      "Own secrets win even with coattails permission.",
       "Grokipedia free-search link.",
       "Wrap the Songfacts contact item at 78 cols.",
       "Wikipedia resolution fallbacks + album/band links.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Add filter/sort control items to Smart Filters.",
       "Align the Sort by / Take / Source row controls.",
       "Expand Smart Filters backlog (builder CRUD, sources, lifecycle).",
-      "Capture Smart Filters (recipes) backlog.",
-      "Bring the recipe builder onto the day-glo console brand.",
-      "…and 242 earlier changes."
+      "…and 244 earlier changes."
     ]
   },
   {

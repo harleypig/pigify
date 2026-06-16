@@ -35,6 +35,76 @@ export function grokipediaSearchUrl(query: string): string {
   return `https://grokipedia.com/search?q=${encodeURIComponent(query.trim())}`;
 }
 
+export interface SharePayload {
+  title: string;
+  text: string;
+  url: string;
+}
+
+export interface ShareTarget {
+  key: string;
+  label: string;
+  href: (p: SharePayload) => string;
+}
+
+// Share via each service's public **intent / share URL** — no app auth or
+// server-side posting (per the TODO constraint). `email` is a mailto: link;
+// the rest open in a new tab.
+export const SHARE_TARGETS: ShareTarget[] = [
+  {
+    key: "x",
+    label: "X",
+    href: (p) =>
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        p.text,
+      )}&url=${encodeURIComponent(p.url)}`,
+  },
+  {
+    key: "facebook",
+    label: "Facebook",
+    href: (p) =>
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(p.url)}`,
+  },
+  {
+    key: "reddit",
+    label: "Reddit",
+    href: (p) =>
+      `https://www.reddit.com/submit?url=${encodeURIComponent(
+        p.url,
+      )}&title=${encodeURIComponent(p.text)}`,
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp",
+    href: (p) =>
+      `https://wa.me/?text=${encodeURIComponent(`${p.text} ${p.url}`)}`,
+  },
+  {
+    key: "telegram",
+    label: "Telegram",
+    href: (p) =>
+      `https://t.me/share/url?url=${encodeURIComponent(
+        p.url,
+      )}&text=${encodeURIComponent(p.text)}`,
+  },
+  {
+    key: "bluesky",
+    label: "Bluesky",
+    href: (p) =>
+      `https://bsky.app/intent/compose?text=${encodeURIComponent(
+        `${p.text} ${p.url}`,
+      )}`,
+  },
+  {
+    key: "email",
+    label: "Email",
+    href: (p) =>
+      `mailto:?subject=${encodeURIComponent(
+        p.title,
+      )}&body=${encodeURIComponent(`${p.text}\n${p.url}`)}`,
+  },
+];
+
 /**
  * Build a link to a provider's search page, pre-filled with the track. Shown
  * when a provider returns no result, so the user can look it up manually.

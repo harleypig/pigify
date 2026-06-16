@@ -5,6 +5,7 @@ import {
   grokipediaSearchUrl,
   highlightJson,
   providerSearchUrl,
+  SHARE_TARGETS,
   songfactsSearchUrl,
   wikipediaSearchUrl,
 } from "./TrackInfoPanel.helpers";
@@ -112,5 +113,40 @@ describe("grokipediaSearchUrl", () => {
     expect(grokipediaSearchUrl("Aerodynamic Daft Punk")).toBe(
       "https://grokipedia.com/search?q=Aerodynamic%20Daft%20Punk",
     );
+  });
+});
+
+describe("SHARE_TARGETS", () => {
+  const p = {
+    title: "Song",
+    text: "Song by Artist",
+    url: "https://open.spotify.com/track/t1",
+  };
+  const byKey = Object.fromEntries(
+    SHARE_TARGETS.map((t) => [t.key, t.href(p)]),
+  );
+
+  it("builds public intent/share URLs (no auth)", () => {
+    expect(byKey.x).toBe(
+      "https://twitter.com/intent/tweet?text=Song%20by%20Artist&url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2Ft1",
+    );
+    expect(byKey.facebook).toBe(
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fopen.spotify.com%2Ftrack%2Ft1",
+    );
+    expect(byKey.email).toBe(
+      "mailto:?subject=Song&body=Song%20by%20Artist%0Ahttps%3A%2F%2Fopen.spotify.com%2Ftrack%2Ft1",
+    );
+  });
+
+  it("covers the expected services", () => {
+    expect(SHARE_TARGETS.map((t) => t.key)).toEqual([
+      "x",
+      "facebook",
+      "reddit",
+      "whatsapp",
+      "telegram",
+      "bluesky",
+      "email",
+    ]);
   });
 });

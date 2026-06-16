@@ -15,6 +15,8 @@ import {
   highlightJson,
   providerSearchUrl,
   type SearchProvider,
+  SHARE_TARGETS,
+  type SharePayload,
   songfactsSearchUrl,
   wikipediaSearchUrl,
 } from "./TrackInfoPanel.helpers";
@@ -210,6 +212,8 @@ function TrackInfoPanel({
   const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const shareRef = useRef<HTMLDivElement>(null);
   // Wikipedia starts collapsed; opened on demand via the "+" toggle.
   const [wikiOpen, setWikiOpen] = useState(false);
   // Body text scale (A− / A+), persisted. Applied as `zoom` on the body so
@@ -462,30 +466,57 @@ function TrackInfoPanel({
   // Share the track. For now the shared payload is just the Spotify link:
   // prefer the native share sheet (Web Share API), falling back to copying
   // the link to the clipboard. Per-service social sharing is a later TODO.
-  const handleShare = async () => {
-    if (!detail.spotify?.external_url) return;
+  const sharePayload = (): SharePayload | null => {
+    if (!detail.spotify?.external_url) return null;
     const { external_url, name, artists } = detail.spotify;
-    const payload = {
+    return {
       title: name,
       text: `${name} — ${artists.join(", ")}`,
       url: external_url,
     };
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share(payload);
-        return;
-      } catch {
-        // User dismissed the sheet or it failed — fall back to copy.
-      }
-    }
+  };
+
+  const deviceShare = async () => {
+    const p = sharePayload();
+    if (!p || typeof navigator.share !== "function") return;
     try {
-      await navigator.clipboard.writeText(external_url);
+      await navigator.share(p);
+      setShareOpen(false);
+    } catch {
+      // User dismissed the sheet — leave the menu open for another choice.
+    }
+  };
+
+  const copyLink = async () => {
+    const p = sharePayload();
+    if (!p) return;
+    try {
+      await navigator.clipboard.writeText(p.url);
       setShared(true);
       setTimeout(() => setShared(false), 1500);
     } catch (e) {
-      console.error("Share failed", e);
+      console.error("Copy failed", e);
     }
   };
+
+  // Close the share menu on an outside click or Escape.
+  useEffect(() => {
+    if (!shareOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (shareRef.current && !shareRef.current.contains(e.target as Node)) {
+        setShareOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShareOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [shareOpen]);
 
   const handleCopy = async () => {
     try {
@@ -695,32 +726,81 @@ function TrackInfoPanel({
                       >
                         Open in Spotify
                       </a>
-                      <button
-                        type="button"
-                        className="tip-share"
-                        onClick={handleShare}
-                        title="Share this track (copies the Spotify link)"
-                        aria-label="Share this track"
-                      >
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
+                      <div className="tip-share-wrap" ref={shareRef}>
+                        <button
+                          type="button"
+                          className="tip-share"
+                          onClick={() => setShareOpen((o) => !o)}
+                          aria-haspopup="menu"
+                          aria-expanded={shareOpen}
+                          title="Share this track"
+                          aria-label="Share this track"
                         >
-                          <circle cx="18" cy="5" r="3" />
-                          <circle cx="6" cy="12" r="3" />
-                          <circle cx="18" cy="19" r="3" />
-                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-                        </svg>
-                        <span>{shared ? "Link copied!" : "Share"}</span>
-                      </button>
+                          <svg
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <circle cx="18" cy="5" r="3" />
+                            <circle cx="6" cy="12" r="3" />
+                            <circle cx="18" cy="19" r="3" />
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                          </svg>
+                          <span>{shared ? "Link copied!" : "Share"}</span>
+                        </button>
+                        {shareOpen && (
+                          <div className="tip-share-menu" role="menu">
+                            {typeof navigator.share === "function" && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="tip-share-item"
+                                onClick={deviceShare}
+                              >
+                                Device…
+                              </button>
+                            )}
+                            {SHARE_TARGETS.map((t) => {
+                              const p = sharePayload();
+                              return (
+                                p && (
+                                  <a
+                                    key={t.key}
+                                    role="menuitem"
+                                    className="tip-share-item"
+                                    href={t.href(p)}
+                                    target={
+                                      t.key === "email" ? undefined : "_blank"
+                                    }
+                                    rel="noreferrer"
+                                    onClick={() => setShareOpen(false)}
+                                  >
+                                    {t.label}
+                                  </a>
+                                )
+                              );
+                            })}
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="tip-share-item"
+                              onClick={() => {
+                                copyLink();
+                                setShareOpen(false);
+                              }}
+                            >
+                              Copy link
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </>

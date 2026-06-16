@@ -282,6 +282,52 @@
   color: var(--brand-accent-bright);
 }
 
+/* Share popover: a small recessed deck-face menu of public share-intent
+   targets (2-col grid keeps it compact so it fits within the panel). */
+.tip-share-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.tip-share-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  min-width: 200px;
+  padding: 4px;
+  background: #0d1020;
+  border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
+  border-radius: var(--brand-radius-sm);
+  box-shadow:
+    0 12px 30px -8px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
+}
+.tip-share-item {
+  display: block;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--brand-ink);
+  font-family: var(--brand-font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  text-decoration: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.tip-share-item:hover {
+  color: var(--brand-accent-bright);
+  background: rgba(var(--brand-accent-rgb), 0.12);
+}
+
 /* Section titles: mono equipment labels. */
 .tip-section h4 {
   margin: 0 0 8px;
