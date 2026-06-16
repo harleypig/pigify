@@ -49,6 +49,56 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       `backend/app/api/favorites.py` (`logger.exception`),
       `frontend` `TrackList.tsx` and `HeartButton.tsx` (`console.warn`).
 
+## Spotify audit (2026-06-12)
+
+The `/spotify-audit` run (2026-06-12) against `rules/spotify.md`. The
+actionable findings shipped: playlist-modify scopes, 429/`Retry-After`
+handling, the Feb-2026 `/items` + `/me/library` migrations, the `market`
+decision (**ADR-0002**), and the verified `/me/tracks*` batch cap — see the
+merged history. Only the open follow-ups remain.
+
+- [ ] **Migrate `GET /me/tracks` (the saved-tracks read)?** The
+      save/remove/contains writes moved to `/me/library`; the paginated
+      saved-tracks read (`get_saved_tracks`, `GET /me/tracks`) was out of scope
+      and is unchanged — re-check whether it too needs the unified-library
+      migration. *rules/spotify.md › Endpoints.*
+
+### Info (verify manually)
+
+- [ ] **(Info) Premium gating.** The SDK degrades silently for non-Premium
+      (`spotify.ts:164` logs `account_error`; `NowPlayingBar.tsx:136` no-ops).
+      Consider a "Premium required" message. *rules/spotify.md › Web Playback
+      SDK.*
+- [ ] **(Info) Compliance — caching & attribution.** pigify persists Spotify
+      metadata (per-user DB playlist items + track stats + enrichment cache).
+      The Developer Terms limit caching beyond immediate use; confirm retention
+      is defensible and that the UI **attributes** Spotify. *rules/spotify.md ›
+      Compliance.*
+
+### Watch — re-evaluate each `/spotify-audit` run
+
+These depend on **deprecated Spotify endpoints with no drop-in replacement**.
+Don't re-flag them statically — on **each `/spotify-audit` run, re-verify
+against current docs (Context7)** whether Spotify shipped a replacement or
+un-deprecated them, or an open alternative's status changed; then update the
+**Re-evaluated** line. The drop-vs-keep product call can wait on that.
+
+- [ ] **Deprecated `/audio-analysis` (now-playing waveform).** `spotify.py`
+      `get_audio_analysis` → the waveform (`player.py`); already degrades to an
+      empty waveform. *No open replacement:* needs per-track time-series
+      loudness/segments — AcousticBrainz's data isn't time-series, and Essentia
+      needs raw audio Spotify won't give. Likely a drop.
+      **Re-evaluated 2026-06-16:** still no replacement.
+- [ ] **Deprecated `/audio-features` (sort-by-feature + recipe filters).**
+      `spotify.py` `get_audio_features` → `recipes.py`, `playlists.py` /
+      `sort_fields.py`. *Candidate open replacement:* **AcousticBrainz** (frozen
+      July-2022 dump, keyed by MBID) carries BPM/key/danceability/mood
+      descriptors, and pigify already resolves track → MBID via MusicBrainz, so
+      the fields could be repopulated by MBID lookup (coverage frozen mid-2022;
+      recent releases missing). MusicBrainz itself is metadata-only.
+      **Re-evaluated 2026-06-16:** still frozen; ListenBrainz building a
+      replacement, nothing drop-in yet.
+
 ## Security / hardening
 
 - [ ] **Tighten CSP `style-src`.** The frontend currently requires
@@ -188,6 +238,20 @@ Track Info refinements, ordered simplest → most complex:
 
 **Deferred from batch 2 (capture only, build later):**
 
+- [ ] **Delete playlist tracks.** Remove track(s) from a playlist (DELETE
+      `/playlists/{id}/items`). **Scaffolded** — the service call exists
+      (`SpotifyService.remove_items_from_playlist`, with a test), and the
+      remaining integration points are marked with `ICEBOX:`: the backend
+      endpoint (`playlists.py`), `removePlaylistItems` (`api.ts`), and a per-row
+      remove action (`TrackList.tsx`). To finish: wire those three. **Design
+      fork:** remove a *specific row* (uri + `positions`) vs *all occurrences*
+      of a uri — choose per surface (a row action = positions; de-dup = either).
+      Considerations: pass the playlist `snapshot_id` (so a concurrent change
+      can't delete the wrong row), the 100-item cap (batched), editable
+      playlists only (else 403), a confirm/undo (destructive); the
+      `playlist-modify-*` scope is ready (audit #1). **Scenarios driving it:**
+      the rules-engine `remove_from` / move actions (`docs/ROADMAP.md`), per-row
+      curation, de-duplication, and post-reorder cleanup.
 - [ ] **Persist the sort setup.** The current sort spec (selected fields /
       order / applied preset) should survive a refresh and logout/login, like
       the selected playlist and column choices already do (localStorage).
@@ -201,6 +265,13 @@ Track Info refinements, ordered simplest → most complex:
       with progress, instead of truncating.
 - [ ] **Explicit-track indicator.** Mark a track as explicit (e.g. an "E"
       badge) when its `explicit` field is true.
+- [ ] **Surface `is_playable` (grey out unplayable rows).** Show which tracks
+      are unplayable in the user's market (greyed row / badge). This is the
+      **revisit trigger for ADR-0002** (no `market` on track reads): building
+      it requires passing `market=from_token` on the track reads **and** — in
+      the same change — surfacing `linked_from.id` and rekeying the bulk
+      loved-state check on `linked_from_id ?? id` (so relinking doesn't break
+      the loved hearts). Do the two together, never `market` alone.
 - [ ] **Play-button overlay on the playlist cover.** Show a play-button
       overlay on the playlist cover image (beside the title) — e.g. on hover —
       that starts playing the playlist when clicked. Reuses the existing
@@ -224,6 +295,20 @@ Track Info refinements, ordered simplest → most complex:
       immediate refresh — on focus. Optionally back off the interval while
       paused. Cuts idle load; not a correctness bug (the cadence is by
       design).
+
+**Playlist selector (capture only, build later):**
+
+- [ ] **Reorder the playlist list (pigify-local).** Let the user set a custom
+      order for the playlist selector. Spotify has **no API to reorder the
+      playlist library**, so this is a pigify-side order (persisted here,
+      applied to the selector display) — it won't sync back to the Spotify
+      apps.
+- [ ] **Filter the playlist list by type.** Filter the selector to **owned vs
+      followed** (via `owner.id`; note "copied" isn't a distinct Spotify
+      concept — a copy is just a playlist you own). Also **support podcasts /
+      audiobooks**: playlist items carry `track_type: "track" | "episode"`, and
+      Spotify exposes separate saved-shows / saved-audiobooks libraries —
+      handle `episode` items, not only tracks.
 
 **Revisit later (near end of development):**
 
@@ -254,6 +339,17 @@ Track Info refinements, ordered simplest → most complex:
 
 ## Documentation
 
+- [ ] **Prune the completed-item backlog in `TODO.md`** (yes — a TODO to clean
+      the TODO). ~27 older `[x]` items from already-merged PRs (#54–#56) predate
+      the merge-time-finalization policy (ship-pr Step 4.5 / `WORKFLOW.md`) and
+      were never removed. One-time retroactive sweep: delete the completed
+      `[x]` items whose PRs have landed, so the file tracks only open work.
+      Going forward, finalization prunes them per PR (not now).
+- [ ] **Evaluate `docs/ROADMAP.md` `## Resolved decisions` (pre-ADR).** That
+      section predates the ADR practice (`docs/adr/`). For each entry: if it is
+      a consequential decision worth preserving, convert it to an ADR (the
+      `adr` skill); otherwise remove it. The section should end up gone —
+      decisions live in `docs/adr/`, not the roadmap.
 - [ ] **Read the Docs site.** Publish the docs — and the autogenerated
       schema reference from `docs/ROADMAP.md` Milestone 4 — to a
       readthedocs.io page: pick the generator (MkDocs vs Sphinx), add a

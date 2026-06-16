@@ -91,25 +91,30 @@ npm test             # vitest
 npm run build        # production build
 ```
 
-## Changelog (regenerate before a PR)
+## Merge-time finalization (docs only, after CI is green)
 
-The "What's new" changelog (`frontend/src/data/changelog.ts`) is generated
-from git history. It auto-regenerates on `npm run dev` / `npm run build`
-(via the `predev` / `prebuild` hooks), but the committed copy drifts behind
-`master` as commits land. This is a **mutating prep step** (same class as
-Format), so run it as the **last step before opening a PR**, after all code
-is committed, and **commit the refresh**:
+When a branch is ready to merge — i.e. **its PR's CI is already green** — do
+the doc-only finalization, and **only** this, before merging (the **ship-pr**
+skill's Step 4.5). It triggers one quick, docs-only CI run, then you merge.
+
+- **Prune completed items** from `TODO.md` and `docs/ROADMAP.md` — remove them
+  outright (do **not** leave them marked `[x]`), so the planning docs track
+  only open work. Do this only now, so an item is pruned exactly when the PR
+  that completes it lands (and nothing is removed for a PR that never does).
+- **Refresh the generated changelog.** The "What's new" changelog
+  (`frontend/src/data/changelog.ts`) is generated from git history
+  (auto-regenerated on `npm run dev` / `npm run build` via `predev` /
+  `prebuild`), but the committed copy drifts behind `master` as commits land.
+  Regenerate and commit it here:
 
 ```bash
 cd frontend
 npm run generate:changelog   # writes src/data/changelog.ts from git history
-# if it changed:
-git add src/data/changelog.ts
-git commit -m "chore(frontend): refresh generated changelog before PR"
+git add src/data/changelog.ts   # commit if it changed
 ```
 
-Never run this in CI — CI gates and must not commit. The qa-check skill
-treats it as the Documentation-dimension prep action.
+Never run the changelog in CI — CI gates and must not commit. The qa-check
+skill treats it as the Documentation-dimension prep action.
 
 ## Pre-commit
 

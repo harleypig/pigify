@@ -4,11 +4,15 @@ Spotify API service wrapper using spotipy.
 
 import asyncio
 import base64
+import logging
+from typing import Any
 
 import httpx
 
 from app.config import settings
 from app.models.playlist import Playlist, Track, User
+
+logger = logging.getLogger(__name__)
 
 
 class SpotifyError(Exception):
@@ -42,6 +46,59 @@ async def close_shared_client() -> None:
     if _shared_client is not None and not _shared_client.is_closed:
         await _shared_client.aclose()
     _shared_client = None
+
+
+# Spotify rate limiting: on HTTP 429, honor the Retry-After header (seconds),
+# otherwise fall back to exponential backoff. Bounded so a request can't hang
+# indefinitely behind a long Retry-After — past the cap the 429 is returned
+# and the caller's raise_for_status surfaces it.
+_RATE_LIMIT_MAX_ATTEMPTS = 4
+_RATE_LIMIT_MAX_WAIT_S = 30.0
+
+
+async def _send_with_retry(
+    client: httpx.AsyncClient, method: str, url: str, **kwargs: Any
+) -> httpx.Response:
+    """Send ``method url``, retrying on HTTP 429.
+
+    Honors the ``Retry-After`` header when present, otherwise an exponential
+    backoff (1→2→4s). Returns the final response — which may still be a 429
+    after the attempt cap — so the caller handles it exactly as before.
+    """
+    backoff = 1.0
+    for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS - 1):
+        response = await client.request(method, url, **kwargs)
+        if response.status_code != 429:
+            return response
+
+        retry_after = response.headers.get("Retry-After", "")
+        wait = min(
+            float(retry_after) if retry_after.isdigit() else backoff,
+            _RATE_LIMIT_MAX_WAIT_S,
+        )
+        logger.warning(
+            "Spotify 429 on %s %s; retrying in %.0fs (attempt %d/%d)",
+            method,
+            url,
+            wait,
+            attempt + 1,
+            _RATE_LIMIT_MAX_ATTEMPTS,
+        )
+        await asyncio.sleep(wait)
+        backoff *= 2
+
+    # Final attempt — no retry after this one.
+    return await client.request(method, url, **kwargs)
+
+
+# The unified library endpoints (`/me/library*`, the Feb 2026 replacement for
+# `/me/tracks*`) take Spotify URIs, capped at 40 per request.
+_LIBRARY_MAX_URIS = 40
+
+
+def _track_uris(track_ids: list[str]) -> str:
+    """Comma-joined Spotify track URIs for the unified library endpoints."""
+    return ",".join(f"spotify:track:{tid}" for tid in track_ids)
 
 
 class SpotifyService:
@@ -137,7 +194,9 @@ class SpotifyService:
         """Make GET request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.get(url, headers=self.headers, params=params)
+        response = await _send_with_retry(
+            client, "GET", url, headers=self.headers, params=params
+        )
         if response.status_code == 204:
             return None
         response.raise_for_status()
@@ -149,7 +208,9 @@ class SpotifyService:
         """Make PUT request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.put(url, headers=self.headers, json=body, params=params)
+        response = await _send_with_retry(
+            client, "PUT", url, headers=self.headers, json=body, params=params
+        )
         response.raise_for_status()
 
     async def _post(
@@ -158,8 +219,8 @@ class SpotifyService:
         """Make POST request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.post(
-            url, headers=self.headers, json=body, params=params
+        response = await _send_with_retry(
+            client, "POST", url, headers=self.headers, json=body, params=params
         )
         response.raise_for_status()
         if response.status_code == 204 or not response.content:
@@ -176,7 +237,9 @@ class SpotifyService:
         like playlist reorder that return a snapshot_id)."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.put(url, headers=self.headers, json=body, params=params)
+        response = await _send_with_retry(
+            client, "PUT", url, headers=self.headers, json=body, params=params
+        )
         response.raise_for_status()
         if response.status_code == 204 or not response.content:
             return None
@@ -189,20 +252,46 @@ class SpotifyService:
         """Make DELETE request to Spotify API."""
         url = f"{self.BASE_URL}{endpoint}"
         client = await get_shared_client()
-        response = await client.delete(url, headers=self.headers, params=params)
+        response = await _send_with_retry(
+            client, "DELETE", url, headers=self.headers, params=params
+        )
         response.raise_for_status()
+
+    async def _delete_json(
+        self, endpoint: str, body: dict | None = None
+    ) -> dict | None:
+        """DELETE with a JSON body, returning the JSON response (for endpoints
+        like playlist-item removal that take an ``items`` body and return a
+        ``snapshot_id``)."""
+        url = f"{self.BASE_URL}{endpoint}"
+        client = await get_shared_client()
+        response = await _send_with_retry(
+            client, "DELETE", url, headers=self.headers, json=body
+        )
+        response.raise_for_status()
+        if response.status_code == 204 or not response.content:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return None
 
     # --- Saved tracks (favorites) ---
 
     async def check_saved_tracks(self, track_ids: list[str]) -> list[bool]:
-        """Return whether each given track id is in the user's Saved Tracks."""
+        """Return whether each given track id is saved in the user's library.
+
+        Uses the unified ``GET /me/library/contains`` — the Feb 2026
+        replacement for ``/me/tracks/contains``: track *URIs* (not ids), capped
+        at 40 per call; the boolean array aligns to the input order.
+        """
         if not track_ids:
             return []
         results: list[bool] = []
-        for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i : i + 50]
+        for i in range(0, len(track_ids), _LIBRARY_MAX_URIS):
+            chunk = track_ids[i : i + _LIBRARY_MAX_URIS]
             data = await self._get(
-                "/me/tracks/contains", params={"ids": ",".join(chunk)}
+                "/me/library/contains", params={"uris": _track_uris(chunk)}
             )
             if isinstance(data, list):
                 results.extend(bool(x) for x in data)
@@ -211,20 +300,20 @@ class SpotifyService:
         return results
 
     async def save_tracks(self, track_ids: list[str]) -> None:
-        """Add tracks to the user's Saved Tracks."""
+        """Add tracks to the user's library (unified ``PUT /me/library?uris=``)."""
         if not track_ids:
             return
-        for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i : i + 50]
-            await self._put("/me/tracks", body={"ids": chunk})
+        for i in range(0, len(track_ids), _LIBRARY_MAX_URIS):
+            chunk = track_ids[i : i + _LIBRARY_MAX_URIS]
+            await self._put("/me/library", params={"uris": _track_uris(chunk)})
 
     async def remove_saved_tracks(self, track_ids: list[str]) -> None:
-        """Remove tracks from the user's Saved Tracks."""
+        """Remove tracks from the user's library (``DELETE /me/library?uris=``)."""
         if not track_ids:
             return
-        for i in range(0, len(track_ids), 50):
-            chunk = track_ids[i : i + 50]
-            await self._delete("/me/tracks", params={"ids": ",".join(chunk)})
+        for i in range(0, len(track_ids), _LIBRARY_MAX_URIS):
+            chunk = track_ids[i : i + _LIBRARY_MAX_URIS]
+            await self._delete("/me/library", params={"uris": _track_uris(chunk)})
 
     async def get_saved_tracks(self, max_tracks: int = 500) -> list[dict]:
         """
@@ -344,7 +433,42 @@ class SpotifyService:
             chunk = uris[i : i + 100]
             if not chunk:
                 continue
-            await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
+            await self._post(f"/playlists/{playlist_id}/items", body={"uris": chunk})
+
+    async def remove_items_from_playlist(
+        self,
+        playlist_id: str,
+        items: list[dict[str, Any]],
+        snapshot_id: str | None = None,
+    ) -> str | None:
+        """Remove items from a playlist (DELETE /playlists/{id}/items).
+
+        Foundational call for a future "remove track" / rules-engine
+        ``remove_from`` action — not yet wired to an API endpoint or UI (see
+        the `ICEBOX:` markers and `TODO.md` "Delete playlist tracks").
+
+        ``items`` mirrors Spotify's body — a list of ``{"uri": ...}`` objects.
+        **Design fork the caller decides:** add ``"positions": [n, ...]`` to an
+        item to remove a *specific row* (row-level removal / de-dup); omit it to
+        remove **all occurrences** of that URI. Pass the playlist's
+        ``snapshot_id`` to delete against a known version (so a concurrent
+        change can't make you remove the wrong row). Batches at the 100-item
+        cap; returns the final ``snapshot_id``. Requires the
+        ``playlist-modify-*`` scope (already requested) and an editable
+        playlist.
+        """
+        snap = snapshot_id
+        for i in range(0, len(items), 100):
+            chunk = items[i : i + 100]
+            if not chunk:
+                continue
+            body: dict[str, Any] = {"items": chunk}
+            if snap:
+                body["snapshot_id"] = snap
+            data = await self._delete_json(f"/playlists/{playlist_id}/items", body=body)
+            if data and data.get("snapshot_id"):
+                snap = data["snapshot_id"]
+        return snap
 
     async def pause_playback(self) -> None:
         """Pause playback."""
@@ -464,7 +588,7 @@ class SpotifyService:
     ) -> list[Track]:
         """Get a single page of tracks from a playlist."""
         data = await self._get(
-            f"/playlists/{playlist_id}/tracks",
+            f"/playlists/{playlist_id}/items",
             params={"limit": limit, "offset": offset},
         )
         tracks: list[Track] = []
@@ -485,7 +609,7 @@ class SpotifyService:
         page_size = 100
         while True:
             data = await self._get(
-                f"/playlists/{playlist_id}/tracks",
+                f"/playlists/{playlist_id}/items",
                 params={"limit": page_size, "offset": offset},
             )
             items = (data or {}).get("items", []) or []
@@ -545,7 +669,7 @@ class SpotifyService:
         }
         if snapshot_id:
             body["snapshot_id"] = snapshot_id
-        data = await self._put_json(f"/playlists/{playlist_id}/tracks", body=body)
+        data = await self._put_json(f"/playlists/{playlist_id}/items", body=body)
         return (data or {}).get("snapshot_id")
 
     async def replace_playlist_uris(self, playlist_id: str, uris: list[str]) -> None:
@@ -557,7 +681,7 @@ class SpotifyService:
         """
         first = uris[:100]
         # PUT replaces the playlist entirely (even with empty list).
-        await self._put(f"/playlists/{playlist_id}/tracks", body={"uris": first})
+        await self._put(f"/playlists/{playlist_id}/items", body={"uris": first})
         for i in range(100, len(uris), 100):
             chunk = uris[i : i + 100]
-            await self._post(f"/playlists/{playlist_id}/tracks", body={"uris": chunk})
+            await self._post(f"/playlists/{playlist_id}/items", body={"uris": chunk})

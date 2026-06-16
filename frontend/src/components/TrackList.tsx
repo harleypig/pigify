@@ -329,6 +329,14 @@ function TrackList({
     /* sorted view is already shown */
   };
 
+  // ICEBOX: persist/save the playlist order to Spotify (a.k.a. "apply to
+  // playlist", reorder, save the sorted order). Under review; revisit only
+  // on request. The value is the dynamic sort *lens*, not a frozen order;
+  // most users shuffle, so a baked-in order is niche and this rewrite is
+  // destructive (undo-once). Likely better for "play my custom order now":
+  // ephemeral play-in-order (queue the sorted tracks), not mutating the
+  // playlist. The playlist-modify scope it needs is verified working
+  // (see TODO.md "Spotify audit" #1).
   const handleApplyToPlaylist = async () => {
     if (!sortedTracks.length) return;
     if (
@@ -364,6 +372,12 @@ function TrackList({
       setApplying(false);
     }
   };
+
+  // ICEBOX: per-row "remove track" action (delete from the playlist) goes
+  // here / on the row. Calls apiService.removePlaylistItems (to be added);
+  // pass the track uri + its position for row-level removal, plus the
+  // playlist snapshot_id. Only on editable playlists. See TODO.md "Delete
+  // playlist tracks".
 
   // Mouse selection model: a plain click single-selects, Ctrl toggles the
   // one row, Shift selects the range from the anchor (the last single/Ctrl
