@@ -138,9 +138,36 @@ rationale, alternatives, and the revisit trigger live in
 
 ## Versioning
 
-App version comes from `package.json` / git tags; the short commit hash
-is injected at build time. Images take `GIT_HASH` / `APP_VERSION` build
-args (set by CI); a non-git build degrades gracefully.
+Backend and frontend carry **independent semver streams**, tagged
+`backend/vX.Y.Z` and `frontend/vX.Y.Z`. A release is a tag, never an edit
+to a version file.
+
+- **The version comes from the latest stream tag, not a committed file.**
+  CI injects it at build time (`git describe --tags --match 'backend/v*'`
+  / `'frontend/v*'`, with the prefix stripped) via the `APP_VERSION` build
+  arg; a local checkout uses the same `git describe` as a fallback. The
+  `version` fields in `backend/pyproject.toml`, `backend/app/main.py`
+  (the `FastAPI(version=...)`), and `frontend/package.json` are **dev
+  fallbacks only — do not bump them per release.**
+- **The build hash is per component** — the last commit touching that
+  component's tree (`git log -1 --format=%h -- backend` / `-- frontend`),
+  passed as the `GIT_HASH` build arg — so a change to one component never
+  advances the other's hash. The running container has no `.git`, which is
+  why both values are injected at build time. See
+  `backend/app/api/version.py` and `frontend/vite.config.ts`.
+- **Bumping = creating a tag** at the merge commit. Any change to a
+  component's shipped source is at minimum a patch bump on that stream
+  (bug fix → patch, feature → minor pre-1.0); a change to both ships a tag
+  on each. Changes that ship nothing (CI, docs, compose) ride along
+  untagged — the per-component hash enforces this (such a commit touches
+  neither tree).
+- **Pushing the tag is what deploys:** the `release` job builds + pushes
+  only the image whose stream matches the tag (`:<version>` + `:latest`);
+  a merge without a tag rebuilds nothing. The `Build` job still validates
+  and scans both images on every PR.
+- The About card (Settings › About) shows each component's version + hash
+  from these — `GET /api/version` for the backend, the `__APP_VERSION__` /
+  `__GIT_HASH__` build-time globals for the frontend.
 
 ## Quality assurance
 

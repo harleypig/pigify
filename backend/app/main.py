@@ -45,6 +45,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Pigify",
     description="Custom Spotify frontend with playlist management",
+    # Dev fallback only — the shipped version comes from the latest
+    # backend/v* git tag at build time (see app/api/version.py). Do not bump
+    # this per release.
     version="0.1.0",
     lifespan=lifespan,
 )

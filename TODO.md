@@ -83,24 +83,20 @@ un-deprecated them, or an open alternative's status changed; then update the
 
 ## Build, release & infra
 
-- [ ] **Version tagging** *(do this LAST — after the Track-Info-panel tasks)*.
-      Adopt a documented tag-driven versioning scheme modeled on
-      `../scripturestudy-app` (its `.claude/CONVENTIONS.md` "Versioning &
-      tagging") and the global `ship-pr` Step 6 / `git.md` tag hygiene:
-      version derived from git tags via `git describe` rather than a committed
-      file,
-      bumping = creating a tag at the PR's merge commit, and the tag is what
-      builds + pushes the images. Decide single-stream (`v*`, both images) vs
-      per-component streams (`backend/v*` / `frontend/v*`) — pigify currently
-      builds both images from one `v*` tag.
-      **The display already exists:** Settings › About › the "Versions" card
-      shows Frontend / Backend version **+ Git commit**, fed by
-      `__APP_VERSION__` (frontend build-time global) and `getVersionInfo()`
-      (backend), and the compose build passes `GIT_HASH` / `APP_VERSION`
-      args — which just default empty today. So the work is the scheme that
-      **populates** those from `git describe` at build time, so the About card
-      shows the real **version + hash**. Then expand the thin
-      `.claude/CONVENTIONS.md` "Versioning" section to match.
+- [x] **Version tagging.** Done: **per-component semver streams** tagged
+      `backend/vX.Y.Z` / `frontend/vX.Y.Z` (the user's choice over
+      single-stream). The version comes from the latest stream tag via
+      `git describe`, not a committed file — `APP_VERSION` env (CI) wins,
+      then `git describe --match 'backend/v*'` / `'frontend/v*'`, then the
+      `version` field as a dev-only fallback (`backend/app/api/version.py`,
+      `frontend/vite.config.ts`; the `version=` in `main.py` / `pyproject.toml`
+      / `package.json` are marked dev-fallback-only). The build hash is
+      per-component (`git log -1 --format=%h -- backend` / `-- frontend`) via
+      `GIT_HASH`. CI triggers on `backend/v*` + `frontend/v*` and the
+      `release` job builds + pushes only the matching image (non-matching
+      matrix leg = green no-op). Documented in `.claude/CONVENTIONS.md`
+      "Versioning"; regression tests in `backend/tests/test_api_version.py`.
+      The About card (Settings › About) now shows the real version + hash.
 
 ## Theming & branding
 
