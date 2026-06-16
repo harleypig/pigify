@@ -297,6 +297,20 @@ Track Info refinements, ordered simplest → most complex:
       paused. Cuts idle load; not a correctness bug (the cadence is by
       design).
 
+**Playlist selector (capture only, build later):**
+
+- [ ] **Reorder the playlist list (pigify-local).** Let the user set a custom
+      order for the playlist selector. Spotify has **no API to reorder the
+      playlist library**, so this is a pigify-side order (persisted here,
+      applied to the selector display) — it won't sync back to the Spotify
+      apps.
+- [ ] **Filter the playlist list by type.** Filter the selector to **owned vs
+      followed** (via `owner.id`; note "copied" isn't a distinct Spotify
+      concept — a copy is just a playlist you own). Also **support podcasts /
+      audiobooks**: playlist items carry `track_type: "track" | "episode"`, and
+      Spotify exposes separate saved-shows / saved-audiobooks libraries —
+      handle `episode` items, not only tracks.
+
 **Revisit later (near end of development):**
 
 - [ ] **TrackList horizontal empty space.** The whole track list panel — the

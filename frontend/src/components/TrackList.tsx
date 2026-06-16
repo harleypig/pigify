@@ -329,6 +329,14 @@ function TrackList({
     /* sorted view is already shown */
   };
 
+  // ICEBOX: persist/save the playlist order to Spotify (a.k.a. "apply to
+  // playlist", reorder, save the sorted order). Under review; revisit only
+  // on request. The value is the dynamic sort *lens*, not a frozen order;
+  // most users shuffle, so a baked-in order is niche and this rewrite is
+  // destructive (undo-once). Likely better for "play my custom order now":
+  // ephemeral play-in-order (queue the sorted tracks), not mutating the
+  // playlist. The playlist-modify scope it needs is verified working
+  // (see TODO.md "Spotify audit" #1).
   const handleApplyToPlaylist = async () => {
     if (!sortedTracks.length) return;
     if (
