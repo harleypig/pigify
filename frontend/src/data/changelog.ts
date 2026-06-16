@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Caveat that Grokipedia search can miss obscure tracks.",
       "Share-to-social popover.",
       "Own secrets win even with coattails permission.",
       "Grokipedia free-search link.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Wrap the filter/sort intro at 78 cols.",
       "Add filter/sort control items to Smart Filters.",
       "Align the Sort by / Take / Source row controls.",
-      "Expand Smart Filters backlog (builder CRUD, sources, lifecycle).",
-      "…and 244 earlier changes."
+      "…and 245 earlier changes."
     ]
   },
   {

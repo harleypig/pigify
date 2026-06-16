@@ -1083,6 +1083,8 @@ function TrackInfoPanel({
                 <p className="tip-meta">
                   Grokipedia (xAI's encyclopedia) has no free API — programmatic
                   access needs a paid Grok account — so we link its free search.
+                  Unless the song/artist is well-known or distinctively named,
+                  the results may not be what you're after.
                 </p>
                 <div className="tip-head-actions">
                   <a
