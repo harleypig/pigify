@@ -292,29 +292,86 @@ today.
 ## Smart Filters (recipes)
 
 The "Smart Filters" feature — the `RecipesSidebar` panel and the
-`RecipeBuilder` modal that builds/edits one.
+`RecipeBuilder` modal that builds/edits one. **Last.fm note:** this area must
+handle all three Last.fm scenarios (none / public / connected — see
+*Last.fm*), since filters can use Last.fm-derived fields and that data is only
+present in some tiers.
 
-- [ ] **Surface a smart filter in the playlist list as a "filtered" type.**
-      Create a special playlist type (e.g. `filtered`) for a smart filter /
-      recipe so it appears **in the playlist list** alongside the user's
-      Spotify playlists and opens the **same way** — selecting it shows its
-      resulting tracks in the main track list, like any other playlist. Make
-      it a first-class, typed entry (badge/category) rather than a separate
-      sidebar only. Ties into recipe **materialize** and the *Filter the
-      playlist list by type* item under *Frontend design › Playlist selector*,
-      and the rules/mixes DSL in `docs/ROADMAP.md`.
+**Panel & playlist-list integration:**
+
 - [ ] **Move "Smart Filters" to the top of the playlist panel.** It currently
       sits at the **bottom** of the playlist section and is easy to miss —
       move the `RecipesSidebar` to the **top** of that panel so it's the first
       thing seen.
+- [ ] **Surface a smart filter in the playlist list as a "filtered" type.**
+      Create a special playlist type (e.g. `filtered`) for a smart filter so
+      it appears **in the playlist list** alongside the user's Spotify
+      playlists and opens the **same way** — selecting it shows its resulting
+      tracks in the main track list, like any other playlist. Make it a
+      first-class, typed entry (badge/category), not a separate sidebar only.
+      Ties into *Export a filter to a real Spotify playlist* (below), the
+      *Filter the playlist list by type* item under *Frontend design ›
+      Playlist selector*, and the rules/mixes DSL in `docs/ROADMAP.md`.
+
+**Builder modal — filter management:**
+
+- [ ] **Make the builder a full filter-management (CRUD) window.** The filter
+      creation window should manage filters — create, view, **edit**, delete —
+      not just create. Title it per the naming alignment below so it reads as
+      "Filters" / "Smart Filters", not "recipe".
+- [ ] **Edit an existing filter from the list.** Add a way to edit a saved
+      filter — a **right-click** on the filter in the playlist/list and/or a
+      small **edit button** next to it — opening the builder pre-populated.
+- [ ] **Placeholder, not a default, for the filter name.** The name-the-filter
+      input shows a confusing `Bucket 1` today; use the placeholder **"Name
+      your filter"** instead — shown but **not** submitted as the value (the
+      user can still type that exact text to name it that, silly as that is).
+- [ ] **Clarify "Add bucket".** "Add bucket" is opaque; rename it, or add a
+      short explanatory line at the **top** of the window describing what a
+      bucket is (a group of sources + filters that contribute tracks).
 - [ ] **Align the "Smart Filters" ↔ "recipes" naming.** The UI labels the
       feature **"Smart Filters"** (`RecipesSidebar` header) but the code calls
       it **recipes** everywhere (`RecipeBuilder`, `RecipesSidebar`,
       `recipesApi`, `StoredRecipe`, backend `recipes.py`). Pick one name and
       align — rename the code to match the UI, or rename the UI to "recipes",
-      or (smallest) keep the split but **document the mapping** so it doesn't
-      trip up future work. A full code rename touches the frontend, the API
-      routes, and the backend service, so weigh the churn.
+      or (smallest) keep the split but **document the mapping**. A full code
+      rename touches the frontend, the API routes, and the backend, so weigh
+      the churn.
+
+**Source selection:**
+
+- [ ] **Playlist-type checkboxes in the source section.** Add a checkbox list
+      of **playlist types** to include. An **unchecked** type is excluded even
+      when **"All my playlists"** is selected (e.g. uncheck podcasts → no
+      podcasts). Pairs with *Filter the playlist list by type* under *Frontend
+      design › Playlist selector*.
+- [ ] **Filter "specific playlists" by the type checkboxes.** When **specific
+      playlists** is selected, the available-playlists list shows only the
+      types still checked above (uncheck podcasts → podcasts don't appear to
+      pick).
+- [ ] **Decide whether `filtered` may be a source — with a guard.** Evaluate
+      whether a filter can use **other filters** as a source (i.e. include the
+      `filtered` type in the checkboxes above). If allowed, checking
+      `filtered` must pop an **"are you sure?"** (yes / no) warning that it
+      can cause **infinite recursion** and that cross-filter interactions are
+      **undefined / not guaranteed to work**. Depends on the `filtered`
+      playlist type above.
+
+**Output & lifecycle:**
+
+- [ ] **Export a filter to a real Spotify playlist.** Filtered playlists live
+      only in pigify; add the ability to **create a real Spotify playlist**
+      from a filter so it's available in other Spotify clients (notably a
+      phone, until a mobile app exists). `recipesApi.materialize` is the seed.
+- [ ] **Recurring auto-updating filtered playlists.** *(at some point)* A
+      filter that **regenerates on a schedule** — e.g. "10 most recently added
+      + 20 least played, refreshed daily". This is the scheduled-**mix** idea
+      in `docs/ROADMAP.md` (Milestone 1 mixes).
+- [ ] **Filter-driven playlist cleanup.** *(at some point)* Use a filter to
+      **clean up a large playlist** (e.g. a 1300-track one): move some tracks
+      to other playlists, remove others, dedupe, etc. Builds on the
+      delete-playlist-tracks scaffold and the rules-engine move/remove
+      actions.
 
 ## Documentation
 
