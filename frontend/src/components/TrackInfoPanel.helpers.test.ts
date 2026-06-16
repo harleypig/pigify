@@ -4,6 +4,7 @@ import {
   formatDuration,
   highlightJson,
   providerSearchUrl,
+  songfactsSearchUrl,
 } from "./TrackInfoPanel.helpers";
 
 describe("formatDuration", () => {
@@ -72,6 +73,26 @@ describe("providerSearchUrl", () => {
   it("trims gracefully when artist or title is missing", () => {
     expect(providerSearchUrl("lastfm", "", "Aerodynamic")).toBe(
       "https://www.last.fm/search?q=Aerodynamic",
+    );
+  });
+});
+
+describe("songfactsSearchUrl", () => {
+  it("searches songs and artists by the path-based, hyphenated slug", () => {
+    expect(songfactsSearchUrl("songs", "Aerodynamic")).toBe(
+      "https://www.songfacts.com/search/songs/aerodynamic",
+    );
+    expect(songfactsSearchUrl("songs", "Bohemian Rhapsody")).toBe(
+      "https://www.songfacts.com/search/songs/bohemian-rhapsody",
+    );
+    expect(songfactsSearchUrl("artists", "Daft Punk")).toBe(
+      "https://www.songfacts.com/search/artists/daft-punk",
+    );
+  });
+
+  it("drops apostrophes and hyphenates other punctuation", () => {
+    expect(songfactsSearchUrl("songs", "Don't Stop Me Now")).toBe(
+      "https://www.songfacts.com/search/songs/dont-stop-me-now",
     );
   });
 });

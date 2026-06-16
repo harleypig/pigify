@@ -14,6 +14,7 @@ import {
   highlightJson,
   providerSearchUrl,
   type SearchProvider,
+  songfactsSearchUrl,
 } from "./TrackInfoPanel.helpers";
 import "./TrackInfoPanel.css";
 
@@ -924,6 +925,36 @@ function TrackInfoPanel({
                   />
                 )}
               </SectionFrame>
+            )}
+
+            {detail.spotify && (
+              <section className="tip-section">
+                <h4 className="tip-sec-head">
+                  <span className="tip-sec-title">Songfacts</span>
+                </h4>
+                <p className="tip-meta">
+                  Songfacts has no public API, so we link its search rather than
+                  show facts inline.
+                </p>
+                <div className="tip-head-actions">
+                  <a
+                    className="tip-extlink"
+                    href={songfactsSearchUrl("songs", sTitle)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Search by song
+                  </a>
+                  <a
+                    className="tip-extlink"
+                    href={songfactsSearchUrl("artists", sArtist)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Search by artist
+                  </a>
+                </div>
+              </section>
             )}
           </>
         )}

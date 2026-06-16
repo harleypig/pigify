@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Songfacts block with song + artist search links.",
+      "Notify when playback isn't on pigify.",
       "\"Search <provider>\" link when a provider has no result.",
       "A−/A+ text-size control on the panel.",
       "Add a MusicBrainz section (rule + skill + alignment).",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Drop dead .user-name-btn rules.",
       "Keep the account name visible on hover.",
       "Bring the account menu onto the day-glo console brand.",
-      "Note the no-LASTFM_API_KEY case in the public-Last.fm item.",
-      "Capture Last.fm + Settings backlog items.",
-      "…and 237 earlier changes."
+      "…and 239 earlier changes."
     ]
   },
   {

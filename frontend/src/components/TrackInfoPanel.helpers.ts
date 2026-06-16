@@ -10,6 +10,15 @@ export function formatDuration(ms?: number): string {
 
 export type SearchProvider = "musicbrainz" | "wikipedia" | "lastfm";
 
+/** Lowercase, hyphenate runs of non-alphanumerics, drop apostrophes. */
+function slug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 /**
  * Build a link to a provider's search page, pre-filled with the track. Shown
  * when a provider returns no result, so the user can look it up manually.
@@ -32,6 +41,18 @@ export function providerSearchUrl(
     case "lastfm":
       return `https://www.last.fm/search?q=${encodeURIComponent(both)}`;
   }
+}
+
+/**
+ * Songfacts has no public API and its native search is **path-based, by
+ * kind** — `/search/songs/<slug>` and `/search/artists/<slug>` (a `?q=` query
+ * param does NOT work). We surface both a song-title and an artist search.
+ */
+export function songfactsSearchUrl(
+  kind: "songs" | "artists",
+  name: string,
+): string {
+  return `https://www.songfacts.com/search/${kind}/${slug(name)}`;
 }
 
 /** Escape the three HTML-significant characters for safe text interpolation. */

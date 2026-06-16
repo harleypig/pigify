@@ -276,9 +276,12 @@ authored on the brand from the start.
       a usable public API / query method and check its terms (AI-generated
       content, attribution, caching). If there's no API, record that as an
       `ICEBOX:` limitation rather than building a scraper.
-- [ ] **Songfacts.com link.** Add a per-track songfacts.com link — a direct
-      link if it can be resolved, otherwise a "Search songfacts.com for
-      <song>" link.
+- [x] **Songfacts.com link.** Done: a Songfacts block in the Track Info panel
+      with a short blurb (no public API → links not inline facts) and two
+      **search** links — by song and by artist. Songfacts' native search is
+      path-based (`/search/songs/<slug>`, `/search/artists/<slug>`; a `?q=`
+      param does **not** work — verified), so we link the search rather than
+      resolve a direct article (no API to confirm one exists).
 
 ## Settings
 
