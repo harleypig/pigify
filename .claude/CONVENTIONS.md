@@ -52,8 +52,11 @@ examples/       user-facing copy-paste: image-based docker-compose.yml
 - **Async SQLAlchemy 2.0** with a **two-tier SQLite** model: one shared
   system DB (`pigify.db`: users, service connections, settings) plus one
   DB per Spotify user (playlist items, track stats, scrobble queue, saved
-  recipes). Repositories avoid SQLite-only features so Postgres is a
-  URL-swap (`SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE`).
+  recipes). Repositories avoid SQLite-only features so Postgres stays a
+  URL-swap (`SYSTEM_DATABASE_URL` / `USER_DATABASE_URL_TEMPLATE`) — kept as
+  cheap insurance only; actually running Postgres is **deferred** until
+  Spotify Extended Quota Mode (the 5-user Dev-Mode cap makes it pointless —
+  ADR-0003). Stay SQLite-only; don't add Postgres infra.
 - **Two Alembic environments** (`migrations/system`, `migrations/user`)
   applied automatically on startup via `app.db.bootstrap`; manual control
   via `poetry run python -m app.db.cli`.
