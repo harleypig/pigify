@@ -218,6 +218,19 @@ authored on the brand from the start.
 
 ## Track info panel
 
+- [ ] **Make the Track Info panel float / draggable.** It's pinned
+      bottom-right (`position: fixed`) and only resizable (top-left grip)
+      today; let the user **drag it anywhere** on the page and persist its
+      position alongside the already-persisted size.
+- [ ] **Persist open/closed state; drop the minimize-to-icon.** Remember
+      whether the panel is open across sessions — reopen it on login if it was
+      open at logout. And **remove the collapse-to-icon** behaviour (the
+      `collapsed` minimized box, bottom-right): open vs closed is the only
+      state, with no minimized icon.
+- [ ] **Info icon on track rows.** Add an explicit **info icon** to each track
+      row that opens the Track Info panel — the same affordance the
+      now-playing bar already has ("Show track info"). Keep the existing
+      right-click-the-name shortcut; the icon just makes it discoverable.
 - [ ] **Share to social media.** Beyond the direct Spotify link (shipped),
       add sharing to the various social-media services — but only via methods
       that don't require **the app** to be authenticated to those services
@@ -358,6 +371,13 @@ A bucket has two distinct steps that are easy to confuse: **Filter**
       some may want none or a field-specific control. Audit the sort fields
       and decide whether asc/desc fits each, or whether some need a tailored
       modifier.
+- [ ] **Unify the playlist and filter "Sort by".** The track-list `SortMenu`
+      (playlist sort) and the builder's Sort by should share the **same
+      appearance** and ideally the **same component/code** — keeping
+      `SortMenu`'s **simple button selection** as the shared look (bring the
+      filter's sort-by to match it, not the reverse). Dovetails with *Allow
+      multiple "Sort by" fields* above, since `SortMenu` already does
+      multi-key sort.
 
 **Source selection:**
 
