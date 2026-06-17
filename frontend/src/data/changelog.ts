@@ -14,7 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Move the Spotify-audit watch list out to docs/watch-list.md.",
+      "Declare the subdir tagging method.",
+      "Move the Spotify-audit watch list to docs.",
       "3-level theme system with dark + light.",
       "Opt in to the merge-finalization hook.",
       "Prune completed items merged in #63–#66.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Derive URLs from ports in .env.example; capture scratch as TODOs.",
       "Add an item to evaluate the Spotify Ads API.",
       "Request streaming + user-read-email scopes for Web Playback SDK.",
-      "Provide Spotify client ID via a secret file.",
-      "…and 153 earlier changes."
+      "…and 154 earlier changes."
     ]
   },
   {
