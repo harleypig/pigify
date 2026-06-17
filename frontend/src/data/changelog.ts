@@ -14,8 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Keep the flaky-CI bug open across iterations.",
-      "Re-open flaky CI hang (recurred despite PR #77 fix).",
+      "Dispose portal-loop engines in sync TestClient tests.",
+      "Re-open flaky CI hang (recurred despite PR #77).",
       "Owner-surface theme + ephemeral login toggle.",
       "Dispose async engines in teardown to end flaky CI hang.",
       "Single-job release resolving the target from the tag.",
