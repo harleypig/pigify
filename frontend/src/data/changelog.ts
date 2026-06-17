@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Opt in to the merge-finalization hook.",
+      "Prune completed items merged in #63–#66.",
       "Attribute Spotify in the UI + document retention posture.",
       "Spotify audit: Premium gating message + saved-tracks read decision.",
       "Centralise upstream Spotify 401 → clean 401 across the API.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Provide Spotify client ID via a secret file.",
       "Add frontend design rollout section.",
       "Carry the day-glo console brand into the sidebar rack.",
-      "Restyle the bar as the day-glo console transport deck.",
-      "Carry the day-glo console brand into the app chrome.",
-      "…and 149 earlier changes."
+      "…and 151 earlier changes."
     ]
   },
   {

@@ -1,0 +1,36 @@
+/* GENERATED from dark.theme.yaml by scripts/generate-themes.mjs — do not edit by hand. */
+/* Theme: Dark (default) */
+:root,
+[data-theme="dark"] {
+  --brand-bg: #121212;
+  --brand-surface: #0d1020;
+  --brand-surface-deep: #07080d;
+  --brand-surface-raised: #11131f;
+  --brand-navy: #141b3a;
+  --brand-edge: #2a3252;
+  --brand-line: rgba(255, 255, 255, 0.12);
+  --brand-hover: rgba(255, 255, 255, 0.05);
+  --brand-ink: #eaf1ff;
+  --brand-ink-dim: #8c93a8;
+  --brand-ink-bright: #cfe0ff;
+  --brand-accent: #3a78ff;
+  --brand-accent-bright: #6aa0ff;
+  --brand-accent-rgb: 58, 120, 255;
+  --brand-red: #ff2a45;
+  --brand-red-bright: #ff5a6e;
+  --brand-red-rgb: 255, 42, 69;
+  --brand-shadow-rgb: 0, 0, 0;
+  --brand-overlay-rgb: 255, 255, 255;
+  --brand-on-accent: #ffffff;
+  --brand-code-key: #9db8ff;
+  --brand-code-string: #c3e88d;
+  --brand-code-number: #f78c6c;
+  --brand-code-bool: #c792ea;
+  --brand-code-null: #ff5a6e;
+  --brand-font-display:
+    "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --brand-font-mono:
+    "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --brand-radius: 16px;
+  --brand-radius-sm: 9px;
+}

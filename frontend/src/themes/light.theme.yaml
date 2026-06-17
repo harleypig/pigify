@@ -1,0 +1,46 @@
+# Light theme — the day-glo console translated to a bright surface: white
+# panels on a soft blue-grey base, navy ink, the electric blue deepened a
+# touch so it holds contrast on white. Same token contract as dark.theme.yaml
+# (compiled to light.css by scripts/generate-themes.mjs).
+_label: Light
+
+# ---- Surfaces (raised white -> app base -> recessed tint) ----
+bg: "#eef1f8"            # app base (soft blue-grey)
+surface: "#ffffff"       # panel / deck face (white)
+surface-deep: "#e4e9f4"  # recessed inset (light blue-grey)
+surface-raised: "#ffffff" # raised header / rail
+navy: "#dde4f3"          # navy structural tint -> pale blue
+edge: "#c3cfe6"          # structural border
+line: "rgba(20, 27, 58, 0.12)"  # hairline divider (dark on light)
+hover: "rgba(20, 27, 58, 0.05)" # row / control hover fill
+
+# ---- Text ----
+ink: "#16203a"           # primary text (deep navy)
+ink-dim: "#5d6b86"       # muted captions
+ink-bright: "#0b1834"    # emphasised text
+
+# ---- Accents (deepened for contrast on white) ----
+accent: "#2f6bff"
+accent-bright: "#558cff"
+accent-rgb: "47, 107, 255"
+red: "#dc1f3a"
+red-bright: "#ff4259"
+red-rgb: "220, 31, 58"
+
+# ---- Shadow (soft navy on light, not harsh black) ----
+shadow-rgb: "30, 41, 73"
+overlay-rgb: "20, 27, 58"
+on-accent: "#ffffff"  # text/highlight on a solid accent or red fill (white both themes)
+
+# ---- Code / JSON syntax (darker, for a light raw view) ----
+code-key: "#2f5bd0"
+code-string: "#2e7d32"
+code-number: "#c2410c"
+code-bool: "#7c3aed"
+code-null: "#be123c"
+
+# ---- Type & shape (shared with dark by default) ----
+font-display: '"Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif'
+font-mono: '"Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace'
+radius: "16px"
+radius-sm: "9px"

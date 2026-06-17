@@ -9,7 +9,7 @@
 .recipe-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(4, 6, 14, 0.7);
+  background: rgba(var(--brand-shadow-rgb), 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17,7 +17,7 @@
 }
 .recipe-modal {
   /* Recessed deck face with an electric-blue edge, like the other panels. */
-  background: #0d1020;
+  background: var(--brand-surface);
   color: var(--brand-ink);
   width: min(900px, 95vw);
   max-height: 90vh;
@@ -26,7 +26,7 @@
   border-radius: var(--brand-radius);
   padding: 20px 24px;
   box-shadow:
-    0 18px 50px -12px rgba(0, 0, 0, 0.85),
+    0 18px 50px -12px rgba(var(--brand-shadow-rgb), 0.85),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
 }
 .recipe-modal-head {
@@ -115,7 +115,7 @@
 .filter-row input,
 .bucket-row select,
 .bucket-row input {
-  background: #07090f;
+  background: var(--brand-surface-deep);
   color: var(--brand-ink);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
   padding: 4px 6px;
@@ -154,7 +154,7 @@
   font-size: 13px;
 }
 .recipe-combine select {
-  background: #07090f;
+  background: var(--brand-surface-deep);
   color: var(--brand-ink);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
   padding: 4px 6px;
@@ -183,7 +183,7 @@
 /* Primary action: a lit electric-blue chip. */
 .recipe-actions button.primary {
   background: var(--brand-accent);
-  color: #07080d;
+  color: var(--brand-surface-deep);
   border-color: var(--brand-accent);
   font-weight: 700;
   box-shadow: 0 0 10px rgba(var(--brand-accent-rgb), 0.35);
@@ -236,7 +236,7 @@
 .preview-list {
   max-height: 280px;
   overflow-y: auto;
-  background: #07090f;
+  background: var(--brand-surface-deep);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.12);
   border-radius: var(--brand-radius-sm);
   padding: 6px 8px;
@@ -270,7 +270,7 @@
 }
 .preview-source-link:hover,
 .preview-source-link:focus {
-  color: #9db8ff;
+  color: var(--brand-code-key);
   text-decoration: none;
   border-bottom-style: solid;
   /* Hover-style border swap is the focus indicator for mouse; keep a real
@@ -298,7 +298,7 @@
   margin: 4px 0 6px 96px;
   max-height: 160px;
   overflow-y: auto;
-  background: #07090f;
+  background: var(--brand-surface-deep);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
   border-radius: var(--brand-radius-sm);
   padding: 6px 10px;
@@ -351,7 +351,7 @@
 }
 .source-search {
   flex: 1;
-  background: #07090f;
+  background: var(--brand-surface-deep);
   color: var(--brand-ink);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
   padding: 4px 8px;
@@ -359,7 +359,7 @@
   font-size: 13px;
 }
 .source-group {
-  background: #07090f;
+  background: var(--brand-surface-deep);
   color: var(--brand-ink);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
   padding: 4px 6px;
@@ -409,5 +409,5 @@
   margin-bottom: 2px;
   position: sticky;
   top: 0;
-  background: #07090f;
+  background: var(--brand-surface-deep);
 }

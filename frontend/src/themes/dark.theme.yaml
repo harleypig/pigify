@@ -1,0 +1,48 @@
+# Dark theme — pigify's "day-glo console" identity (the original look).
+# Level-2 authoring format: a flat token map compiled to dark.css by
+# scripts/generate-themes.mjs. Keys map to `--brand-<key>`; values are literal
+# CSS. The full token set here IS the contract every theme implements
+# (mirrored, documented, in src/theme.css).
+_label: Dark
+_default: true
+
+# ---- Surfaces (darkest inset -> app base -> raised) ----
+bg: "#121212"            # app base
+surface: "#0d1020"       # panel / deck face
+surface-deep: "#07080d"  # recessed inset (darkest)
+surface-raised: "#11131f" # raised header / rail
+navy: "#141b3a"          # navy structural tint
+edge: "#2a3252"          # structural border (navy)
+line: "rgba(255, 255, 255, 0.12)"  # hairline divider
+hover: "rgba(255, 255, 255, 0.05)" # row / control hover fill
+
+# ---- Text ----
+ink: "#eaf1ff"           # primary text (cool off-white)
+ink-dim: "#8c93a8"       # muted captions
+ink-bright: "#cfe0ff"    # emphasised / link-ish text
+
+# ---- Accents ----
+accent: "#3a78ff"        # day-glo electric blue (primary)
+accent-bright: "#6aa0ff"
+accent-rgb: "58, 120, 255"
+red: "#ff2a45"           # blood red (alerts / 2nd accent)
+red-bright: "#ff5a6e"
+red-rgb: "255, 42, 69"
+
+# ---- Shadow (rgb feeds rgba() with per-element opacity) ----
+shadow-rgb: "0, 0, 0"
+overlay-rgb: "255, 255, 255"
+on-accent: "#ffffff"  # text/highlight on a solid accent or red fill (white both themes)
+
+# ---- Code / JSON syntax (Track Info raw view) ----
+code-key: "#9db8ff"
+code-string: "#c3e88d"
+code-number: "#f78c6c"
+code-bool: "#c792ea"
+code-null: "#ff5a6e"
+
+# ---- Type & shape (a brand may restyle these too) ----
+font-display: '"Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif'
+font-mono: '"Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace'
+radius: "16px"
+radius-sm: "9px"

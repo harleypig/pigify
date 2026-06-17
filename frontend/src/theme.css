@@ -1,42 +1,43 @@
 /*
- * Brand & theme tokens — the single source of truth for pigify's look.
- * Re-skinning or white-labelling the app should be a matter of swapping
- * the values here (see TODO.md "Theming & branding"); components reference
- * these custom properties rather than hard-coding colours or fonts.
+ * Theme token CONTRACT — the single interface every pigify theme implements.
  *
- * Current identity: "day-glo console" — jet-black panels with a navy
- * structural tint, lit by fluorescent electric blue (primary) and a
- * blood-red alert, echoing the blues of the pig medallion.
+ * Theming has three levels (see docs/THEMING.md):
+ *   L1  pick a built-in theme in Settings › Theme (dark / light / system)
+ *   L2  author a theme as a friendly YAML map  (src/themes/<name>.theme.yaml)
+ *   L3  a theme is ultimately a CSS file        (src/themes/<name>.css)
+ *
+ * The `--brand-*` custom properties below are the stable contract: components
+ * reference these (never hard-coded colours/fonts), and every theme must
+ * supply a value for each. The themes themselves live in their own files —
+ * this file is the contract + the single import that pulls the built-ins in.
+ * `:root` defaults to the `dark` theme; `[data-theme="light"]` (etc.) override
+ * when the <html> data-theme attribute is set.
+ *
+ *   Surfaces  --brand-bg            app base
+ *             --brand-surface       panel / card / deck face
+ *             --brand-surface-deep  recessed inset (darkest / deepest)
+ *             --brand-surface-raised raised header / rail
+ *             --brand-navy          structural tint
+ *             --brand-edge          structural border
+ *             --brand-line          hairline divider
+ *             --brand-hover         row / control hover fill
+ *             --brand-overlay-rgb   rgb triplet for rgba() overlays
+ *   Text      --brand-ink           primary text
+ *             --brand-ink-dim       muted captions
+ *             --brand-ink-bright    emphasised text
+ *   Accents   --brand-accent / -bright / -rgb   primary (electric blue)
+ *             --brand-red / -bright / -rgb       alert / 2nd accent
+ *             --brand-on-accent     text/highlight on a solid accent/red fill
+ *   Shadow    --brand-shadow-rgb    rgb triplet for rgba() shadows
+ *   Code      --brand-code-key / -string / -number / -bool / -null
+ *   Type      --brand-font-display / --brand-font-mono
+ *   Shape     --brand-radius / --brand-radius-sm
+ *
+ * To add a theme: create src/themes/<name>.theme.yaml (copy an existing one),
+ * `npm run generate:themes`, import its CSS below, and register it in
+ * src/lib/theme.ts. A white-label deploy can instead drop a hand-written
+ * src/themes/<name>.css that sets these tokens under [data-theme="<name>"].
  */
-:root {
-  /* ---- Brand palette ----
-     Darks: jet-black base + a navy structural mid-tone. Day-glo accents:
-     electric blue (primary) and blood red (alerts / second accent). The
-     _rgb triplets feed rgba() glows. */
-  --brand-bg: #121212; /* app base (unchanged for now; theming-ready) */
-  --brand-ink: #eaf1ff; /* cool off-white — primary text */
-  --brand-ink-dim: #8c93a8; /* muted blue-grey captions */
 
-  --brand-navy: #141b3a; /* navy structural mid-tone */
-
-  --brand-accent: #3a78ff; /* day-glo electric blue (primary) */
-  --brand-accent-bright: #6aa0ff; /* brighter blue for glows / LEDs */
-  --brand-accent-rgb: 58, 120, 255;
-
-  --brand-red: #ff2a45; /* fluorescent blood red (alerts / 2nd accent) */
-  --brand-red-bright: #ff5a6e;
-  --brand-red-rgb: 255, 42, 69;
-
-  /* ---- Brand type ----
-     Display: Bricolage Grotesque (the wordmark). Mono: Space Mono (the
-     "equipment label" voice). Both self-hosted via Fontsource so they load
-     same-origin under the app's CSP. */
-  --brand-font-display:
-    "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
-  --brand-font-mono:
-    "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
-
-  /* ---- Shape ---- */
-  --brand-radius: 16px;
-  --brand-radius-sm: 9px;
-}
+@import "./themes/dark.css";
+@import "./themes/light.css";

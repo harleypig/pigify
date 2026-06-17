@@ -69,11 +69,11 @@
   z-index: 100;
   padding: 0.5rem 0;
   /* Recessed deck face (darker than the navy controls inside it). */
-  background: #0d1020;
+  background: var(--brand-surface);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
   border-radius: var(--brand-radius);
   box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.7),
+    0 8px 32px rgba(var(--brand-shadow-rgb), 0.7),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
 }
 
@@ -319,7 +319,7 @@
 /* Save: a small lit primary LED. */
 .sort-preset-save-btn {
   background: var(--brand-accent);
-  color: #07080d;
+  color: var(--brand-surface-deep);
   border: none;
   border-radius: var(--brand-radius-sm);
   padding: 0.4rem 0.8rem;
@@ -377,7 +377,7 @@
 /* "Apply to playlist" rewrites Spotify — the lit primary LED. */
 .sort-apply-playlist {
   background: var(--brand-accent);
-  color: #07080d;
+  color: var(--brand-surface-deep);
   box-shadow: 0 0 12px rgba(var(--brand-accent-rgb), 0.4);
   transition:
     background 0.15s,

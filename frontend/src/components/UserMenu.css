@@ -70,11 +70,11 @@
   right: 0;
   min-width: 160px;
   /* Recessed deck face with an electric-blue edge, like the other panels. */
-  background: #0d1020;
+  background: var(--brand-surface);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
   border-radius: var(--brand-radius-sm);
   box-shadow:
-    0 12px 30px -8px rgba(0, 0, 0, 0.7),
+    0 12px 30px -8px rgba(var(--brand-shadow-rgb), 0.7),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
   padding: 4px;
   z-index: 200;
@@ -118,7 +118,7 @@
   padding: 0 5px;
   border-radius: 9px;
   background: var(--brand-red);
-  color: #fff;
+  color: var(--brand-on-accent);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;
@@ -137,7 +137,7 @@
   padding: 0 5px;
   border-radius: 9px;
   background: var(--brand-red);
-  color: #fff;
+  color: var(--brand-on-accent);
   font-size: 10px;
   font-weight: 700;
   line-height: 1;

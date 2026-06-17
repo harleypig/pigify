@@ -13,12 +13,12 @@
   width: 360px;
   max-height: calc(100vh - 200px);
   /* Recessed deck face, like the sort popover. */
-  background: #0d1020;
+  background: var(--brand-surface);
   color: var(--brand-ink);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
   border-radius: var(--brand-radius);
   box-shadow:
-    0 18px 50px -12px rgba(0, 0, 0, 0.85),
+    0 18px 50px -12px rgba(var(--brand-shadow-rgb), 0.85),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
   display: flex;
   flex-direction: column;
@@ -32,7 +32,7 @@
   user-select: none;
   border-color: rgba(var(--brand-accent-rgb), 0.55);
   box-shadow:
-    0 26px 60px -10px rgba(0, 0, 0, 0.9),
+    0 26px 60px -10px rgba(var(--brand-shadow-rgb), 0.9),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.2),
     0 0 0 1px rgba(var(--brand-accent-rgb), 0.25);
 }
@@ -113,7 +113,11 @@
   justify-content: space-between;
   padding: 10px 12px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 70%),
+    linear-gradient(
+      180deg,
+      rgba(var(--brand-overlay-rgb), 0.03),
+      transparent 70%
+    ),
     var(--brand-navy);
   /* Thin electric-blue power rail along the bottom edge. */
   box-shadow: inset 0 -1px 0 rgba(var(--brand-accent-rgb), 0.3);
@@ -298,11 +302,11 @@
   gap: 2px;
   min-width: 200px;
   padding: 4px;
-  background: #0d1020;
+  background: var(--brand-surface);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.3);
   border-radius: var(--brand-radius-sm);
   box-shadow:
-    0 12px 30px -8px rgba(0, 0, 0, 0.7),
+    0 12px 30px -8px rgba(var(--brand-shadow-rgb), 0.7),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.12);
 }
 .tip-share-item {
@@ -473,10 +477,10 @@
 }
 .tip-tier-public {
   background: rgba(var(--brand-accent-rgb), 0.1);
-  color: #9db8ff;
+  color: var(--brand-code-key);
 }
 .tip-tier-none {
-  background: rgba(140, 147, 168, 0.15);
+  background: var(--brand-line);
   color: var(--brand-ink-dim);
 }
 
@@ -557,7 +561,7 @@
   position: relative;
 }
 .tip-raw pre {
-  background: #07090f;
+  background: var(--brand-surface-deep);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.18);
   border-radius: var(--brand-radius-sm);
   padding: 10px;
@@ -573,7 +577,7 @@
   top: 6px;
   right: 6px;
   background: var(--brand-accent);
-  color: #07080d;
+  color: var(--brand-surface-deep);
   border: none;
   border-radius: 6px;
   padding: 4px 8px;
@@ -598,13 +602,13 @@
   color: var(--brand-accent-bright);
 }
 .tip-json-string {
-  color: #c3e88d;
+  color: var(--brand-code-string);
 }
 .tip-json-number {
-  color: #f78c6c;
+  color: var(--brand-code-number);
 }
 .tip-json-bool {
-  color: #c792ea;
+  color: var(--brand-code-bool);
 }
 .tip-json-null {
   color: var(--brand-red-bright);

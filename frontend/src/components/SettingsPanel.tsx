@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CHANGELOG, type ChangelogEntry } from "../data/changelog";
 import {
+  getThemeChoice,
+  setThemeChoice,
+  THEME_CHOICES,
+  type ThemeChoice,
+  themeChoiceLabel,
+} from "../lib/theme";
+import {
   apiService,
   type ConnectionStatus,
   type FavoritesStatus,
@@ -13,7 +20,7 @@ import {
 import { formatRelative, tierClass, tierLabel } from "./SettingsPanel.helpers";
 import "./SettingsPanel.css";
 
-export type SettingsTabId = "favorites" | "connections" | "about";
+export type SettingsTabId = "favorites" | "connections" | "theme" | "about";
 
 interface Props {
   onClose: () => void;
@@ -29,6 +36,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: "favorites", label: "Favorites" },
   { id: "connections", label: "Connections" },
+  { id: "theme", label: "Theme" },
   { id: "about", label: "About" },
 ];
 
@@ -79,6 +87,9 @@ function SettingsPanel({
         </div>
         <div hidden={activeTab !== "connections"} role="tabpanel">
           <ConnectionsTab onProfileChange={onProfileChange} />
+        </div>
+        <div hidden={activeTab !== "theme"} role="tabpanel">
+          <ThemeTab />
         </div>
         <div hidden={activeTab !== "about"} role="tabpanel">
           <AboutTab />
@@ -851,6 +862,58 @@ function WhatsNewCard() {
         </>
       )}
     </section>
+  );
+}
+
+function ThemeTab() {
+  const [choice, setChoice] = useState<ThemeChoice>(() => getThemeChoice());
+
+  const pick = (next: ThemeChoice) => {
+    setThemeChoice(next); // persists + applies immediately
+    setChoice(next);
+  };
+
+  return (
+    <div className="sp-tabpanel">
+      <section className="sp-card">
+        <header>
+          <h3>Theme</h3>
+        </header>
+        <p className="sp-meta">
+          Choose pigify's appearance. <strong>System</strong> follows your
+          device's light/dark setting.
+        </p>
+        <div className="sp-theme-options" role="radiogroup" aria-label="Theme">
+          {THEME_CHOICES.map((c) => (
+            <label
+              key={c}
+              className={`sp-theme-option${choice === c ? " active" : ""}`}
+            >
+              <input
+                type="radio"
+                name="pigify-theme"
+                value={c}
+                checked={choice === c}
+                onChange={() => pick(c)}
+              />
+              {themeChoiceLabel(c)}
+            </label>
+          ))}
+        </div>
+        <p className="sp-meta">
+          Want more control? A theme can be authored as a friendly YAML file or
+          a full CSS file — see{" "}
+          <a
+            href={`${GITHUB_REPO_URL}/blob/master/docs/THEMING.md`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            docs/THEMING.md
+          </a>
+          .
+        </p>
+      </section>
+    </div>
   );
 }
 
