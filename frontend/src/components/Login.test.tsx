@@ -35,4 +35,33 @@ describe("Login", () => {
     // Still the login screen, ready to retry.
     expect(screen.getByRole("heading", { name: "pigify" })).toBeInTheDocument();
   });
+
+  it("renders the owner-surface theme on the login subtree", () => {
+    const { container } = render(<Login onLogin={vi.fn()} />);
+    // jsdom has no matchMedia, so the "system" owner default resolves to light.
+    expect(container.querySelector(".login")).toHaveAttribute(
+      "data-theme",
+      "light",
+    );
+  });
+
+  it("flips the owner-surface theme via the ephemeral toggle", async () => {
+    const { container } = render(<Login onLogin={vi.fn()} />);
+    const login = container.querySelector(".login");
+
+    // Default light → the toggle offers a switch to dark.
+    const toggle = screen.getByRole("button", { name: "Switch to dark mode" });
+    expect(login).toHaveAttribute("data-theme", "light");
+
+    await userEvent.click(toggle);
+    expect(login).toHaveAttribute("data-theme", "dark");
+    expect(
+      screen.getByRole("button", { name: "Switch to light mode" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Switch to light mode" }),
+    );
+    expect(login).toHaveAttribute("data-theme", "light");
+  });
 });

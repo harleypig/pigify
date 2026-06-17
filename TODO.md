@@ -24,15 +24,16 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       logo re-branding (the configurable logo knobs below) and document a
       deployer "bring your own brand" flow (a custom theme file + assets) so
       colours / fonts / logo swap without code edits.
-- [ ] **Owner-surface theming + brand-mark config (Increment 2).** Decisions
-      are captured in [`docs/branding-design.md`](docs/branding-design.md): a
-      working-area-vs-owner-surface theme split (the user's theme never bleeds
-      onto login / error / unauthorized / non-task pages), a small **ephemeral**
-      per-dialog light/dark toggle defaulting to an owner-set default, a single
-      brand-mark structure (mode × layout) sized per surface, and a `<Brand>`
-      component replacing the duplicated Login/App lockups. **Open decision
-      before building:** the provisioning model (build-time config module vs
-      runtime-mounted) — see the note.
+- [ ] **Brand-mark config (Increment 2, remainder).** The owner-surface
+      *theme* half shipped — the working-area-vs-owner-surface split + the
+      ephemeral per-dialog light/dark toggle (`lib/ownerTheme`,
+      `OwnerThemeToggle`, `data-theme` scoped to `.login`), with the owner
+      default as the build-time `OWNER_THEME_DEFAULT` constant. **Remaining:**
+      the brand-mark config from [`docs/branding-design.md`](docs/branding-design.md)
+      § 3 — a single brand-mark structure (mode × layout) sized per surface,
+      and a `<Brand>` component replacing the duplicated Login/App lockups.
+      **Open decision before building it:** the brand-mark provisioning model
+      (build-time config module vs runtime-mounted) — see the note.
 
 ## Frontend design
 
