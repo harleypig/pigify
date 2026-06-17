@@ -5,7 +5,29 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Bugs
 
-*No open bugs.*
+- [ ] **Flaky CI: `Pre-commit (3.12)` still hangs intermittently (contained,
+      not fully fixed).** The aiosqlite async-teardown hang on the *Run check
+      hooks* step was first fixed in PR #77 (dispose async engines on the test
+      loop in `IsolatedDBTestCase.asyncTearDown`) — but it **recurred on PR
+      #78's CI**, so that fix was *necessary but not sufficient*. **Now
+      contained:** the `timeout-minutes: 10` backstop (PR #77) auto-cancels a
+      wedged 3.12 job at ~10 min (validated on #78) and a `rerun --failed`
+      goes green — no more 20-min babysit, but still a flaky retry.
+      **Updated root-cause hypothesis:** the #77 fix only covers
+      `IsolatedDBTestCase`'s *direct* async-engine use. Many tests construct
+      `TestClient(app)` **without** the `with` form, so the app **lifespan
+      never runs** (no `db_dispose_all` on shutdown) and the engines created
+      during requests bind to TestClient's own portal loop — which
+      `asyncTearDown` (running on a different loop) does not dispose. Those
+      orphaned aiosqlite worker threads are the likely remaining source.
+      **Next step:** make the non-`with` `TestClient` tests dispose — convert
+      them to `with TestClient(app) as client:` (triggers lifespan →
+      `db_dispose_all`), or a shared portal-loop teardown that disposes the
+      engines. Audit: `grep -rn 'TestClient(' backend/tests | grep -v 'with '`.
+      **Keep this open across several iterations.** Each time the hang recurs,
+      re-analyze the code at that point (the source may shift as tests change)
+      and record the finding here; only close it once it has gone quiet for a
+      good while — a single green run is not a fix.
 
 > The **Spotify audit record + the deprecated-endpoint watch list** (the
 > "re-evaluate each `/spotify-audit` run" items) live in
