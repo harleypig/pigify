@@ -903,6 +903,26 @@ function AboutTab() {
 
       <section className="sp-card">
         <header>
+          <h3>Powered by Spotify</h3>
+        </header>
+        <p className="sp-meta">
+          Music, playback, and track metadata are provided by Spotify. Pigify is
+          an independent, unofficial project — not created, endorsed, or
+          affiliated with Spotify AB.
+        </p>
+        <p className="sp-meta">
+          <a
+            href="https://www.spotify.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            spotify.com
+          </a>
+        </p>
+      </section>
+
+      <section className="sp-card">
+        <header>
           <h3>Versions</h3>
         </header>
         {loading && <p className="sp-meta">Loading version info…</p>}

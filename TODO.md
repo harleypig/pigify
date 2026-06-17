@@ -57,10 +57,19 @@ all re-verified clean. Resolved the saved-tracks-read question (stays on
       "In-browser playback needs Spotify Premium." — explaining why "this
       browser" isn't a device option, instead of a silent no-op.
       *rules/spotify.md › Web Playback SDK.*
-- [ ] **(Info) Compliance — caching & attribution.** pigify persists Spotify
-      metadata (per-user DB playlist items + track stats + enrichment cache).
-      The Developer Terms limit caching beyond immediate use; confirm retention
-      is defensible and that the UI **attributes** Spotify. *rules/spotify.md ›
+- [x] **(Info) Compliance — caching & attribution.** Done. **Retention
+      (verified 2026-06-17):** the original premise was imprecise — pigify
+      persists **no** Spotify catalogue metadata. Track names/artists/albums
+      and playlist items are fetched **live** per request; the per-user DB
+      holds only pigify-derived data (`TrackStat` play/skip counts keyed by
+      track *id*, `SavedSort`/`SavedFilter`, a transient scrobble queue,
+      connection creds). The enrichment cache is **third-party** data
+      (Last.fm/MusicBrainz/Wikipedia), TTL-bounded with a daily purge — not
+      Spotify. **Attribution:** added "Powered by Spotify" on the login
+      screen (Spotify's sanctioned text form) and a "Powered by Spotify" card
+      in Settings › About (source + unaffiliated-third-party disclaimer);
+      rows already link to `open.spotify.com`. Posture documented in
+      `.claude/CONVENTIONS.md › Spotify › Compliance`. *rules/spotify.md ›
       Compliance.*
 
 ### Watch — re-evaluate each `/spotify-audit` run

@@ -136,6 +136,26 @@ relink ids and break the bulk loved-state check for marginal gain. Full
 rationale, alternatives, and the revisit trigger live in
 **[ADR-0002](../docs/adr/0002-no-market-param-on-track-reads.md)**.
 
+**Compliance — caching & attribution** (`rules/spotify.md › Compliance`).
+The Developer Terms require attributing Spotify content and forbid caching it
+beyond immediate use. pigify's posture, verified 2026-06-17:
+
+- **No persisted Spotify catalogue copy.** Track names / artists / albums and
+  playlist items are fetched **live** from Spotify per request, never stored.
+  The per-user DB persists only pigify-derived data — `TrackStat` (play/skip
+  counts keyed by the Spotify track *id*, an identifier, not metadata),
+  `SavedSort` / `SavedFilter` (user config), a **transient** scrobble queue
+  (dequeued after sending to Last.fm), and `ServiceConnection` credentials.
+- **The enrichment cache is third-party data, not Spotify** (Last.fm /
+  MusicBrainz / Wikipedia), and is TTL-bounded with a daily purge
+  (`cache_cleanup.py`).
+- **Attribution** is shown in the UI: the login screen carries the
+  Spotify-sanctioned "Powered by Spotify" text, and Settings › About has a
+  "Powered by Spotify" card naming Spotify as the source of music / playback /
+  metadata with an unaffiliated-third-party disclaimer. Track and playlist
+  rows link back to `open.spotify.com`.
+- **No model training** on Spotify data.
+
 ## Versioning
 
 Backend and frontend carry **independent semver streams**, tagged
