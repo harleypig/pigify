@@ -41,3 +41,34 @@
 
 @import "./themes/dark.css";
 @import "./themes/light.css";
+
+/*
+ * Branding — logo knobs (owner-level; NOT user-facing — branding is set by the
+ * deployer, not picked in Settings). These fit any brand's logo into the
+ * lockups (login hero + app header) without code edits: a white-label deploy
+ * overrides these values. They live here, not in the per-theme files above,
+ * because logo geometry is theme-INDEPENDENT (it doesn't change with the
+ * colour theme); only the optional tint reads the active theme. Defaults are
+ * the hero (login) values; the compact header overrides scale / shift-y in
+ * App.css. See docs/THEMING.md › Branding the logo.
+ *
+ *   --brand-logo-scale    logo height as a multiple of the adjacent wordmark
+ *   --brand-logo-shift-y  vertical nudge so the artwork's visual anchor (the
+ *                         medallion circle), not its bounding box, centres on
+ *                         the wordmark
+ *   --brand-logo-shift-x  horizontal optical-balance nudge for the whole lockup
+ *   --brand-logo-gap      space between the logo and the wordmark
+ *   --brand-logo-trim     inset that crops a transparent/empty margin around a
+ *                         logo so it sits flush (0 for the pigify medallion,
+ *                         which is already edge-to-edge)
+ *   --brand-logo-tint     optional filter to recolour the logo toward the
+ *                         active theme; opacity(1) is the identity (off)
+ */
+:root {
+  --brand-logo-scale: 1.25;
+  --brand-logo-shift-y: 0.1em;
+  --brand-logo-shift-x: -0.28em;
+  --brand-logo-gap: 0.2em;
+  --brand-logo-trim: 0em;
+  --brand-logo-tint: opacity(1);
+}

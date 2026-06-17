@@ -96,41 +96,46 @@
   background-repeat: no-repeat;
 }
 
-/* Logo + wordmark lockup, side by side. */
+/* Logo + wordmark lockup, side by side. Spacing / nudge come from the
+   owner-level --brand-logo-* knobs (see theme.css › Branding). */
 .console__lockup {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.55rem, 2.4vw, 0.95rem);
+  gap: var(--brand-logo-gap);
   margin-bottom: 1.25rem;
   /* Shared type scale: the wordmark is 1em of this and the logo a touch
      taller, so the two always scale together. */
   font-size: clamp(2.6rem, 12vw, 3.6rem);
-  /* Optical-balance nudge: geometrically centred, the lockup reads slightly
-     right-heavy, so shift it left ~half a letter. */
-  transform: translateX(-0.28em);
+  /* Optical-balance nudge (the lockup reads slightly right-heavy geometrically
+     centred); --brand-logo-shift-x is the knob. */
+  transform: translateX(var(--brand-logo-shift-x));
 }
 
-/* The brand logo — the original blue pig medallion (transparent, trimmed),
-   with a soft electric-blue halo that turns red on error. Height is just
-   over the wordmark's full glyph height (ascender-to-descender ~= 1em), so
-   it overhangs the text a little at top and bottom; nudge to taste. */
+/* The brand logo — the pig medallion — with a soft electric-blue halo that
+   turns red on error. Size / vertical nudge / optional theme tint are the
+   --brand-logo-* knobs; the height multiplies the wordmark's font size so the
+   two scale together. */
 .console__logo {
   flex: none;
-  height: 1.25em;
+  height: calc(var(--brand-logo-scale) * 1em);
   width: auto;
+  /* Crop a transparent/empty margin (knob; 0 for the edge-to-edge pigify
+     logo) so the artwork sits flush against the wordmark. */
+  margin: calc(-1 * var(--brand-logo-trim));
   /* The medallion sits in the upper part of the artwork — the beard hangs
-     below the circle — so the image's geometric centre is below the
-     circle's. Nudge the logo down so the *circle* (not the whole image)
-     centres on the wordmark; the beard then hangs below the text. */
-  transform: translateY(0.1em);
-  filter: drop-shadow(0 10px 22px rgba(var(--brand-shadow-rgb), 0.6))
+     below the circle — so nudge the logo down (--brand-logo-shift-y) to centre
+     the *circle*, not the whole image, on the wordmark. */
+  transform: translateY(var(--brand-logo-shift-y));
+  filter: var(--brand-logo-tint)
+    drop-shadow(0 10px 22px rgba(var(--brand-shadow-rgb), 0.6))
     drop-shadow(0 0 18px rgba(var(--brand-accent-rgb), 0.32));
   transition: filter 0.3s ease;
 }
 
 .console__logo.is-error {
-  filter: drop-shadow(0 10px 22px rgba(var(--brand-shadow-rgb), 0.6))
+  filter: var(--brand-logo-tint)
+    drop-shadow(0 10px 22px rgba(var(--brand-shadow-rgb), 0.6))
     drop-shadow(0 0 20px rgba(var(--brand-red-rgb), 0.5));
 }
 

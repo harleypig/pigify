@@ -70,3 +70,38 @@ describe("theme contract parity", () => {
     expect([...dark].sort()).toEqual([...light].sort());
   });
 });
+
+// Branding logo knobs: owner-level, theme-independent geometry defined in
+// theme.css (not the per-theme files). Guards against a knob being dropped or
+// a lockup silently reverting to a hard-coded value.
+describe("brand logo knobs", () => {
+  const read = (path: string): string =>
+    readFileSync(new URL(path, import.meta.url), "utf-8");
+
+  const KNOBS = [
+    "--brand-logo-scale",
+    "--brand-logo-shift-y",
+    "--brand-logo-shift-x",
+    "--brand-logo-gap",
+    "--brand-logo-trim",
+    "--brand-logo-tint",
+  ];
+
+  it("theme.css defines every logo knob with a default", () => {
+    const css = read("../theme.css");
+    for (const knob of KNOBS) {
+      expect(css).toMatch(new RegExp(`${knob}\\s*:\\s*\\S`));
+    }
+  });
+
+  it("both lockups consume the knobs rather than hard-coding geometry", () => {
+    const login = read("../components/Login.css");
+    const shell = read("../App.css");
+    for (const css of [login, shell]) {
+      expect(css).toContain("var(--brand-logo-scale)");
+      expect(css).toContain("var(--brand-logo-gap)");
+      expect(css).toContain("var(--brand-logo-shift-y)");
+      expect(css).toContain("var(--brand-logo-tint)");
+    }
+  });
+});
