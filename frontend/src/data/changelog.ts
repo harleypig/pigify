@@ -14,6 +14,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Version test asserts the resolver, not app.version.",
+      "Capture Increment-2 owner-surface design.",
+      "Configurable logo knobs + fill the header lockup.",
+      "Capture horizontally-resizable panels as a standard.",
       "Dogfood the Docker stack at the end of each change.",
       "Security hardening: tighten CSP + uniform file-or-env config sourcing.",
       "Declare the subdir tagging method.",
@@ -35,11 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
       "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
       "Track list & Track Info: day-glo rollout + interaction/feature work.",
-      "Clarify the not-authorized message.",
-      "Derive host URLs from FRONTEND_PORT / BACKEND_PORT.",
-      "Use loopback IP 127.0.0.1 instead of localhost everywhere.",
-      "Derive URLs from ports in .env.example; capture scratch as TODOs.",
-      "…and 156 earlier changes."
+      "…and 160 earlier changes."
     ]
   },
   {

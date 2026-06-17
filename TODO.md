@@ -24,15 +24,6 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       logo re-branding (the configurable logo knobs below) and document a
       deployer "bring your own brand" flow (a custom theme file + assets) so
       colours / fonts / logo swap without code edits.
-- [ ] **Per-brand logo adjustments (learned from the login redesign).**
-      Swapping a logo needs more than a file path. Fitting the pig medallion
-      into the login required per-asset tweaks that branding must expose as
-      **configurable knobs** rather than hard-coded CSS: a vertical offset to
-      centre the artwork's *visual* anchor (its circle) instead of its
-      bounding box, a small horizontal optical-balance nudge, alpha-trimming
-      of the transparent margin, sizing relative to adjacent text, and an
-      optional recolour/tint to the active theme. Bake these into the
-      branding config so each brand's logo can be aligned without code edits.
 - [ ] **Owner-surface theming + brand-mark config (Increment 2).** Decisions
       are captured in [`docs/branding-design.md`](docs/branding-design.md): a
       working-area-vs-owner-surface theme split (the user's theme never bleeds
