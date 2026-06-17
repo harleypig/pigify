@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "3-level theme system with dark + light themes.",
       "Opt in to the merge-finalization hook.",
       "Prune completed items merged in #63–#66.",
       "Attribute Spotify in the UI + document retention posture.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Request streaming + user-read-email scopes for Web Playback SDK.",
       "Provide Spotify client ID via a secret file.",
       "Add frontend design rollout section.",
-      "Carry the day-glo console brand into the sidebar rack.",
-      "…and 151 earlier changes."
+      "…and 152 earlier changes."
     ]
   },
   {

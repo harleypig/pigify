@@ -27,10 +27,8 @@
   --brand-code-number: #f78c6c;
   --brand-code-bool: #c792ea;
   --brand-code-null: #ff5a6e;
-  --brand-font-display:
-    "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
-  --brand-font-mono:
-    "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --brand-font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --brand-font-mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --brand-radius: 16px;
   --brand-radius-sm: 9px;
 }

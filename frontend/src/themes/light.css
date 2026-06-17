@@ -1,24 +1,24 @@
 /* GENERATED from light.theme.yaml by scripts/generate-themes.mjs — do not edit by hand. */
 /* Theme: Light */
 [data-theme="light"] {
-  --brand-bg: #eef1f8;
+  --brand-bg: #e7ecf6;
   --brand-surface: #ffffff;
-  --brand-surface-deep: #e4e9f4;
+  --brand-surface-deep: #dce3f1;
   --brand-surface-raised: #ffffff;
-  --brand-navy: #dde4f3;
-  --brand-edge: #c3cfe6;
-  --brand-line: rgba(20, 27, 58, 0.12);
-  --brand-hover: rgba(20, 27, 58, 0.05);
-  --brand-ink: #16203a;
-  --brand-ink-dim: #5d6b86;
-  --brand-ink-bright: #0b1834;
-  --brand-accent: #2f6bff;
-  --brand-accent-bright: #558cff;
-  --brand-accent-rgb: 47, 107, 255;
-  --brand-red: #dc1f3a;
-  --brand-red-bright: #ff4259;
-  --brand-red-rgb: 220, 31, 58;
-  --brand-shadow-rgb: 30, 41, 73;
+  --brand-navy: #e4eaf7;
+  --brand-edge: #bccbe6;
+  --brand-line: rgba(20, 27, 58, 0.1);
+  --brand-hover: rgba(20, 27, 58, 0.045);
+  --brand-ink: #141d38;
+  --brand-ink-dim: #586882;
+  --brand-ink-bright: #0a1633;
+  --brand-accent: #2861ff;
+  --brand-accent-bright: #5a84ff;
+  --brand-accent-rgb: 40, 97, 255;
+  --brand-red: #e01433;
+  --brand-red-bright: #ff3a55;
+  --brand-red-rgb: 224, 20, 51;
+  --brand-shadow-rgb: 100, 116, 148;
   --brand-overlay-rgb: 20, 27, 58;
   --brand-on-accent: #ffffff;
   --brand-code-key: #2f5bd0;
@@ -26,10 +26,8 @@
   --brand-code-number: #c2410c;
   --brand-code-bool: #7c3aed;
   --brand-code-null: #be123c;
-  --brand-font-display:
-    "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
-  --brand-font-mono:
-    "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --brand-font-display: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
+  --brand-font-mono: "Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --brand-radius: 16px;
   --brand-radius-sm: 9px;
 }
