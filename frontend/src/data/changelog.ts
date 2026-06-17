@@ -14,6 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Keep the flaky-CI bug open across iterations.",
+      "Re-open flaky CI hang (recurred despite PR #77 fix).",
       "Owner-surface theme + ephemeral login toggle.",
       "Dispose async engines in teardown to end flaky CI hang.",
       "Single-job release resolving the target from the tag.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Spotify audit: scopes, rate limiting, Feb-2026 endpoint migrations + decisions.",
       "Fix .claude version drift and the stale Biome claim.",
       "Silent Spotify token refresh to keep sessions alive.",
-      "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
-      "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
-      "…and 161 earlier changes."
+      "…and 163 earlier changes."
     ]
   },
   {
