@@ -146,6 +146,16 @@ authored on the brand from the start.
       panel's horizontal layout then. (Vertical spacing is handled as we go,
       not here.)
 
+## Layout & interaction
+
+- [ ] **Make every panel horizontally resizable.** Today the playlist panel
+      is the only resizable surface; nothing in the top bar resizes. Establish
+      horizontal resizing as a **standard panel capability** so any panel —
+      the existing ones and any added later — can be widened/narrowed by the
+      user (persisted, like the other layout prefs). New panels should adopt
+      the shared resize affordance by default rather than each re-implementing
+      it.
+
 ## Track info panel
 
 - [ ] **Font-size control + default.** Shipped: **A− / A+** buttons in the
