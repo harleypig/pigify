@@ -96,6 +96,16 @@ class IsolatedDBTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             engine.dispose()
 
+    async def asyncTearDown(self) -> None:
+        # Dispose the async engines on THIS test's event loop, before it
+        # closes. reset_db_caches() (in tearDown) only drops the references —
+        # it's sync and can't await dispose() — which orphans each aiosqlite
+        # connection's background worker thread. When the loop then closes,
+        # that thread's callback lands on a closed loop ("Event loop is
+        # closed"), and occasionally deadlocks interpreter shutdown — the flaky
+        # CI hang (see TODO.md > Bugs). Disposing here joins the threads first.
+        await db_engines.dispose_all()
+
     def tearDown(self) -> None:
         reset_db_caches()
         settings.DATA_DIR = self._old_data_dir

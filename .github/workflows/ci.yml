@@ -34,6 +34,10 @@ jobs:
     name: Pre-commit checks
     if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
+    # Backstop the flaky aiosqlite-teardown hang (TODO.md > Bugs): a healthy
+    # run is ~2 min, so 10 fails a wedged run fast instead of letting it hang
+    # to the 360-min default. The root-cause fix is in tests/_helpers.py.
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
