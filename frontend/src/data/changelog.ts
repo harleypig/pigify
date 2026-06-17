@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Single-job release resolving the target from the tag.",
       "Capture flaky CI pre-commit (3.12) hang.",
       "Configurable brand-logo knobs + fill the header lockup.",
       "Dogfood the Docker stack at the end of each change.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
       "Track list & Track Info: day-glo rollout + interaction/feature work.",
       "Clarify the not-authorized message.",
-      "Derive host URLs from FRONTEND_PORT / BACKEND_PORT.",
-      "…and 158 earlier changes."
+      "…and 159 earlier changes."
     ]
   },
   {
