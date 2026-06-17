@@ -73,6 +73,35 @@
   isolation: isolate;
 }
 
+/* Ephemeral light/dark toggle — top-right corner of the card, just inside the
+   bezel ring. Owner surface only; flips the theme for readability and never
+   persists (see lib/ownerTheme). */
+.owner-theme-toggle {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--brand-radius-sm);
+  background: transparent;
+  color: var(--brand-ink-dim);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.owner-theme-toggle:hover {
+  background: rgba(var(--brand-accent-rgb), 0.12);
+  color: var(--brand-accent-bright);
+}
+
 /* Inset bezel ring with four corner "screws". */
 .console__bezel {
   position: absolute;

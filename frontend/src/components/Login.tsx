@@ -1,6 +1,8 @@
 import { useState } from "react";
 import logoUrl from "../assets/pigify-logo.png";
+import { flipTheme, resolveOwnerDefault } from "../lib/ownerTheme";
 import { authMessageFromSearch } from "./Login.helpers";
+import { OwnerThemeToggle } from "./OwnerThemeToggle";
 import "./Login.css";
 
 interface LoginProps {
@@ -15,6 +17,10 @@ function Login({ onLogin }: LoginProps) {
   const urlError = authMessageFromSearch(window.location.search);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  // Owner-surface theme: starts from the owner default each mount and is
+  // never persisted (ephemeral). Scoped to the .login subtree below via
+  // data-theme, so it's independent of the user's pigify.theme.
+  const [ownerTheme, setOwnerTheme] = useState(resolveOwnerDefault);
 
   // A failed sign-in attempt (e.g. the backend is unreachable) takes
   // precedence over a redirect-driven error from the URL.
@@ -38,11 +44,16 @@ function Login({ onLogin }: LoginProps) {
   };
 
   return (
-    <div className="login">
+    <div className="login" data-theme={ownerTheme}>
       <div className="login__veil" aria-hidden="true" />
 
       <main className="console" aria-labelledby="console-wordmark">
         <div className="console__bezel" aria-hidden="true" />
+
+        <OwnerThemeToggle
+          theme={ownerTheme}
+          onToggle={() => setOwnerTheme(flipTheme)}
+        />
 
         <div className="console__lockup">
           <img

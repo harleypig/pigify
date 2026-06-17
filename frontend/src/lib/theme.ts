@@ -56,7 +56,7 @@ export function resolveTheme(
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
-function prefersDark(): boolean {
+export function prefersDark(): boolean {
   return (
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&

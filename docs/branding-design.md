@@ -1,10 +1,17 @@
 # Branding & system-page theming — design note
 
-**Status:** design, in progress — *Increment 2* of the branding work.
-Increment 1 (the per-logo alignment knobs) has shipped; see
-[`THEMING.md` › Branding the logo](THEMING.md). This note captures the
-decisions taken so the design isn't re-litigated, and flags the one open
-question to resolve before building.
+**Status:** partly shipped — *Increment 2* of the branding work.
+Increment 1 (the per-logo alignment knobs) shipped; see
+[`THEMING.md` › Branding the logo](THEMING.md). **The owner-surface theme
+scope + ephemeral toggle (section 1) are now shipped** for the login surface
+(the only system surface that exists today): the login renders under an
+owner-controlled theme via `data-theme` scoped to the `.login` subtree,
+independent of `pigify.theme`, with a top-right light/dark toggle. The owner
+default is the build-time constant `OWNER_THEME_DEFAULT` in
+`frontend/src/lib/ownerTheme.ts` (provisioning resolved to **build-time now**;
+see below). **Still open:** the brand-mark mode/layout config (section 3) and
+its provisioning — to be decided when built. This note keeps the decisions so
+they aren't re-litigated.
 
 ## Why this exists
 
@@ -71,9 +78,14 @@ surface.
 - **System-theme default:** `system | dark | light` (default `system`).
 - The **logo alignment knobs** (already CSS custom properties).
 
-## OPEN — provisioning model (decide before building)
+## Provisioning model
 
-How does the owner *supply* the above without forking the app?
+**Resolved for the system-theme default (shipped):** build-time —
+`OWNER_THEME_DEFAULT` is a typed constant in `lib/ownerTheme.ts` the deployer
+edits + rebuilds. This is the "build-time now, runtime later" option below; a
+runtime-injected value can replace the constant later without touching
+callers. **Still open for the brand mark** (mode/layout/wordmark/image) —
+decide when section 3 is built. The options below stand for that decision:
 
 - **Build-time config module** — a typed `brand.ts` (mode/layout/wordmark +
   image `import`) the owner edits, then rebuilds the image. Simplest,
@@ -91,9 +103,11 @@ How does the owner *supply* the above without forking the app?
 
 ## Implementation seams (for when it's built)
 
-- **Theme state:** working area uses `pigify.theme`; the owner surface uses a
-  separate **ephemeral** state seeded from the owner default. Which one drives
-  `data-theme` on `<html>` is chosen by surface/route context.
+- **Theme state (shipped):** working area uses `pigify.theme` on `<html>`; the
+  owner surface uses a separate **ephemeral** React state seeded from the
+  owner default and applied by scoping `data-theme` to the **`.login`
+  subtree** (not `<html>`), so the two never interact and there's no flash.
+  Future system pages reuse `lib/ownerTheme` + `OwnerThemeToggle` likewise.
 - **`<Brand>` component:** replaces the duplicated lockup in `Login.tsx` /
   `App.tsx` (already copy #2 of the same markup), driven by the brand config;
   renders the chosen mode/layout and consumes the alignment knobs.
