@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Dispose async engines in teardown to end flaky CI hang.",
       "Single-job release resolving the target from the tag.",
       "Capture flaky CI pre-commit (3.12) hang.",
       "Configurable brand-logo knobs + fill the header lockup.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
       "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
       "Track list & Track Info: day-glo rollout + interaction/feature work.",
-      "Clarify the not-authorized message.",
-      "…and 159 earlier changes."
+      "…and 160 earlier changes."
     ]
   },
   {
