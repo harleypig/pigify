@@ -31,7 +31,7 @@ from app.db.base import UserBase
 from app.db.models import user as _user_models  # noqa: F401  (register tables)
 from app.models.playlist import Track
 from app.services.recipes import ResolveResult
-from tests._helpers import spotify_http_error
+from tests._helpers import disposal_lifespan, entered_client, spotify_http_error
 
 SPOTIFY_ID = "testuser"
 
@@ -53,7 +53,7 @@ def _make_recipe(name: str = "My Recipe", source: str = "liked") -> dict[str, An
 
 
 def _build_test_app() -> FastAPI:
-    app = FastAPI()
+    app = FastAPI(lifespan=disposal_lifespan)
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(recipes_mod.router, prefix="/api/recipes")
     # Same centralised upstream-error handling as the real app (401 dead-token
@@ -107,7 +107,7 @@ class RecipesApiTest(unittest.TestCase):
         db_engines._user_engines.clear()
         # raise_server_exceptions=False so an uncaught error surfaces as the
         # 500 *response* Starlette produces in production, not a re-raise.
-        client = TestClient(self.app, raise_server_exceptions=False)
+        client = entered_client(self, self.app, raise_server_exceptions=False)
         if authenticated:
             r = client.post(
                 "/__test__/session",

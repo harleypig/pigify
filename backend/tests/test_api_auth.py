@@ -30,10 +30,11 @@ from app.db import paths as db_paths
 from app.db.base import SystemBase
 from app.db.models import system as _system_models  # noqa: F401  (register)
 from app.models.playlist import User
+from tests._helpers import disposal_lifespan, entered_client
 
 
 def _build_test_app() -> FastAPI:
-    app = FastAPI()
+    app = FastAPI(lifespan=disposal_lifespan)
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(auth_mod.router, prefix="/api/auth")
     app.include_router(auth_mod.me_router, prefix="/api/me")
@@ -72,7 +73,7 @@ class AuthApiTest(unittest.TestCase):
 
     def _client(self) -> TestClient:
         db_engines._user_engines.clear()
-        return TestClient(self.app)
+        return entered_client(self, self.app)
 
     # ----- login redirect -------------------------------------------------
 

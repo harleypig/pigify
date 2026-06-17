@@ -29,6 +29,7 @@ from app.db.base import UserBase
 from app.db.models import user as _user_models  # noqa: F401  (register tables)
 from app.services.connections import ConnectionStatus
 from app.services.lastfm import LastFMError
+from tests._helpers import disposal_lifespan, entered_client
 
 SPOTIFY_ID = "testuser"
 
@@ -43,7 +44,7 @@ def _conn(tier: str, account: str | None = None) -> ConnectionStatus:
 
 
 def _build_test_app() -> FastAPI:
-    app = FastAPI()
+    app = FastAPI(lifespan=disposal_lifespan)
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(integ_mod.router, prefix="/api/integrations")
 
@@ -81,7 +82,7 @@ class IntegrationsApiTest(unittest.TestCase):
 
     def _client(self, *, authenticated: bool = True) -> TestClient:
         db_engines._user_engines.clear()
-        client = TestClient(self.app)
+        client = entered_client(self, self.app)
         if authenticated:
             r = client.post("/__test__/session", json={"spotify_user_id": SPOTIFY_ID})
             self.assertEqual(r.status_code, 200, r.text)

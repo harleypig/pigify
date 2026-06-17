@@ -20,10 +20,25 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       during requests bind to TestClient's own portal loop — which
       `asyncTearDown` (running on a different loop) does not dispose. Those
       orphaned aiosqlite worker threads are the likely remaining source.
-      **Next step:** make the non-`with` `TestClient` tests dispose — convert
-      them to `with TestClient(app) as client:` (triggers lifespan →
-      `db_dispose_all`), or a shared portal-loop teardown that disposes the
-      engines. Audit: `grep -rn 'TestClient(' backend/tests | grep -v 'with '`.
+      **Progress (iteration 2):** addressed that portal-loop source — added a
+      `disposal_lifespan` + `entered_client` helper (`tests/_helpers.py`) and
+      applied them to the 8 DB-backed sync-`TestClient` files (playlists,
+      favorites, recipes, saved_sorts, recipes_persistence, integrations,
+      demo, auth) so each disposes its async engine on the portal loop that
+      created it. Verified: those files emit **0** "Event loop is closed"
+      in isolation (down from several). **Rejected approach:** forcing
+      `NullPool` on test engines (a one-line central fix) broke the auth
+      callback's per-user DB init — its sync `raw_connection()` bridge depends
+      on normal pooling — so pooling was left unchanged. **Still not proven
+      fixed:** ~4 warnings persist in the *full* run but **only when many
+      files run together** (each group shows 0 in isolation), so the remainder
+      is an emergent GC/shutdown-timing interaction, not a single pinpointable
+      leak — consistent with the hang's intermittence. **Next step:** watch
+      whether 3.12 still wedges on CI now; if it recurs, bisect the full-run
+      combination (the warning only appears in aggregate) and look at the
+      remaining `TestClient` users (player/dev_bypass/auth_session) and the
+      `IsolatedDBTestCase` repo tests. Audit:
+      `grep -rn 'TestClient(' backend/tests | grep -v 'with '`.
       **Keep this open across several iterations.** Each time the hang recurs,
       re-analyze the code at that point (the source may shift as tests change)
       and record the finding here; only close it once it has gone quiet for a

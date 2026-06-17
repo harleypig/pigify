@@ -21,10 +21,14 @@ from __future__ import annotations
 import shutil
 import tempfile
 import unittest
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
+from fastapi import FastAPI
 from sqlalchemy import create_engine
+from starlette.testclient import TestClient
 
 from app.config import settings
 from app.db import engines as db_engines
@@ -42,6 +46,42 @@ def reset_db_caches() -> None:
     from app.db import session as db_session
 
     db_session._system_factory = None
+
+
+@asynccontextmanager
+async def disposal_lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """A lifespan whose only job is to dispose async engines on shutdown.
+
+    The DB-backed test apps build a minimal `FastAPI()` without the real app
+    lifespan (no migrations needed — tests create schemas via sync engines).
+    But a sync `TestClient` runs the app on its own portal event loop, and any
+    async engine created during a request is pinned to that loop; if it isn't
+    disposed, its aiosqlite worker thread is orphaned when the loop closes
+    ("Event loop is closed", and an occasional teardown hang — TODO.md > Bugs).
+    Attaching this lifespan and entering the client (`with TestClient(app)` /
+    `entered_client`) runs the disposal on that same portal loop, joining the
+    worker threads. Pooling is otherwise unchanged.
+    """
+    yield
+
+    await db_engines.dispose_all()
+
+
+def entered_client(
+    testcase: unittest.TestCase, app: FastAPI, **kwargs: Any
+) -> TestClient:
+    """A `TestClient` entered as a context manager, with exit auto-registered.
+
+    For sync `unittest.TestCase` tests that hold the client across several
+    statements (so wrapping the whole body in `with` would be a churny
+    re-indent): this enters the client now — running startup — and registers
+    its exit via `addCleanup`, so the `disposal_lifespan` shutdown fires on the
+    portal loop at teardown. Use with an app built with `lifespan=disposal_lifespan`.
+    """
+    client = TestClient(app, **kwargs)
+    client.__enter__()
+    testcase.addCleanup(client.__exit__, None, None, None)
+    return client
 
 
 def _sync(url: str) -> str:

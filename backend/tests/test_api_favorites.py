@@ -23,10 +23,11 @@ from app.models.favorites import (
     ServiceResult,
     WriteThroughResult,
 )
+from tests._helpers import disposal_lifespan, entered_client
 
 
 def _build_test_app() -> FastAPI:
-    app = FastAPI()
+    app = FastAPI(lifespan=disposal_lifespan)
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(fav_mod.router, prefix="/api/favorites")
 
@@ -65,7 +66,7 @@ class FavoritesApiTest(unittest.TestCase):
         self.app = _build_test_app()
 
     def _client(self, *, authenticated: bool = True) -> TestClient:
-        client = TestClient(self.app)
+        client = entered_client(self, self.app)
         if authenticated:
             r = client.post("/__test__/session", json={"access_token": "tok"})
             self.assertEqual(r.status_code, 200, r.text)
