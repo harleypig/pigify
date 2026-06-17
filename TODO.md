@@ -5,22 +5,7 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Bugs
 
-- [x] **Centralise Spotify-`401` → `401` across the API.** Done: one
-      app-wide `httpx.HTTPStatusError` handler
-      (`backend/app/api/errors.py`, wired in `main.py`) translates an upstream
-      `401` to a clean `401` + `clear_session`, and any other upstream status
-      to `502`. Dropped the 14 blanket-`500` try/except wrappers in
-      `playlists.py` (6) and `player.py` (8) so the upstream error reaches the
-      handler; a dead token mid-use now logs the user out instead of tripping
-      the login screen's "backend down" probe. Regression tests in
-      `test_api_player.py` / `test_api_playlists.py` (401 → 401, non-401 →
-      502). Extended to the remaining routers: `recipes.py` had 2 blanket-500
-      wrappers around playback (dropped, + a 401 regression test);
-      `favorites.py` and `integrations.py` were already compliant — their
-      Spotify calls propagate to the global handler, and their only `except`
-      blocks are deliberate best-effort degradation (the loved-state bulk
-      check, the queue spillover) or specific `LastFMError → 502`, not the
-      blanket-500 anti-pattern.
+*No open bugs.*
 
 ## Spotify audit (2026-06-12)
 
@@ -35,42 +20,8 @@ Code, secret server-side — PKCE not required for a confidential backend),
 proactive token refresh, 429 handling, the `/me/library` writes/contains,
 relinking (ADR-0002), batch caps, and the SDK prerequisites (`streaming`
 scope, HTTPS, CSP/Permissions-Policy delegating autoplay + encrypted-media)
-all re-verified clean. Resolved the saved-tracks-read question (stays on
-`/me/tracks`) and shipped Premium gating; the watch items and compliance
-(attribution/caching) remain open below.
-
-- [x] **Migrate `GET /me/tracks` (the saved-tracks read)? — No.** Verified
-      against Spotify's Feb-2026 migration guide (Context7, 2026-06-17): the
-      unified `/me/library*` change replaced only the per-type
-      **save/remove/follow + `contains`** endpoints (already migrated here),
-      **not** the paginated list reads. `GET /me/tracks` ("Get User's Saved
-      Tracks") remains current and non-deprecated, and there is no
-      `GET /me/library` read that returns saved items. `get_saved_tracks`
-      correctly stays on `/me/tracks` — decision recorded in its docstring.
-      *rules/spotify.md › Endpoints.*
-
-### Info (verify manually)
-
-- [x] **(Info) Premium gating.** Done: the SDK wrapper's `account_error`
-      now invokes an `onAccountError` callback; `NowPlayingBar` flips a
-      `premiumRequired` flag and the "Play on" device popup shows
-      "In-browser playback needs Spotify Premium." — explaining why "this
-      browser" isn't a device option, instead of a silent no-op.
-      *rules/spotify.md › Web Playback SDK.*
-- [x] **(Info) Compliance — caching & attribution.** Done. **Retention
-      (verified 2026-06-17):** the original premise was imprecise — pigify
-      persists **no** Spotify catalogue metadata. Track names/artists/albums
-      and playlist items are fetched **live** per request; the per-user DB
-      holds only pigify-derived data (`TrackStat` play/skip counts keyed by
-      track *id*, `SavedSort`/`SavedFilter`, a transient scrobble queue,
-      connection creds). The enrichment cache is **third-party** data
-      (Last.fm/MusicBrainz/Wikipedia), TTL-bounded with a daily purge — not
-      Spotify. **Attribution:** added "Powered by Spotify" on the login
-      screen (Spotify's sanctioned text form) and a "Powered by Spotify" card
-      in Settings › About (source + unaffiliated-third-party disclaimer);
-      rows already link to `open.spotify.com`. Posture documented in
-      `.claude/CONVENTIONS.md › Spotify › Compliance`. *rules/spotify.md ›
-      Compliance.*
+re-verified clean. The only open items are the two deprecated-endpoint watch
+items below.
 
 ### Watch — re-evaluate each `/spotify-audit` run
 
@@ -112,23 +63,6 @@ un-deprecated them, or an open alternative's status changed; then update the
       compose) should also be settable directly in `.env`. Extend the
       `read_secret_file` / `_load_secret_files` mechanism in
       `backend/app/config.py` to cover them.
-
-## Build, release & infra
-
-- [x] **Version tagging.** Done: **per-component semver streams** tagged
-      `backend/vX.Y.Z` / `frontend/vX.Y.Z` (the user's choice over
-      single-stream). The version comes from the latest stream tag via
-      `git describe`, not a committed file — `APP_VERSION` env (CI) wins,
-      then `git describe --match 'backend/v*'` / `'frontend/v*'`, then the
-      `version` field as a dev-only fallback (`backend/app/api/version.py`,
-      `frontend/vite.config.ts`; the `version=` in `main.py` / `pyproject.toml`
-      / `package.json` are marked dev-fallback-only). The build hash is
-      per-component (`git log -1 --format=%h -- backend` / `-- frontend`) via
-      `GIT_HASH`. CI triggers on `backend/v*` + `frontend/v*` and the
-      `release` job builds + pushes only the matching image (non-matching
-      matrix leg = green no-op). Documented in `.claude/CONVENTIONS.md`
-      "Versioning"; regression tests in `backend/tests/test_api_version.py`.
-      The About card (Settings › About) now shows the real version + hash.
 
 ## Theming & branding
 
@@ -262,57 +196,12 @@ authored on the brand from the start.
 
 ## Track info panel
 
-- [x] **Make the Track Info panel float / draggable.** Done: the panel is a
-      floating window — drag the header to move it anywhere, drag the
-      bottom-right grip to resize, both clamped on-screen and persisted
-      (`pigify.trackInfoPanel.pos` / `.size`).
-- [x] **Persist open/closed state; drop the minimize-to-icon.** Done: the
-      `collapsed` minimize-to-icon state is gone — the × button closes the
-      panel (it un-mounts; reopen from the now-playing ⓘ or by clicking a
-      track), and open/closed persists across sessions
-      (`pigify.trackInfoPanel.open`).
-- [x] **Resize from any edge or corner.** Done: invisible grab handles on all
-      four edges (single-direction) and four corners (diagonal); top/left
-      handles move the anchor while the opposite edge stays put, so position
-      and size update together, clamped on-screen and persisted. The body
-      gained a thin accent scrollbar so it coexists with the right-edge
-      handle.
-- [x] **Info icon on track rows.** Done: a dim ⓘ button sits in each row's
-      trailing gutter (under the column chooser), brightening on hover; it
-      opens the Track Info panel for that row (`onTrackFocus`) without
-      playing. The right-click-the-name shortcut still works.
-- [x] **Share to social media.** Done: the Share button opens a popover with
-      per-service **intent / share URLs** (X, Facebook, Reddit, WhatsApp,
-      Telegram, Bluesky, Email), the **Web Share API** ("Device…", when
-      available), and **Copy link** — all auth-free, no server-side posting
-      (`SHARE_TARGETS` in the tested helpers). Mastodon is omitted (no
-      instance-agnostic share URL).
 - [ ] **Font-size control + default.** Shipped: **A− / A+** buttons in the
       track-info panel header scale the body text (CSS `zoom` driven by
       `--tip-scale`, clamped 0.8–1.6), persisted
       (`pigify.trackInfoPanel.fontScale`); the header chrome stays fixed.
       **Remaining:** a default-size setting in Settings (the settings pass)
       that seeds the initial scale.
-- [x] **Wikipedia link resolution + album/band links.** Done: the song-article
-      resolver falls back through looser queries — song → album+song →
-      artist/band (`resolve_song_article`, with the album now passed through)
-      — so a non-obvious title still resolves. The panel adds **Band on
-      Wikipedia** and **Album on Wikipedia** search links (links only, no
-      content download), and the **+ expander only shows when an article
-      exists** (otherwise just the search link).
-- [x] **Grokipedia support (free search).** Done: a Grokipedia block in the
-      panel with a blurb and a free **search** link
-      (`https://grokipedia.com/search?q=…`). Verified: Grokipedia has **no
-      free API** — programmatic content needs a paid Grok / xAI account — so
-      we link its free search rather than fold it in as a data provider. The
-      paid
-      API path is its own item (see *Provider API rules & skills › Grok*).
-- [x] **Songfacts.com link.** Done: a Songfacts block in the Track Info panel
-      with a short blurb (no free/open API → links, not inline facts) and two
-      **search** links — by song and by artist. Songfacts' native search is
-      path-based (`/search/songs/<slug>`, `/search/artists/<slug>`; a `?q=`
-      param does **not** work — verified), so we link the search rather than
-      resolve a direct article. (A *paid* API exists — see the contact item.)
 - [ ] **Contact Songfacts about API access.** Songfacts *does* have an API
       (<https://www.songfacts.com/blog/pages/songfacts-api>), but it's
       "contact us for pricing" — likely too costly here. Ask anyway: email
