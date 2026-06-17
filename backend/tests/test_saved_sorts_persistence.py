@@ -42,6 +42,7 @@ from app.db import engines as db_engines
 from app.db import paths as db_paths
 from app.db.base import UserBase
 from app.db.models import user as _user_models  # noqa: F401  (register tables)
+from tests._helpers import disposal_lifespan, entered_client
 
 SPOTIFY_ID = "testuser"
 
@@ -60,7 +61,7 @@ def _build_test_app() -> FastAPI:
     """Mount the playlists router behind SessionMiddleware plus a tiny
     helper route that lets tests prime ``request.session`` (since the
     real auth flow goes through Spotify OAuth)."""
-    app = FastAPI()
+    app = FastAPI(lifespan=disposal_lifespan)
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(playlists_api.router, prefix="/api/playlists")
 
@@ -124,7 +125,7 @@ class SavedSortsPersistenceTests(unittest.TestCase):
         # Each TestClient runs its own event loop, so we must clear the
         # async-engine cache before each one to avoid binding errors.
         db_engines._user_engines.clear()
-        client = TestClient(self.app)
+        client = entered_client(self, self.app)
         if authenticated:
             payload: dict[str, Any] = {"spotify_user_id": SPOTIFY_ID}
             if legacy_presets is not None:

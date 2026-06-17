@@ -8,7 +8,6 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -19,7 +18,7 @@ from app.db import paths as db_paths
 from app.db.base import SystemBase
 from app.db.models import system as _system_models  # noqa: F401  (register)
 from app.db.models.system import Invite
-from tests._helpers import reset_db_caches
+from tests._helpers import disposal_lifespan, entered_client, reset_db_caches
 
 
 class DemoApiTest(unittest.TestCase):
@@ -42,7 +41,7 @@ class DemoApiTest(unittest.TestCase):
         finally:
             engine.dispose()
 
-        app = FastAPI()
+        app = FastAPI(lifespan=disposal_lifespan)
         app.add_middleware(SessionMiddleware, secret_key="test-secret")
         app.include_router(demo_mod.router, prefix="/api/demo")
         self.app = app
@@ -53,7 +52,7 @@ class DemoApiTest(unittest.TestCase):
         shutil.rmtree(self._tmp_dir, ignore_errors=True)
 
     def test_redeem_valid_code_redirects_into_app(self) -> None:
-        client = TestClient(self.app)
+        client = entered_client(self, self.app)
         with patch.object(invites_svc, "provision_user", AsyncMock(return_value=1)):
             resp = client.get("/api/demo/redeem?code=good", follow_redirects=False)
         self.assertIn(resp.status_code, (302, 307))
@@ -61,13 +60,13 @@ class DemoApiTest(unittest.TestCase):
         self.assertNotIn("error=", resp.headers["location"])
 
     def test_redeem_invalid_code_redirects_with_error(self) -> None:
-        client = TestClient(self.app)
+        client = entered_client(self, self.app)
         resp = client.get("/api/demo/redeem?code=nope", follow_redirects=False)
         self.assertIn(resp.status_code, (302, 307))
         self.assertIn("error=demo_invalid", resp.headers["location"])
 
     def test_redeem_used_code_is_rejected(self) -> None:
-        client = TestClient(self.app)
+        client = entered_client(self, self.app)
         with patch.object(invites_svc, "provision_user", AsyncMock(return_value=1)):
             first = client.get("/api/demo/redeem?code=good", follow_redirects=False)
             second = client.get("/api/demo/redeem?code=good", follow_redirects=False)

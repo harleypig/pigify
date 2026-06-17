@@ -21,17 +21,22 @@ from app.api import playlists as playlists_mod
 from app.api.errors import register_error_handlers
 from app.config import settings
 from app.models.playlist import Playlist, Track
-from tests._helpers import reset_db_caches, spotify_http_error
+from tests._helpers import (
+    disposal_lifespan,
+    entered_client,
+    reset_db_caches,
+    spotify_http_error,
+)
 
 
 def _build_db_app() -> FastAPI:
-    """Minimal app mounting only the playlists router (no lifespan).
+    """Minimal app mounting only the playlists router.
 
-    Mirrors ``test_saved_sorts_persistence.py``: avoids the full-app
-    lifespan so the DB-backed preset test doesn't leave an async engine
-    pinned to a closed event loop.
+    Avoids the full-app lifespan (no migrations needed) but keeps the
+    `disposal_lifespan` so the DB-backed preset test's async engine is
+    disposed on the portal loop rather than orphaned (see _helpers).
     """
-    db_app = FastAPI()
+    db_app = FastAPI(lifespan=disposal_lifespan)
     db_app.add_middleware(SessionMiddleware, secret_key="test-secret")
     db_app.include_router(playlists_mod.router, prefix="/api/playlists")
     # Same centralised upstream-error handling as the real app (401 dead-token
@@ -87,7 +92,7 @@ class PlaylistsApiTest(unittest.TestCase):
     def test_get_playlists_requires_auth(self) -> None:
         # No auth bypass: _require_token reads the (empty) session and 401s
         # before any DB/service access, so the minimal app suffices.
-        client = TestClient(_build_db_app())
+        client = entered_client(self, _build_db_app())
         resp = client.get("/api/playlists")
 
         self.assertEqual(resp.status_code, 401)
@@ -278,14 +283,14 @@ class PlaylistsApiTest(unittest.TestCase):
     # ----- sort fields / presets -----------------------------------------
 
     def test_list_sort_fields(self) -> None:
-        client = TestClient(_build_db_app())
+        client = entered_client(self, _build_db_app())
         resp = client.get("/api/playlists/sort/fields")
 
         self.assertEqual(resp.status_code, 200)
         self.assertIn("fields", resp.json())
 
     def test_sort_presets_requires_auth(self) -> None:
-        client = TestClient(_build_db_app())
+        client = entered_client(self, _build_db_app())
         resp = client.get("/api/playlists/sort/presets")
 
         self.assertEqual(resp.status_code, 401)
@@ -317,7 +322,7 @@ class PlaylistsApiTest(unittest.TestCase):
         db_engines._user_engines.clear()
 
         with patch.object(playlists_mod, "_require_spotify_user", lambda r: sid):
-            client = TestClient(_build_db_app())
+            client = entered_client(self, _build_db_app())
 
             empty = client.get("/api/playlists/sort/presets")
             self.assertEqual(empty.status_code, 200)
