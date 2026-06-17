@@ -23,6 +23,7 @@ from sqlalchemy import create_engine
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import recipes as recipes_mod
+from app.api.errors import register_error_handlers
 from app.config import settings
 from app.db import engines as db_engines
 from app.db import paths as db_paths
@@ -30,6 +31,7 @@ from app.db.base import UserBase
 from app.db.models import user as _user_models  # noqa: F401  (register tables)
 from app.models.playlist import Track
 from app.services.recipes import ResolveResult
+from tests._helpers import spotify_http_error
 
 SPOTIFY_ID = "testuser"
 
@@ -54,6 +56,9 @@ def _build_test_app() -> FastAPI:
     app = FastAPI()
     app.add_middleware(SessionMiddleware, secret_key="test-secret")
     app.include_router(recipes_mod.router, prefix="/api/recipes")
+    # Same centralised upstream-error handling as the real app (401 dead-token
+    # path, non-401 -> 502).
+    register_error_handlers(app)
 
     @app.post("/__test__/session")
     async def _set_session(request: Request, payload: dict[str, Any]):
@@ -100,7 +105,9 @@ class RecipesApiTest(unittest.TestCase):
 
     def _client(self, *, authenticated: bool = True) -> TestClient:
         db_engines._user_engines.clear()
-        client = TestClient(self.app)
+        # raise_server_exceptions=False so an uncaught error surfaces as the
+        # 500 *response* Starlette produces in production, not a re-raise.
+        client = TestClient(self.app, raise_server_exceptions=False)
         if authenticated:
             r = client.post(
                 "/__test__/session",
@@ -248,6 +255,24 @@ class RecipesApiTest(unittest.TestCase):
             )
 
         self.assertEqual(resp.status_code, 500)
+
+    def test_play_recipe_spotify_401_returns_401_not_500(self) -> None:
+        # A dead token mid-use: the upstream 401 must surface as a clean 401
+        # (handled centrally), not a blanket 500.
+        client = self._client()
+        recipe_id = client.post("/api/recipes", json=_make_recipe("Dead")).json()["id"]
+
+        instance = MagicMock()
+        instance.play_uris = AsyncMock(side_effect=spotify_http_error(401))
+        cls = MagicMock(return_value=instance)
+
+        with patch.object(recipes_mod, "SpotifyService", cls):
+            resp = client.post(
+                f"/api/recipes/{recipe_id}/play",
+                json={"uris": ["spotify:track:t1"]},
+            )
+
+        self.assertEqual(resp.status_code, 401)
 
 
 if __name__ == "__main__":

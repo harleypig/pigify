@@ -18,9 +18,10 @@ from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import playlists as playlists_mod
+from app.api.errors import register_error_handlers
 from app.config import settings
 from app.models.playlist import Playlist, Track
-from tests._helpers import reset_db_caches
+from tests._helpers import reset_db_caches, spotify_http_error
 
 
 def _build_db_app() -> FastAPI:
@@ -33,6 +34,9 @@ def _build_db_app() -> FastAPI:
     db_app = FastAPI()
     db_app.add_middleware(SessionMiddleware, secret_key="test-secret")
     db_app.include_router(playlists_mod.router, prefix="/api/playlists")
+    # Same centralised upstream-error handling as the real app (401 dead-token
+    # path, non-401 -> 502).
+    register_error_handlers(db_app)
     return db_app
 
 
@@ -98,12 +102,32 @@ class PlaylistsApiTest(unittest.TestCase):
                 playlists_mod, "_require_token", AsyncMock(return_value="tok")
             ),
             patch.object(playlists_mod, "SpotifyService", cls),
-            TestClient(_build_db_app()) as client,
+            # An uncaught error surfaces as the 500 *response* Starlette
+            # produces in production, not a re-raise.
+            TestClient(_build_db_app(), raise_server_exceptions=False) as client,
         ):
             resp = client.get("/api/playlists")
 
         self.assertEqual(resp.status_code, 500)
-        self.assertIn("Failed to get playlists", resp.json()["detail"])
+
+    def test_get_playlists_spotify_401_returns_401_not_500(self) -> None:
+        # A dead token mid-use: the upstream 401 must surface as a clean 401
+        # (handled centrally), not the old blanket 500. Regression for the
+        # "Centralise Spotify-401" bug.
+        cls, _ = _make_spotify(
+            get_user_playlists=AsyncMock(side_effect=spotify_http_error(401))
+        )
+
+        with (
+            patch.object(
+                playlists_mod, "_require_token", AsyncMock(return_value="tok")
+            ),
+            patch.object(playlists_mod, "SpotifyService", cls),
+            TestClient(_build_db_app()) as client,
+        ):
+            resp = client.get("/api/playlists")
+
+        self.assertEqual(resp.status_code, 401)
 
     # ----- single playlist ------------------------------------------------
 
@@ -182,7 +206,7 @@ class PlaylistsApiTest(unittest.TestCase):
                 playlists_mod, "_require_token", AsyncMock(return_value="tok")
             ),
             patch.object(playlists_mod, "SpotifyService", cls),
-            TestClient(_build_db_app()) as client,
+            TestClient(_build_db_app(), raise_server_exceptions=False) as client,
         ):
             resp = client.get("/api/playlists/p1/tracks")
 

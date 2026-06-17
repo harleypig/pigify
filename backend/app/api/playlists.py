@@ -258,23 +258,13 @@ async def delete_sort_preset(request: Request, name: str):
 @router.get("", response_model=list[Playlist])
 async def get_playlists(request: Request, limit: int = 50, offset: int = 0):
     spotify = SpotifyService(await _require_token(request))
-    try:
-        return await spotify.get_user_playlists(limit=limit, offset=offset)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get playlists: {e!s}"
-        ) from e
+    return await spotify.get_user_playlists(limit=limit, offset=offset)
 
 
 @router.get("/{playlist_id}", response_model=Playlist)
 async def get_playlist(request: Request, playlist_id: str):
     spotify = SpotifyService(await _require_token(request))
-    try:
-        return await spotify.get_playlist(playlist_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get playlist: {e!s}"
-        ) from e
+    return await spotify.get_playlist(playlist_id)
 
 
 class PlaylistDetailsUpdate(BaseModel):
@@ -289,14 +279,9 @@ async def update_playlist(
     request: Request, playlist_id: str, body: PlaylistDetailsUpdate
 ):
     spotify = SpotifyService(await _require_token(request))
-    try:
-        await spotify.update_playlist_details(playlist_id, body.name, body.description)
-        # Return the refreshed playlist so the client gets the new values.
-        return await spotify.get_playlist(playlist_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update playlist: {e!s}"
-        ) from e
+    await spotify.update_playlist_details(playlist_id, body.name, body.description)
+    # Return the refreshed playlist so the client gets the new values.
+    return await spotify.get_playlist(playlist_id)
 
 
 # Spotify's queue API takes one URI per call, so enqueuing a whole playlist is
@@ -312,13 +297,8 @@ async def play_playlist(
 ):
     """Start playback of the whole playlist in its native Spotify context."""
     spotify = SpotifyService(await _require_token(request))
-    try:
-        await spotify.play_context(f"spotify:playlist:{playlist_id}", device_id)
-        return {"status": "playing"}
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to start playback: {e!s}"
-        ) from e
+    await spotify.play_context(f"spotify:playlist:{playlist_id}", device_id)
+    return {"status": "playing"}
 
 
 class QueueRequest(BaseModel):
@@ -333,13 +313,8 @@ async def queue_playlist(request: Request, playlist_id: str, body: QueueRequest)
     """Append the given track URIs to the playback queue (capped)."""
     spotify = SpotifyService(await _require_token(request))
     to_queue = body.uris[:QUEUE_CAP]
-    try:
-        for uri in to_queue:
-            await spotify.add_to_queue(uri, body.device_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to queue tracks: {e!s}"
-        ) from e
+    for uri in to_queue:
+        await spotify.add_to_queue(uri, body.device_id)
     return {
         "queued": len(to_queue),
         "total": len(body.uris),
@@ -357,16 +332,9 @@ async def get_playlist_tracks(
 ):
     """Get tracks. With ?all=true, paginates through every track."""
     spotify = SpotifyService(await _require_token(request))
-    try:
-        if all:
-            return await spotify.get_all_playlist_tracks(playlist_id)
-        return await spotify.get_playlist_tracks(
-            playlist_id, limit=limit, offset=offset
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get playlist tracks: {e!s}"
-        ) from e
+    if all:
+        return await spotify.get_all_playlist_tracks(playlist_id)
+    return await spotify.get_playlist_tracks(playlist_id, limit=limit, offset=offset)
 
 
 # ================================ Hydration =================================
