@@ -72,6 +72,25 @@ class TestSecretFileOverride(unittest.TestCase):
         self.assertEqual(s.LASTFM_API_KEY, "file-provided-api-key")
         self.assertEqual(s.LASTFM_SHARED_SECRET, "file-provided-shared-secret")
 
+    def test_allowlist_and_dev_files_override_values(self):
+        # The access allowlist and dev-bypass identity/token are also
+        # file-sourceable (file wins over env).
+        ids_path = self._write_secret("user-a,user-b\n")
+        dev_id_path = self._write_secret("file-dev-id\n")
+        token_path = self._write_secret("file-dev-token\n")
+        s = Settings(
+            _env_file=None,
+            ALLOWED_SPOTIFY_IDS="env-ids",
+            ALLOWED_SPOTIFY_IDS_FILE=ids_path,
+            DEV_SPOTIFY_ID="env-dev-id",
+            DEV_SPOTIFY_ID_FILE=dev_id_path,
+            DEV_SPOTIFY_REFRESH_TOKEN_FILE=token_path,
+        )
+        self.assertEqual(s.ALLOWED_SPOTIFY_IDS, "user-a,user-b")
+        self.assertEqual(s.allowed_spotify_ids, ["user-a", "user-b"])
+        self.assertEqual(s.DEV_SPOTIFY_ID, "file-dev-id")
+        self.assertEqual(s.DEV_SPOTIFY_REFRESH_TOKEN, "file-dev-token")
+
     def test_empty_lastfm_file_leaves_feature_off(self):
         # The optional Last.fm secrets default to an empty placeholder
         # (e.g. /dev/null); an empty file must not enable the feature.

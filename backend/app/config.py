@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     SECRET_KEY_FILE: str = ""
     LASTFM_API_KEY_FILE: str = ""
     LASTFM_SHARED_SECRET_FILE: str = ""
+    # Non-secret config that may also be supplied via a file (file wins),
+    # so deployers can source everything uniformly: the access allowlist and
+    # the dev-bypass identity/token.
+    ALLOWED_SPOTIFY_IDS_FILE: str = ""
+    DEV_SPOTIFY_ID_FILE: str = ""
+    DEV_SPOTIFY_REFRESH_TOKEN_FILE: str = ""
 
     # Last.fm API Configuration (optional)
     # When unset, Last.fm features are hidden entirely (per the graceful
@@ -176,6 +182,9 @@ class Settings(BaseSettings):
             ("SECRET_KEY_FILE", "SECRET_KEY"),
             ("LASTFM_API_KEY_FILE", "LASTFM_API_KEY"),
             ("LASTFM_SHARED_SECRET_FILE", "LASTFM_SHARED_SECRET"),
+            ("ALLOWED_SPOTIFY_IDS_FILE", "ALLOWED_SPOTIFY_IDS"),
+            ("DEV_SPOTIFY_ID_FILE", "DEV_SPOTIFY_ID"),
+            ("DEV_SPOTIFY_REFRESH_TOKEN_FILE", "DEV_SPOTIFY_REFRESH_TOKEN"),
         )
 
         for file_attr, target_attr in file_backed:
