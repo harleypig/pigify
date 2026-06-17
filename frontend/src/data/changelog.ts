@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Owner-surface theme + ephemeral login toggle.",
       "Dispose async engines in teardown to end flaky CI hang.",
       "Single-job release resolving the target from the tag.",
       "Capture flaky CI pre-commit (3.12) hang.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Silent Spotify token refresh to keep sessions alive.",
       "Loved-state relinking fix, session-expiry 401, heart brand, token ADR.",
       "In-browser playback + device popup; logout fix; SDK/CSP fixes.",
-      "Track list & Track Info: day-glo rollout + interaction/feature work.",
-      "…and 160 earlier changes."
+      "…and 161 earlier changes."
     ]
   },
   {
