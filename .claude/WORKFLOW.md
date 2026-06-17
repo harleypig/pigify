@@ -93,6 +93,11 @@ npm run build        # production build
 
 ## Merge-time finalization (docs only, after CI is green)
 
+<!-- merge-finalization: enforce — this repo opts in to the global PreToolUse
+     hook (~/.claude/hooks/merge-finalization.py), which hard-blocks a
+     `gh pr merge` while completed `[x]` items remain in TODO.md / ROADMAP.md
+     (i.e. this prune step was skipped). -->
+
 When a branch is ready to merge — i.e. **its PR's CI is already green** — do
 the doc-only finalization, and **only** this, before merging (the **ship-pr**
 skill's Step 4.5). It triggers one quick, docs-only CI run, then you merge.
