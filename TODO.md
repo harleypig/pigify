@@ -7,46 +7,10 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 *No open bugs.*
 
-## Spotify audit (2026-06-12)
-
-The `/spotify-audit` run (2026-06-12) against `rules/spotify.md`. The
-actionable findings shipped: playlist-modify scopes, 429/`Retry-After`
-handling, the Feb-2026 `/items` + `/me/library` migrations, the `market`
-decision (**ADR-0002**), and the verified `/me/tracks*` batch cap — see the
-merged history. Only the open follow-ups remain.
-
-**Re-run 2026-06-17:** no new findings. Auth (server-side Authorization
-Code, secret server-side — PKCE not required for a confidential backend),
-proactive token refresh, 429 handling, the `/me/library` writes/contains,
-relinking (ADR-0002), batch caps, and the SDK prerequisites (`streaming`
-scope, HTTPS, CSP/Permissions-Policy delegating autoplay + encrypted-media)
-re-verified clean. The only open items are the two deprecated-endpoint watch
-items below.
-
-### Watch — re-evaluate each `/spotify-audit` run
-
-These depend on **deprecated Spotify endpoints with no drop-in replacement**.
-Don't re-flag them statically — on **each `/spotify-audit` run, re-verify
-against current docs (Context7)** whether Spotify shipped a replacement or
-un-deprecated them, or an open alternative's status changed; then update the
-**Re-evaluated** line. The drop-vs-keep product call can wait on that.
-
-- [ ] **Deprecated `/audio-analysis` (now-playing waveform).** `spotify.py`
-      `get_audio_analysis` → the waveform (`player.py`); already degrades to an
-      empty waveform. *No open replacement:* needs per-track time-series
-      loudness/segments — AcousticBrainz's data isn't time-series, and Essentia
-      needs raw audio Spotify won't give. Likely a drop.
-      **Re-evaluated 2026-06-17:** still no replacement (reference page
-      persists for grandfathered apps; no new endpoint, 404 for new apps).
-- [ ] **Deprecated `/audio-features` (sort-by-feature + recipe filters).**
-      `spotify.py` `get_audio_features` → `recipes.py`, `playlists.py` /
-      `sort_fields.py`. *Candidate open replacement:* **AcousticBrainz** (frozen
-      July-2022 dump, keyed by MBID) carries BPM/key/danceability/mood
-      descriptors, and pigify already resolves track → MBID via MusicBrainz, so
-      the fields could be repopulated by MBID lookup (coverage frozen mid-2022;
-      recent releases missing). MusicBrainz itself is metadata-only.
-      **Re-evaluated 2026-06-17:** still frozen; ListenBrainz building a
-      replacement, nothing drop-in yet.
+> The **Spotify audit record + the deprecated-endpoint watch list** (the
+> "re-evaluate each `/spotify-audit` run" items) live in
+> [`docs/watch-list.md`](docs/watch-list.md) — re-evaluation, not actionable
+> work.
 
 ## Security / hardening
 
@@ -296,7 +260,8 @@ artist+title recording search) for the Track Info panel and enrichment
       resolution, the fuzzy artist+title fallback, parsing
       releases/release-groups/ISRCs/tags/work-rels, and the **MBID-keyed
       adjacent services** — Cover Art Archive (album art), AcousticBrainz
-      (frozen audio features — see the audio-features Watch item),
+      (frozen audio features — see the audio-features watch item in
+      [`docs/watch-list.md`](docs/watch-list.md)),
       ListenBrainz, Picard/AcoustID (acoustic fingerprinting; out of scope —
       needs raw audio).
 - [ ] **Align pigify's client to the rule once written.** Audit
