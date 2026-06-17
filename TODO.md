@@ -517,6 +517,18 @@ resumable-session item rides along with the safety work.
       supplied their own, those win over the owner's regardless of the
       coattails permission.
       Builds on the access model + `ALLOWED_SPOTIFY_IDS` work below.
+- [ ] **Per-user uploaded themes (YAML / CSS).** *(with onboarding)* The
+      theme system (see `docs/THEMING.md`) authors themes at **deploy time** —
+      the operator commits a `*.theme.yaml` / `*.css` into the repo. Letting an
+      **end user upload their own** theme (a YAML token map or a full CSS file)
+      is a per-user, runtime feature: it needs **onboarding + per-user
+      settings storage** (the same surface as the per-user account-sharing
+      item above) to hold the upload, validate it, and apply it as
+      `data-theme` / injected tokens for that user only. **Not testable until
+      onboarding exists** — the owner isn't one of the 5 Spotify Dev-Mode
+      users, so there's no per-user surface to exercise an upload yet. Pick it
+      up when building the onboarding / per-user-settings layer; gate it
+      (sanitise uploaded CSS, cap size) since it's user-supplied.
 - [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
       demo page → a form collecting **Name + Email only** (what the Spotify
       dashboard's User Management needs). Do NOT ask for the Spotify user ID —
