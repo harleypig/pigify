@@ -81,6 +81,7 @@ class SpotifyService {
   private deviceId: string | null = null;
   private isInitialized = false;
   private onReadyChange: ((deviceId: string | null) => void) | null = null;
+  private onAccountError: ((message: string) => void) | null = null;
 
   async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -123,17 +124,21 @@ class SpotifyService {
    * `onReadyChange` fires with the device id when the browser device becomes
    * ready, and with null when it goes offline (or never registers, e.g. a
    * non-Premium account). Calling it again after a successful connect just
-   * re-reports the current device id.
+   * re-reports the current device id. `onAccountError` fires when the SDK
+   * reports an `account_error` — in practice, the account isn't Premium, so
+   * in-browser playback is unavailable — letting the UI explain why.
    */
   async connect(
     getToken: () => Promise<string>,
     onReadyChange: (deviceId: string | null) => void,
+    onAccountError?: (message: string) => void,
   ): Promise<void> {
     await this.initialize();
     if (!window.Spotify) {
       throw new Error("Spotify SDK not loaded");
     }
     this.onReadyChange = onReadyChange;
+    this.onAccountError = onAccountError ?? null;
 
     if (this.player) {
       onReadyChange(this.deviceId);
@@ -162,11 +167,13 @@ class SpotifyService {
     );
     this.player.addListener(
       "account_error",
-      ({ message }: { message: string }) =>
+      ({ message }: { message: string }) => {
         console.error(
           "Web Playback account error (Premium required?):",
           message,
-        ),
+        );
+        this.onAccountError?.(message);
+      },
     );
     this.player.addListener(
       "playback_error",

@@ -30,6 +30,15 @@ handling, the Feb-2026 `/items` + `/me/library` migrations, the `market`
 decision (**ADR-0002**), and the verified `/me/tracks*` batch cap — see the
 merged history. Only the open follow-ups remain.
 
+**Re-run 2026-06-17:** no new findings. Auth (server-side Authorization
+Code, secret server-side — PKCE not required for a confidential backend),
+proactive token refresh, 429 handling, the `/me/library` writes/contains,
+relinking (ADR-0002), batch caps, and the SDK prerequisites (`streaming`
+scope, HTTPS, CSP/Permissions-Policy delegating autoplay + encrypted-media)
+all re-verified clean. Resolved the saved-tracks-read question (stays on
+`/me/tracks`) and shipped Premium gating; the watch items and compliance
+(attribution/caching) remain open below.
+
 - [x] **Migrate `GET /me/tracks` (the saved-tracks read)? — No.** Verified
       against Spotify's Feb-2026 migration guide (Context7, 2026-06-17): the
       unified `/me/library*` change replaced only the per-type
@@ -42,10 +51,12 @@ merged history. Only the open follow-ups remain.
 
 ### Info (verify manually)
 
-- [ ] **(Info) Premium gating.** The SDK degrades silently for non-Premium
-      (`spotify.ts:164` logs `account_error`; `NowPlayingBar.tsx:136` no-ops).
-      Consider a "Premium required" message. *rules/spotify.md › Web Playback
-      SDK.*
+- [x] **(Info) Premium gating.** Done: the SDK wrapper's `account_error`
+      now invokes an `onAccountError` callback; `NowPlayingBar` flips a
+      `premiumRequired` flag and the "Play on" device popup shows
+      "In-browser playback needs Spotify Premium." — explaining why "this
+      browser" isn't a device option, instead of a silent no-op.
+      *rules/spotify.md › Web Playback SDK.*
 - [ ] **(Info) Compliance — caching & attribution.** pigify persists Spotify
       metadata (per-user DB playlist items + track stats + enrichment cache).
       The Developer Terms limit caching beyond immediate use; confirm retention
@@ -65,7 +76,8 @@ un-deprecated them, or an open alternative's status changed; then update the
       empty waveform. *No open replacement:* needs per-track time-series
       loudness/segments — AcousticBrainz's data isn't time-series, and Essentia
       needs raw audio Spotify won't give. Likely a drop.
-      **Re-evaluated 2026-06-16:** still no replacement.
+      **Re-evaluated 2026-06-17:** still no replacement (reference page
+      persists for grandfathered apps; no new endpoint, 404 for new apps).
 - [ ] **Deprecated `/audio-features` (sort-by-feature + recipe filters).**
       `spotify.py` `get_audio_features` → `recipes.py`, `playlists.py` /
       `sort_fields.py`. *Candidate open replacement:* **AcousticBrainz** (frozen
@@ -73,7 +85,7 @@ un-deprecated them, or an open alternative's status changed; then update the
       descriptors, and pigify already resolves track → MBID via MusicBrainz, so
       the fields could be repopulated by MBID lookup (coverage frozen mid-2022;
       recent releases missing). MusicBrainz itself is metadata-only.
-      **Re-evaluated 2026-06-16:** still frozen; ListenBrainz building a
+      **Re-evaluated 2026-06-17:** still frozen; ListenBrainz building a
       replacement, nothing drop-in yet.
 
 ## Security / hardening

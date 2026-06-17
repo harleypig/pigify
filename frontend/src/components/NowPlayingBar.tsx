@@ -130,13 +130,20 @@ function NowPlayingBar({
   const [browserDeviceId, setBrowserDeviceId] = useState<string | null>(null);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [devices, setDevices] = useState<SpotifyDevice[]>([]);
+  const [premiumRequired, setPremiumRequired] = useState(false);
   const devicesRef = useRef<HTMLDivElement>(null);
 
   // Register this browser as a Spotify Connect device so it can be selected
-  // in the device popup. No-op for non-Premium accounts (ready never fires).
+  // in the device popup. Non-Premium accounts can't register (the SDK fires
+  // account_error and "ready" never comes); surface that so the popup can
+  // explain why "this browser" isn't an option.
   useEffect(() => {
     spotifyService
-      .connect(() => apiService.getAccessToken(), setBrowserDeviceId)
+      .connect(
+        () => apiService.getAccessToken(),
+        setBrowserDeviceId,
+        () => setPremiumRequired(true),
+      )
       .catch((e) => console.error("Web Playback connect failed:", e));
   }, []);
 
@@ -427,6 +434,11 @@ function NowPlayingBar({
                       )}
                     </button>
                   ))
+                )}
+                {premiumRequired && (
+                  <p className="npd-note">
+                    In-browser playback needs Spotify Premium.
+                  </p>
                 )}
               </div>
             )}

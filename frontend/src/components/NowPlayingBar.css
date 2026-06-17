@@ -197,6 +197,16 @@
   color: var(--brand-ink-dim);
 }
 
+/* "Premium required" note, separated from the device list by a hairline. */
+.npd-note {
+  margin: 8px 2px 2px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--brand-accent-rgb), 0.2);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--brand-ink-dim);
+}
+
 .npd-item {
   display: flex;
   align-items: center;
