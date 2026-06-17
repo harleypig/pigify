@@ -281,11 +281,11 @@ jobs:
         run: docker compose down -v
 
   release:
-    # Build + push only the image whose stream matches the tag:
-    # `backend/v*` -> backend image, `frontend/v*` -> frontend image, each
-    # tagged :<version> + :latest. The non-matching matrix leg is a green
-    # no-op (all build steps skip). Not a required check (tags don't gate
-    # PRs).
+    # Build + push ONE image — the component whose stream matches the pushed
+    # tag (`backend/v*` -> backend image, `frontend/v*` -> frontend image),
+    # tagged :<version> + :latest. A single job resolves the target from the
+    # tag, so only the tagged component is built — no no-op leg for the other
+    # one. Not a required check (tags don't gate PRs).
     name: Release image
     if: >-
       ${{ startsWith(github.ref, 'refs/tags/backend/v')
@@ -294,39 +294,40 @@ jobs:
     permissions:
       contents: read
       packages: write
-    strategy:
-      matrix:
-        include:
-          - stream: backend
-            context: ./backend
-            image: ghcr.io/harleypig/pigify-backend
-          - stream: frontend
-            context: ./frontend
-            image: ghcr.io/harleypig/pigify-frontend
     steps:
       - uses: actions/checkout@v6.0.3
         with:
+          # Full history + tags so `git log -- <dir>` (component hash) resolves.
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Resolve version + component hash
+      - name: Resolve release target from the tag
         id: rel
-        # Only the matrix leg matching the pushed tag resolves; the other
-        # leaves `build` unset, so every step below skips for it.
-        if: ${{ startsWith(github.ref, format('refs/tags/{0}/v', matrix.stream)) }}
         env:
           TAG: ${{ github.ref_name }}
-          STREAM: ${{ matrix.stream }}
         run: |
-          echo "version=${TAG#"${STREAM}"/v}" >> "$GITHUB_OUTPUT"
-          echo "hash=$(git log -1 --format=%h -- "$STREAM")" >> "$GITHUB_OUTPUT"
-          echo "build=true" >> "$GITHUB_OUTPUT"
+          case "$TAG" in
+            backend/v*)
+              echo "context=./backend" >> "$GITHUB_OUTPUT"
+              echo "image=ghcr.io/harleypig/pigify-backend" >> "$GITHUB_OUTPUT"
+              echo "version=${TAG#backend/v}" >> "$GITHUB_OUTPUT"
+              echo "hash=$(git log -1 --format=%h -- backend)" >> "$GITHUB_OUTPUT"
+              ;;
+            frontend/v*)
+              echo "context=./frontend" >> "$GITHUB_OUTPUT"
+              echo "image=ghcr.io/harleypig/pigify-frontend" >> "$GITHUB_OUTPUT"
+              echo "version=${TAG#frontend/v}" >> "$GITHUB_OUTPUT"
+              echo "hash=$(git log -1 --format=%h -- frontend)" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unrecognized release tag: $TAG"
+              exit 1
+              ;;
+          esac
 
       - uses: docker/setup-buildx-action@v4.1.0
-        if: ${{ steps.rel.outputs.build == 'true' }}
 
       - name: Log in to GitHub Container Registry
-        if: ${{ steps.rel.outputs.build == 'true' }}
         uses: docker/login-action@v4.2.0
         with:
           registry: ghcr.io
@@ -334,14 +335,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        if: ${{ steps.rel.outputs.build == 'true' }}
         uses: docker/build-push-action@v7.2.0
         with:
-          context: ${{ matrix.context }}
+          context: ${{ steps.rel.outputs.context }}
           push: true
           build-args: |
             GIT_HASH=${{ steps.rel.outputs.hash }}
             APP_VERSION=${{ steps.rel.outputs.version }}
           tags: |
-            ${{ matrix.image }}:${{ steps.rel.outputs.version }}
-            ${{ matrix.image }}:latest
+            ${{ steps.rel.outputs.image }}:${{ steps.rel.outputs.version }}
+            ${{ steps.rel.outputs.image }}:latest
