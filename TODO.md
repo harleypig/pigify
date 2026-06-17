@@ -30,11 +30,15 @@ handling, the Feb-2026 `/items` + `/me/library` migrations, the `market`
 decision (**ADR-0002**), and the verified `/me/tracks*` batch cap — see the
 merged history. Only the open follow-ups remain.
 
-- [ ] **Migrate `GET /me/tracks` (the saved-tracks read)?** The
-      save/remove/contains writes moved to `/me/library`; the paginated
-      saved-tracks read (`get_saved_tracks`, `GET /me/tracks`) was out of scope
-      and is unchanged — re-check whether it too needs the unified-library
-      migration. *rules/spotify.md › Endpoints.*
+- [x] **Migrate `GET /me/tracks` (the saved-tracks read)? — No.** Verified
+      against Spotify's Feb-2026 migration guide (Context7, 2026-06-17): the
+      unified `/me/library*` change replaced only the per-type
+      **save/remove/follow + `contains`** endpoints (already migrated here),
+      **not** the paginated list reads. `GET /me/tracks` ("Get User's Saved
+      Tracks") remains current and non-deprecated, and there is no
+      `GET /me/library` read that returns saved items. `get_saved_tracks`
+      correctly stays on `/me/tracks` — decision recorded in its docstring.
+      *rules/spotify.md › Endpoints.*
 
 ### Info (verify manually)
 
