@@ -12,22 +12,6 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 > [`docs/watch-list.md`](docs/watch-list.md) — re-evaluation, not actionable
 > work.
 
-## Security / hardening
-
-- [ ] **Tighten CSP `style-src`.** The frontend currently requires
-      `'unsafe-inline'` for inline styles; the ZAP baseline allowlists the
-      finding (`.zap/baseline-rules.tsv`, rule `10055`). Remove the inline
-      styles (or move to nonces/hashes) and drop that allowlist line.
-- [ ] **Uniform file-or-env sourcing for sensitive config.** Several values
-      support only one source today; allow either, with a consistent
-      precedence (file wins, like the existing `*_FILE` secret pattern):
-      `ALLOWED_SPOTIFY_IDS` and the dev `DEV_SPOTIFY_ID` /
-      `DEV_SPOTIFY_REFRESH_TOKEN` should also be readable from a file, and the
-      Spotify client id/secret (currently Docker-secret files, required by
-      compose) should also be settable directly in `.env`. Extend the
-      `read_secret_file` / `_load_secret_files` mechanism in
-      `backend/app/config.py` to cover them.
-
 ## Theming & branding
 
 - [ ] **White-label re-branding (theme foundation shipped).** The 3-level

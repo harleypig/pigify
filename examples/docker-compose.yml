@@ -5,11 +5,13 @@
 # cloned. Drop this file in a directory of its own and beside it create:
 #
 #   .env                          # config (see .env.example + docs/DEPLOYMENT.md)
-#   secrets/spotify_client_id.txt
-#   secrets/spotify_client_secret.txt
 #   secrets/secret_key.txt        # python3 -c "import secrets;print(secrets.token_urlsafe(32))"
 #   certs/dev-cert.pem         # TLS cert + key the frontend serves with
 #   certs/dev-key.pem     # (real certs in prod)
+#
+# Spotify client id/secret: set SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET in
+# .env, OR drop them in secrets/*.txt and point SPOTIFY_CLIENT_ID_FILE /
+# SPOTIFY_CLIENT_SECRET_FILE (in .env) at those files (file wins).
 #
 # Last.fm is optional: leave it alone and the stack runs without it. To
 # enable it, drop your key/secret in files and point LASTFM_API_KEY_FILE /
@@ -28,12 +30,18 @@ volumes:
 
 secrets:
   # ---- required ----
-  spotify_client_id:
-    file: ${SECRETS_DIR:-./secrets}/spotify_client_id.txt
-  spotify_client_secret:
-    file: ${SECRETS_DIR:-./secrets}/spotify_client_secret.txt
   secret_key:
     file: ${SECRETS_DIR:-./secrets}/secret_key.txt
+  # ---- Spotify client id/secret: file OR .env (file wins) ----
+  # Use Docker secrets by pointing SPOTIFY_CLIENT_ID_FILE /
+  # SPOTIFY_CLIENT_SECRET_FILE (in .env) at host files, or set
+  # SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET directly in .env (the /dev/null
+  # default leaves the .env value in place). Production refuses to boot if
+  # neither source provides them.
+  spotify_client_id:
+    file: ${SPOTIFY_CLIENT_ID_FILE:-/dev/null}
+  spotify_client_secret:
+    file: ${SPOTIFY_CLIENT_SECRET_FILE:-/dev/null}
   # ---- optional: Last.fm ----
   # Default to /dev/null (empty) so the stack runs without Last.fm. To
   # enable it, set LASTFM_API_KEY_FILE / LASTFM_SHARED_SECRET_FILE in .env

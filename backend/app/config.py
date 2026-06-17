@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     SECRET_KEY_FILE: str = ""
     LASTFM_API_KEY_FILE: str = ""
     LASTFM_SHARED_SECRET_FILE: str = ""
+    # Non-secret config that may also be supplied via a file (file wins),
+    # so deployers can source everything uniformly: the access allowlist and
+    # the dev-bypass identity/token.
+    ALLOWED_SPOTIFY_IDS_FILE: str = ""
+    DEV_SPOTIFY_ID_FILE: str = ""
+    DEV_SPOTIFY_REFRESH_TOKEN_FILE: str = ""
 
     # Last.fm API Configuration (optional)
     # When unset, Last.fm features are hidden entirely (per the graceful
@@ -176,6 +182,9 @@ class Settings(BaseSettings):
             ("SECRET_KEY_FILE", "SECRET_KEY"),
             ("LASTFM_API_KEY_FILE", "LASTFM_API_KEY"),
             ("LASTFM_SHARED_SECRET_FILE", "LASTFM_SHARED_SECRET"),
+            ("ALLOWED_SPOTIFY_IDS_FILE", "ALLOWED_SPOTIFY_IDS"),
+            ("DEV_SPOTIFY_ID_FILE", "DEV_SPOTIFY_ID"),
+            ("DEV_SPOTIFY_REFRESH_TOKEN_FILE", "DEV_SPOTIFY_REFRESH_TOKEN"),
         )
 
         for file_attr, target_attr in file_backed:
@@ -198,6 +207,23 @@ class Settings(BaseSettings):
             raise ValueError(
                 "SECRET_KEY must be set to a strong, unique value in production "
                 "(refusing to boot with the built-in default)."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _require_spotify_credentials_in_prod(self) -> "Settings":
+        # The Spotify client id/secret may come from a file OR .env, so the
+        # compose no longer forces them as required Docker secrets. Re-assert
+        # the fail-fast here: production must not boot without them, or OAuth
+        # would only fail later, at sign-in. (Runs after _load_secret_files,
+        # so a file-provided value counts.)
+        if self.ENVIRONMENT.lower() == "production" and not (
+            self.SPOTIFY_CLIENT_ID and self.SPOTIFY_CLIENT_SECRET
+        ):
+            raise ValueError(
+                "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET must be set in "
+                "production (via .env or a *_FILE secret); refusing to boot "
+                "without them."
             )
         return self
 

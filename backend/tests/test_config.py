@@ -72,6 +72,25 @@ class TestSecretFileOverride(unittest.TestCase):
         self.assertEqual(s.LASTFM_API_KEY, "file-provided-api-key")
         self.assertEqual(s.LASTFM_SHARED_SECRET, "file-provided-shared-secret")
 
+    def test_allowlist_and_dev_files_override_values(self):
+        # The access allowlist and dev-bypass identity/token are also
+        # file-sourceable (file wins over env).
+        ids_path = self._write_secret("user-a,user-b\n")
+        dev_id_path = self._write_secret("file-dev-id\n")
+        token_path = self._write_secret("file-dev-token\n")
+        s = Settings(
+            _env_file=None,
+            ALLOWED_SPOTIFY_IDS="env-ids",
+            ALLOWED_SPOTIFY_IDS_FILE=ids_path,
+            DEV_SPOTIFY_ID="env-dev-id",
+            DEV_SPOTIFY_ID_FILE=dev_id_path,
+            DEV_SPOTIFY_REFRESH_TOKEN_FILE=token_path,
+        )
+        self.assertEqual(s.ALLOWED_SPOTIFY_IDS, "user-a,user-b")
+        self.assertEqual(s.allowed_spotify_ids, ["user-a", "user-b"])
+        self.assertEqual(s.DEV_SPOTIFY_ID, "file-dev-id")
+        self.assertEqual(s.DEV_SPOTIFY_REFRESH_TOKEN, "file-dev-token")
+
     def test_empty_lastfm_file_leaves_feature_off(self):
         # The optional Last.fm secrets default to an empty placeholder
         # (e.g. /dev/null); an empty file must not enable the feature.
@@ -104,6 +123,8 @@ class TestSecretFileOverride(unittest.TestCase):
             _env_file=None,
             ENVIRONMENT="production",
             SECRET_KEY_FILE=path,
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
         )
         self.assertEqual(s.SECRET_KEY, "a-strong-production-key")
 
@@ -122,6 +143,8 @@ class TestProductionSecretKeyGuard(unittest.TestCase):
             _env_file=None,
             ENVIRONMENT="production",
             SECRET_KEY="a-real-strong-key",
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
         )
         self.assertEqual(s.SECRET_KEY, "a-real-strong-key")
 
@@ -129,6 +152,33 @@ class TestProductionSecretKeyGuard(unittest.TestCase):
         s = Settings(_env_file=None)
         self.assertEqual(s.ENVIRONMENT, "development")
         self.assertEqual(s.SECRET_KEY, _INSECURE_SECRET_KEY)
+
+
+class TestProductionSpotifyCredentialsGuard(unittest.TestCase):
+    def test_production_without_spotify_creds_raises(self):
+        # SECRET_KEY satisfied so the guard under test is the Spotify one.
+        with self.assertRaises(ValueError):
+            Settings(
+                _env_file=None,
+                ENVIRONMENT="production",
+                SECRET_KEY="a-real-strong-key",
+            )
+
+    def test_production_with_spotify_creds_passes(self):
+        s = Settings(
+            _env_file=None,
+            ENVIRONMENT="production",
+            SECRET_KEY="a-real-strong-key",
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
+        )
+        self.assertEqual(s.SPOTIFY_CLIENT_ID, "id")
+
+    def test_development_without_spotify_creds_passes(self):
+        # Development must boot without Spotify creds (dev-bypass / UI work).
+        s = Settings(_env_file=None)
+        self.assertEqual(s.ENVIRONMENT, "development")
+        self.assertEqual(s.SPOTIFY_CLIENT_ID, "")
 
 
 class TestDevAuthBypassGuard(unittest.TestCase):
@@ -142,6 +192,8 @@ class TestDevAuthBypassGuard(unittest.TestCase):
                 _env_file=None,
                 ENVIRONMENT="production",
                 SECRET_KEY="a-real-strong-key",
+                SPOTIFY_CLIENT_ID="id",
+                SPOTIFY_CLIENT_SECRET="secret",
                 DEV_AUTH_BYPASS=True,
             )
 
@@ -159,6 +211,8 @@ class TestDevAuthBypassGuard(unittest.TestCase):
             _env_file=None,
             ENVIRONMENT="production",
             SECRET_KEY="a-real-strong-key",
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
         )
         self.assertFalse(s.DEV_AUTH_BYPASS)
 
