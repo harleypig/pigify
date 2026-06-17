@@ -31,9 +31,10 @@ class VersionEndpointTest(unittest.TestCase):
         settings.DATA_DIR = self._old_data_dir
         shutil.rmtree(self._tmp_dir, ignore_errors=True)
 
-    # Empty the build-time env vars so the endpoint deterministically takes
-    # the dev fallback (the repo has no backend/v* tag), regardless of any
-    # ambient APP_VERSION / GIT_HASH in the runner's environment.
+    # Empty the build-time env vars so both the endpoint and the resolver
+    # take the same source (the latest backend/v* tag if present, else the
+    # dev fallback) rather than an ambient APP_VERSION / GIT_HASH in the
+    # runner's environment.
     @patch.dict("os.environ", {"APP_VERSION": "", "GIT_HASH": ""})
     def test_version_returns_build_info(self) -> None:
         with TestClient(app) as client:
@@ -42,7 +43,10 @@ class VersionEndpointTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
         body = resp.json()
-        self.assertEqual(body["backend_version"], app.version)
+        # The endpoint surfaces whatever _backend_version() resolves; assert
+        # against that, not app.version (a frozen dev fallback the release
+        # tags deliberately diverge from), so this holds once tags are cut.
+        self.assertEqual(body["backend_version"], version_mod._backend_version())
         self.assertIn("python_version", body)
         self.assertIn("fastapi_version", body)
         self.assertIn("git_commit", body)
