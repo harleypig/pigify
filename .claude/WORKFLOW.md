@@ -71,6 +71,24 @@ docker compose up --build              # root .env sets COMPOSE_FILE=docker/...
 Persistent data lives in the `pigify-data` named volume (not a host bind
 mount — see `CONVENTIONS.md` for why).
 
+### Dogfood the Docker stack at the end of each change
+
+At the **end of each feature or bug fix**, rebuild and bring the stack up so
+Docker (and running-under-Docker) issues surface *immediately* rather than at
+deploy time:
+
+```bash
+docker compose up -d --build       # rebuild images, recreate changed containers
+```
+
+Then smoke-check the running stack: backend `/health`, the frontend over
+HTTPS, and — for a change that touched headers/markup — the served CSP header.
+The cost is a slower per-change cycle (an image rebuild instead of the
+direct-process dev loop above); the payoff is catching container breakage at
+the moment it's introduced. **During rapid iteration, switch back to the
+no-Docker loop** ("Local development" above) and dogfood again once the change
+settles.
+
 ## Checks (run before a PR)
 
 Backend (from `backend/`):
