@@ -33,6 +33,15 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       of the transparent margin, sizing relative to adjacent text, and an
       optional recolour/tint to the active theme. Bake these into the
       branding config so each brand's logo can be aligned without code edits.
+- [ ] **Owner-surface theming + brand-mark config (Increment 2).** Decisions
+      are captured in [`docs/branding-design.md`](docs/branding-design.md): a
+      working-area-vs-owner-surface theme split (the user's theme never bleeds
+      onto login / error / unauthorized / non-task pages), a small **ephemeral**
+      per-dialog light/dark toggle defaulting to an owner-set default, a single
+      brand-mark structure (mode × layout) sized per surface, and a `<Brand>`
+      component replacing the duplicated Login/App lockups. **Open decision
+      before building:** the provisioning model (build-time config module vs
+      runtime-mounted) — see the note.
 
 ## Frontend design
 
