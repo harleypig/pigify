@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "generate:changelog": "node scripts/generate-changelog.mjs",
-    "predev": "node scripts/generate-changelog.mjs",
+    "generate:themes": "node scripts/generate-themes.mjs",
+    "predev": "node scripts/generate-changelog.mjs && node scripts/generate-themes.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/generate-changelog.mjs",
+    "prebuild": "node scripts/generate-changelog.mjs && node scripts/generate-themes.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

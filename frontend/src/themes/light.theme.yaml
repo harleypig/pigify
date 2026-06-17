@@ -1,0 +1,51 @@
+# Light theme — "Daylight console": the day-glo console under bright studio
+# light. Cool paper-white panels float on a faint blue-grey deck; deep
+# ink-navy schematic labels; the electric blue deepened to a vivid print-blue
+# that keeps its charge on white; crisp blue hairline edges (the lit edge
+# becomes drawn linework); soft cool-navy shadows. The energy survives as
+# saturation + crisp contrast rather than glow-in-the-dark. Same token
+# contract as dark.theme.yaml (compiled to light.css).
+_label: Light
+
+# ---- Surfaces (white panels FLOAT on a cool blue-grey deck) ----
+bg: "#e7ecf6"            # app deck — faint cool blue-grey, darker than panels
+surface: "#ffffff"       # panel / deck face — clean white
+surface-deep: "#dce3f1"  # recessed inset — clear cool grey-blue
+surface-raised: "#ffffff" # raised header / rail
+navy: "#e4eaf7"          # structural tint — pale schematic blue
+edge: "#bccbe6"          # structural border — crisp blue hairline
+line: "rgba(20, 27, 58, 0.1)"   # hairline divider (drawn on light)
+hover: "rgba(20, 27, 58, 0.045)" # row / control hover fill
+
+# ---- Text (printed schematic ink) ----
+ink: "#141d38"           # primary text — deep ink-navy
+ink-dim: "#586882"       # muted captions
+ink-bright: "#0a1633"    # emphasised text — near-black navy
+
+# ---- Accents (vivid print-blue; holds its day-glo on white) ----
+accent: "#2861ff"
+accent-bright: "#5a84ff"
+accent-rgb: "40, 97, 255"
+red: "#e01433"           # clean signal red
+red-bright: "#ff3a55"
+red-rgb: "224, 20, 51"
+
+# ---- Shadow (soft cool slate, not dark navy — components hard-code high
+#      opacities for dark-mode drama, so a lighter value keeps daylight
+#      panels lifting gently off the deck instead of sitting in a dark halo) ----
+shadow-rgb: "100, 116, 148"
+overlay-rgb: "20, 27, 58"
+on-accent: "#ffffff"  # text/highlight on a solid accent or red fill (white both themes)
+
+# ---- Code / JSON syntax (saturated, readable on a light raw view) ----
+code-key: "#2f5bd0"
+code-string: "#2e7d32"
+code-number: "#c2410c"
+code-bool: "#7c3aed"
+code-null: "#be123c"
+
+# ---- Type & shape (shared with dark by default) ----
+font-display: '"Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif'
+font-mono: '"Space Mono", ui-monospace, "SFMono-Regular", Menlo, monospace'
+radius: "16px"
+radius-sm: "9px"

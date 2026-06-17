@@ -13,7 +13,7 @@
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  background: rgba(7, 8, 13, 0.7);
+  background: rgba(var(--brand-shadow-rgb), 0.7);
   backdrop-filter: blur(2px);
 }
 
@@ -25,11 +25,11 @@
   gap: 0.5rem;
   padding: 1.25rem 1.5rem 1.5rem;
   /* Recessed deck face, matching the other console panels. */
-  background: #0d1020;
+  background: var(--brand-surface);
   border: 1px solid rgba(var(--brand-accent-rgb), 0.35);
   border-radius: var(--brand-radius);
   box-shadow:
-    0 12px 48px rgba(0, 0, 0, 0.7),
+    0 12px 48px rgba(var(--brand-shadow-rgb), 0.7),
     inset 0 1px 0 rgba(var(--brand-accent-rgb), 0.14);
 }
 
@@ -115,7 +115,7 @@
 /* Save: the lit primary LED. */
 .edit-playlist-save {
   background: var(--brand-accent);
-  color: #07080d;
+  color: var(--brand-surface-deep);
   border: none;
   box-shadow: 0 0 12px rgba(var(--brand-accent-rgb), 0.4);
   transition:

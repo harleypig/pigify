@@ -66,12 +66,16 @@ un-deprecated them, or an open alternative's status changed; then update the
 
 ## Theming & branding
 
-- [ ] **User theming & white-label branding.** Build on the brand token
-      layer already seeded in `frontend/src/theme.css` (the `--brand-*`
-      custom properties): let users pick a theme, and allow re-branding the
-      wordmark / colours / fonts for a white-label deploy. Migrate the
-      remaining components off hard-coded colours onto the tokens, add a
-      persisted theme switch, and keep `theme.css` the single swap point.
+- [ ] **White-label re-branding (theme foundation shipped).** The 3-level
+      theme system is in place — Settings › Theme (dark / light / system,
+      persisted), YAML-authored themes compiled to per-theme CSS, and the
+      full component colour→token migration (see `docs/THEMING.md`). The
+      `--brand-*` **token contract** in `frontend/src/theme.css` is now the
+      single interface — *not* a single swap file; each theme is its own file
+      under `src/themes/`. **Remaining for white-label:** expose wordmark /
+      logo re-branding (the configurable logo knobs below) and document a
+      deployer "bring your own brand" flow (a custom theme file + assets) so
+      colours / fonts / logo swap without code edits.
 - [ ] **Per-brand logo adjustments (learned from the login redesign).**
       Swapping a logo needs more than a file path. Fitting the pig medallion
       into the login required per-asset tweaks that branding must expose as
@@ -90,8 +94,8 @@ surfaces — extending it, not reinventing it. Restyle each with the
 `/frontend-design` skill; as a component is done it moves off hard-coded
 colours onto the `--brand-*` tokens in `frontend/src/theme.css`, which
 also advances the token-migration half of *Theming & branding* above.
-Keep `theme.css` the single swap point. Order below is by visibility, but
-no order is required.
+The `--brand-*` token contract is the single interface (themes live under
+`src/themes/`). Order below is by visibility, but no order is required.
 
 **Already on the brand:** Login, Now-Playing bar, app shell (`App.css`),
 Recipes sidebar, Playlist selector, `TrackList`, `TrackInfoPanel`,
@@ -513,6 +517,18 @@ resumable-session item rides along with the safety work.
       supplied their own, those win over the owner's regardless of the
       coattails permission.
       Builds on the access model + `ALLOWED_SPOTIFY_IDS` work below.
+- [ ] **Per-user uploaded themes (YAML / CSS).** *(with onboarding)* The
+      theme system (see `docs/THEMING.md`) authors themes at **deploy time** —
+      the operator commits a `*.theme.yaml` / `*.css` into the repo. Letting an
+      **end user upload their own** theme (a YAML token map or a full CSS file)
+      is a per-user, runtime feature: it needs **onboarding + per-user
+      settings storage** (the same surface as the per-user account-sharing
+      item above) to hold the upload, validate it, and apply it as
+      `data-theme` / injected tokens for that user only. **Not testable until
+      onboarding exists** — the owner isn't one of the 5 Spotify Dev-Mode
+      users, so there's no per-user surface to exercise an upload yet. Pick it
+      up when building the onboarding / per-user-settings layer; gate it
+      (sanitise uploaded CSS, cap size) since it's user-supplied.
 - [ ] **Self-service join / onboarding flow.** A "Request access" CTA on the
       demo page → a form collecting **Name + Email only** (what the Spotify
       dashboard's User Management needs). Do NOT ask for the Spotify user ID —

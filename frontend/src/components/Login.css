@@ -10,9 +10,9 @@
 
 .login {
   /* Console-local surfaces: jet-black backdrop, navy-black panel. */
-  --c-panel: #11131f;
-  --c-panel-edge: #242c48;
-  --c-deep: #05060a;
+  --c-panel: var(--brand-surface-raised);
+  --c-panel-edge: var(--brand-edge);
+  --c-deep: var(--brand-surface-deep);
 
   position: relative;
   display: grid;
@@ -47,7 +47,7 @@
   background-image:
     repeating-linear-gradient(
       0deg,
-      rgba(0, 0, 0, 0.16) 0 1px,
+      rgba(var(--brand-shadow-rgb), 0.16) 0 1px,
       transparent 1px 3px
     ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
@@ -62,14 +62,13 @@
   text-align: center;
   /* Panel face: a faint top sheen fading into the body colour. */
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%),
-    var(--c-panel);
+    linear-gradient(180deg, var(--brand-hover), transparent 28%), var(--c-panel);
   /* Bezel depth: inner highlight + inner shadow, a long cast shadow, and a
      hairline edge stroke. */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.6),
-    0 30px 80px -34px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(var(--brand-overlay-rgb), 0.07),
+    inset 0 -1px 0 rgba(var(--brand-shadow-rgb), 0.6),
+    0 30px 80px -34px rgba(var(--brand-shadow-rgb), 0.95),
     0 0 0 1px var(--c-panel-edge);
   isolation: isolate;
 }
@@ -78,31 +77,19 @@
 .console__bezel {
   position: absolute;
   inset: 11px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--brand-hover);
   border-radius: calc(var(--brand-radius) - 7px);
   pointer-events: none;
   background:
-    radial-gradient(
-      circle at 0 0,
-      rgba(255, 255, 255, 0.12) 1.5px,
-      transparent 2px
-    )
-    7px 7px / 10px 10px,
-    radial-gradient(
-      circle at 100% 0,
-      rgba(255, 255, 255, 0.12) 1.5px,
-      transparent 2px
-    )
+    radial-gradient(circle at 0 0, var(--brand-line) 1.5px, transparent 2px) 7px
+    7px / 10px 10px,
+    radial-gradient(circle at 100% 0, var(--brand-line) 1.5px, transparent 2px)
     calc(100% - 7px) 7px / 10px 10px,
-    radial-gradient(
-      circle at 0 100%,
-      rgba(255, 255, 255, 0.12) 1.5px,
-      transparent 2px
-    )
+    radial-gradient(circle at 0 100%, var(--brand-line) 1.5px, transparent 2px)
     7px calc(100% - 7px) / 10px 10px,
     radial-gradient(
       circle at 100% 100%,
-      rgba(255, 255, 255, 0.12) 1.5px,
+      var(--brand-line) 1.5px,
       transparent 2px
     )
     calc(100% - 7px) calc(100% - 7px) / 10px 10px;
@@ -137,13 +124,13 @@
      circle's. Nudge the logo down so the *circle* (not the whole image)
      centres on the wordmark; the beard then hangs below the text. */
   transform: translateY(0.1em);
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.6))
+  filter: drop-shadow(0 10px 22px rgba(var(--brand-shadow-rgb), 0.6))
     drop-shadow(0 0 18px rgba(var(--brand-accent-rgb), 0.32));
   transition: filter 0.3s ease;
 }
 
 .console__logo.is-error {
-  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.6))
+  filter: drop-shadow(0 10px 22px rgba(var(--brand-shadow-rgb), 0.6))
     drop-shadow(0 0 20px rgba(var(--brand-red-rgb), 0.5));
 }
 
@@ -160,7 +147,11 @@
   letter-spacing: -0.045em;
   margin: 0;
   /* Cool metal: near-white at the top falling to electric blue. */
-  background: linear-gradient(176deg, #eaf1ff, var(--brand-accent) 150%);
+  background: linear-gradient(
+    176deg,
+    var(--brand-ink),
+    var(--brand-accent) 150%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -284,13 +275,17 @@
   text-transform: uppercase;
   color: var(--brand-ink);
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--brand-overlay-rgb), 0.1);
   border-radius: var(--brand-radius-sm);
-  background: linear-gradient(180deg, #1b2138, #11131f);
+  background: linear-gradient(
+    180deg,
+    var(--brand-edge),
+    var(--brand-surface-raised)
+  );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -2px 6px rgba(0, 0, 0, 0.6),
-    0 10px 22px -12px rgba(0, 0, 0, 0.9);
+    inset 0 1px 0 rgba(var(--brand-overlay-rgb), 0.08),
+    inset 0 -2px 6px rgba(var(--brand-shadow-rgb), 0.6),
+    0 10px 22px -12px rgba(var(--brand-shadow-rgb), 0.9);
   transition:
     transform 0.12s ease,
     box-shadow 0.2s ease,
@@ -300,7 +295,7 @@
 .console__connect:hover {
   border-color: rgba(var(--brand-accent-rgb), 0.55);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(var(--brand-overlay-rgb), 0.08),
     0 0 0 1px rgba(var(--brand-accent-rgb), 0.35),
     0 16px 32px -14px rgba(var(--brand-accent-rgb), 0.5);
 }
@@ -308,8 +303,8 @@
 .console__connect:active {
   transform: translateY(2px);
   box-shadow:
-    inset 0 2px 6px rgba(0, 0, 0, 0.7),
-    0 4px 12px -10px rgba(0, 0, 0, 0.9);
+    inset 0 2px 6px rgba(var(--brand-shadow-rgb), 0.7),
+    0 4px 12px -10px rgba(var(--brand-shadow-rgb), 0.9);
 }
 
 .console__connect:disabled {
@@ -326,7 +321,7 @@
   background: var(--brand-accent-bright);
   box-shadow:
     0 0 10px rgba(var(--brand-accent-rgb), 0.9),
-    inset 0 0 2px #fff;
+    inset 0 0 2px var(--brand-on-accent);
   animation: led 2s ease-in-out infinite;
 }
 

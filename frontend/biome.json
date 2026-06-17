@@ -6,7 +6,12 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!src/data/changelog.ts"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!src/data/changelog.ts",
+      "!src/themes/*.css"
+    ]
   },
   "formatter": {
     "enabled": true,

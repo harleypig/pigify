@@ -4,7 +4,7 @@
   color-scheme: dark;
   /* The "love" accent rides the brand's day-glo blood red (theme.css); the
      literal is only a fallback if the brand layer is absent. */
-  --heart-liked-color: var(--brand-red, #ff2a45);
+  --heart-liked-color: var(--brand-red, var(--brand-red));
   --heart-icon-liked: "\2665";
   --heart-icon-default: "\2661";
 }
@@ -21,8 +21,8 @@ body {
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #121212;
-  color: #ffffff;
+  background-color: var(--brand-bg);
+  color: var(--brand-ink);
 }
 
 #root {
@@ -33,7 +33,7 @@ body {
    custom one. Uses :focus-visible so mouse clicks don't show the ring,
    only keyboard navigation does. Per-component CSS may override this. */
 :focus-visible {
-  outline: 2px solid var(--brand-accent, #3a78ff);
+  outline: 2px solid var(--brand-accent, var(--brand-accent));
   outline-offset: 2px;
   border-radius: 2px;
 }
