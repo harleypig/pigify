@@ -97,6 +97,8 @@ function Login({ onLogin }: LoginProps) {
           Your library, your rules — smart mixes, scrobbles, and playlists that
           run on YAML.
         </p>
+
+        <p className="console__powered">Powered by Spotify</p>
       </main>
     </div>
   );

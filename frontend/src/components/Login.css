@@ -338,6 +338,17 @@
   text-align: center;
 }
 
+/* Spotify attribution (the sanctioned "Powered by Spotify" text form). */
+.console__powered {
+  margin-top: 0.9rem;
+  font-family: var(--brand-font-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-ink-dim);
+  text-align: center;
+}
+
 @keyframes eq {
   0%,
   100% {
