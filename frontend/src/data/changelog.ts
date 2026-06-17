@@ -14,6 +14,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Record that the saved-tracks read stays on /me/tracks.",
+      "Centralise upstream Spotify 401 → clean 401 across the API.",
+      "Let upstream Spotify 401 reach the central handler.",
+      "Centralise upstream Spotify 401 -> clean 401 + session clear.",
+      "Track Info panel overhaul + per-component versioning scheme.",
+      "Per-component tag-driven version + build hash.",
       "Caveat that Grokipedia search can miss obscure tracks.",
       "Share-to-social popover.",
       "Own secrets win even with coattails permission.",
@@ -33,13 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Drop the bottom-right resize grip mark.",
       "Resize the floating panel from any edge or corner.",
       "Track Info — edge/corner resize + Grokipedia provider.",
-      "Make the Track Info panel a floating window.",
-      "Day-glo console rollout: Settings, UserMenu, RecipeBuilder + fixes.",
-      "Track Info floating panel + unify the two Sort by UIs.",
-      "Wrap the filter/sort intro at 78 cols.",
-      "Add filter/sort control items to Smart Filters.",
-      "Align the Sort by / Take / Source row controls.",
-      "…and 245 earlier changes."
+      "…and 251 earlier changes."
     ]
   },
   {

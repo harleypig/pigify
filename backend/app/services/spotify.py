@@ -321,6 +321,14 @@ class SpotifyService:
         Returns simplified dicts:
         {id, name, artist, artists, album, image_url, uri, added_at}.
         Capped to ``max_tracks`` to keep reconciliation responsive.
+
+        Stays on ``GET /me/tracks`` deliberately: the Feb-2026 unified-library
+        migration replaced the per-type save/remove/follow + ``contains``
+        endpoints (this app uses ``/me/library`` + ``/me/library/contains``
+        for those), but NOT the paginated list reads — ``GET /me/tracks``
+        remains the current, non-deprecated "Get User's Saved Tracks" endpoint
+        (verified against the Spotify Feb-2026 migration guide, 2026-06-17).
+        There is no ``/me/library`` read that returns saved items.
         """
         out: list[dict] = []
         offset = 0
