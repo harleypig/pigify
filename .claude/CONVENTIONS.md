@@ -156,11 +156,15 @@ beyond immediate use. pigify's posture, verified 2026-06-17:
   rows link back to `open.spotify.com`.
 - **No model training** on Spotify data.
 
-## Versioning
+## Versioning & tagging
 
-Backend and frontend carry **independent semver streams**, tagged
-`backend/vX.Y.Z` and `frontend/vX.Y.Z`. A release is a tag, never an edit
-to a version file.
+**Tagging method: `subdir`** (per-component) — see the method catalog and the
+semver "what" (alpha-vs-stable bumping) in `rules/git.md` › *Versioning &
+tags*; cut tags with the **release-tag** skill. Backend and frontend are
+**independent semver streams**, tagged `backend/vX.Y.Z` and `frontend/vX.Y.Z`.
+Both are currently **alpha** (`v0.x`): breakage is expected and the `y.z`
+split is loose; the `0 → 1` jump on either stream is a deliberate, explicit
+decision. A release is a tag, never an edit to a version file.
 
 - **The version comes from the latest stream tag, not a committed file.**
   CI injects it at build time (`git describe --tags --match 'backend/v*'`
@@ -175,12 +179,12 @@ to a version file.
   advances the other's hash. The running container has no `.git`, which is
   why both values are injected at build time. See
   `backend/app/api/version.py` and `frontend/vite.config.ts`.
-- **Bumping = creating a tag** at the merge commit. Any change to a
-  component's shipped source is at minimum a patch bump on that stream
-  (bug fix → patch, feature → minor pre-1.0); a change to both ships a tag
-  on each. Changes that ship nothing (CI, docs, compose) ride along
-  untagged — the per-component hash enforces this (such a commit touches
-  neither tree).
+- **Bumping = creating a tag** at the merge commit; the bump itself follows
+  `rules/git.md` semver (alpha now, so the `y.z` split is loose). Only a
+  change to a component's **shipped source** is tagged on that stream; a
+  change to both ships a tag on each. Changes that ship nothing (CI, docs,
+  compose) ride along untagged — the per-component hash enforces this (such a
+  commit touches neither tree).
 - **Pushing the tag is what deploys:** the `release` job builds + pushes
   only the image whose stream matches the tag (`:<version>` + `:latest`);
   a merge without a tag rebuilds nothing. The `Build` job still validates
