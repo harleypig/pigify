@@ -14,6 +14,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Correct DAST secret-file paths to compose-dir-relative.",
+      "Spotify creds settable via .env (optional secrets + prod guard).",
+      "File-or-env sourcing for the allowlist + dev-bypass values.",
+      "Drop CSP style-src 'unsafe-inline'.",
       "Declare the subdir tagging method.",
       "Move the Spotify-audit watch list to docs.",
       "3-level theme system with dark + light.",
@@ -35,11 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Track list & Track Info: day-glo rollout + interaction/feature work.",
       "Clarify the not-authorized message.",
       "Derive host URLs from FRONTEND_PORT / BACKEND_PORT.",
-      "Use loopback IP 127.0.0.1 instead of localhost everywhere.",
-      "Derive URLs from ports in .env.example; capture scratch as TODOs.",
-      "Add an item to evaluate the Spotify Ads API.",
-      "Request streaming + user-read-email scopes for Web Playback SDK.",
-      "…and 154 earlier changes."
+      "…and 158 earlier changes."
     ]
   },
   {

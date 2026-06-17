@@ -12,23 +12,6 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 > [`docs/watch-list.md`](docs/watch-list.md) — re-evaluation, not actionable
 > work.
 
-## Security / hardening
-
-- [ ] **Tighten CSP `style-src`.** The frontend currently requires
-      `'unsafe-inline'` for inline styles; the ZAP baseline allowlists the
-      finding (`.zap/baseline-rules.tsv`, rule `10055`). Remove the inline
-      styles (or move to nonces/hashes) and drop that allowlist line.
-- [x] **Uniform file-or-env sourcing.** Done. `_load_secret_files` file-backs
-      `ALLOWED_SPOTIFY_IDS` / `DEV_SPOTIFY_ID` / `DEV_SPOTIFY_REFRESH_TOKEN`
-      (file wins). The Spotify client id/secret are now file-or-`.env`
-      everywhere: the docker stack's `spotify_client_id` / `_secret` secrets
-      are optional (`${…_FILE:-/dev/null}`, both compose files + `.env.example`
-      updated), with a production config guard
-      (`_require_spotify_credentials_in_prod`) preserving fail-fast. Tests +
-      the CI dummy-secret wiring updated. **Breaking (pre-1.0):** an existing
-      secret-file deploy must now set `SPOTIFY_CLIENT_ID_FILE` / `_SECRET_FILE`
-      in `.env` (or set the plain values).
-
 ## Theming & branding
 
 - [ ] **White-label re-branding (theme foundation shipped).** The 3-level
