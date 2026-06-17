@@ -24,6 +24,10 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       them to `with TestClient(app) as client:` (triggers lifespan →
       `db_dispose_all`), or a shared portal-loop teardown that disposes the
       engines. Audit: `grep -rn 'TestClient(' backend/tests | grep -v 'with '`.
+      **Keep this open across several iterations.** Each time the hang recurs,
+      re-analyze the code at that point (the source may shift as tests change)
+      and record the finding here; only close it once it has gone quiet for a
+      good while — a single green run is not a fix.
 
 > The **Spotify audit record + the deprecated-endpoint watch list** (the
 > "re-evaluate each `/spotify-audit` run" items) live in
