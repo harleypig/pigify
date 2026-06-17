@@ -7,7 +7,7 @@ import {
   type ScrobbleAlertState,
   scrobbleBadgeTitle,
 } from "./App.helpers";
-import logoUrl from "./assets/pigify-logo.png";
+import { Brand } from "./components/Brand";
 import Login from "./components/Login";
 import NowPlayingBar from "./components/NowPlayingBar";
 import PlaylistSelector from "./components/PlaylistSelector";
@@ -228,10 +228,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-brand">
-          <img className="app-brand__logo" src={logoUrl} alt="" />
-          <span className="app-brand__word">pigify</span>
-        </h1>
+        <Brand surface="header" />
         <div className="app-header-center">
           <NowPlayingBar
             trackUri={currentTrack}

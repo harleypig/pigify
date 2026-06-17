@@ -1,17 +1,19 @@
 # Branding & system-page theming — design note
 
-**Status:** partly shipped — *Increment 2* of the branding work.
-Increment 1 (the per-logo alignment knobs) shipped; see
-[`THEMING.md` › Branding the logo](THEMING.md). **The owner-surface theme
-scope + ephemeral toggle (section 1) are now shipped** for the login surface
-(the only system surface that exists today): the login renders under an
-owner-controlled theme via `data-theme` scoped to the `.login` subtree,
-independent of `pigify.theme`, with a top-right light/dark toggle. The owner
-default is the build-time constant `OWNER_THEME_DEFAULT` in
-`frontend/src/lib/ownerTheme.ts` (provisioning resolved to **build-time now**;
-see below). **Still open:** the brand-mark mode/layout config (section 3) and
-its provisioning — to be decided when built. This note keeps the decisions so
-they aren't re-litigated.
+**Status:** shipped — *Increment 2* of the branding work. Increment 1 (the
+per-logo alignment knobs) shipped; see
+[`THEMING.md` › Branding the logo](THEMING.md). **Section 1** (owner-surface
+theme scope + ephemeral toggle) shipped for the login surface: it renders
+under an owner-controlled theme via `data-theme` scoped to the `.login`
+subtree, independent of `pigify.theme`, with a top-right light/dark toggle;
+the owner default is the build-time constant `OWNER_THEME_DEFAULT` in
+`frontend/src/lib/ownerTheme.ts`. **Section 3** (brand-mark config) is now
+shipped too: `frontend/src/lib/brand.ts` holds the build-time `BRAND` config
+(mode + layout + wordmark + image), and a shared `<Brand>` component
+(`frontend/src/components/Brand.tsx`) replaces the duplicated Login/App
+lockups. Provisioning resolved to **build-time** for both (a runtime seam is
+left for the white-label TODO). This note keeps the decisions so they aren't
+re-litigated.
 
 ## Why this exists
 
@@ -80,37 +82,40 @@ surface.
 
 ## Provisioning model
 
-**Resolved for the system-theme default (shipped):** build-time —
-`OWNER_THEME_DEFAULT` is a typed constant in `lib/ownerTheme.ts` the deployer
-edits + rebuilds. This is the "build-time now, runtime later" option below; a
-runtime-injected value can replace the constant later without touching
-callers. **Still open for the brand mark** (mode/layout/wordmark/image) —
-decide when section 3 is built. The options below stand for that decision:
+**Resolved — build-time, for both the system-theme default and the brand
+mark** (the "build-time now, runtime later" option). `OWNER_THEME_DEFAULT`
+(`lib/ownerTheme.ts`) and `BRAND` (`lib/brand.ts`) are typed constants the
+deployer edits + rebuilds. A runtime-injected value can replace either
+constant later — for the **white-label** TODO — without touching callers
+(`<Brand>` / the owner-theme glue read the constant, not the source). The
+options weighed:
 
-- **Build-time config module** — a typed `brand.ts` (mode/layout/wordmark +
-  image `import`) the owner edits, then rebuilds the image. Simplest,
-  type-safe, matches the build-time theme system (YAML→CSS). Cost: a
-  white-label deployer must rebuild the frontend image, not just run the
-  published one.
-- **Runtime-mounted** — a `BRAND_*` env set + a logo file mounted into the
-  published image; the SPA reads injected runtime config at startup. True
-  white-label (no rebuild). Cost: runtime config injection into the static SPA
-  + nginx serving the mounted asset.
-- **Build-time now, runtime later** *(recommended)* — ship the build-time
-  module + `<Brand>` component now (unblocks mode/layout/size immediately),
-  with a clean seam to switch to runtime when the white-label TODO is actually
-  built. The owner currently builds anyway, so build-time costs nothing today.
+- **Build-time config module** *(chosen)* — typed constants the owner edits,
+  then rebuilds the image. Simplest, type-safe, matches the build-time theme
+  system (YAML→CSS). Cost: a white-label deployer rebuilds the frontend image
+  rather than just running the published one — acceptable now, since the owner
+  builds anyway.
+- **Runtime-mounted** *(deferred to white-label)* — a `BRAND_*` env + a logo
+  file mounted into the published image; the SPA reads injected runtime config
+  at startup. True no-rebuild white-label, at the cost of runtime config
+  injection into the static SPA + nginx serving the mounted asset.
 
-## Implementation seams (for when it's built)
+## Implementation seams
 
 - **Theme state (shipped):** working area uses `pigify.theme` on `<html>`; the
   owner surface uses a separate **ephemeral** React state seeded from the
   owner default and applied by scoping `data-theme` to the **`.login`
   subtree** (not `<html>`), so the two never interact and there's no flash.
   Future system pages reuse `lib/ownerTheme` + `OwnerThemeToggle` likewise.
-- **`<Brand>` component:** replaces the duplicated lockup in `Login.tsx` /
-  `App.tsx` (already copy #2 of the same markup), driven by the brand config;
-  renders the chosen mode/layout and consumes the alignment knobs.
+- **`<Brand>` component (shipped):** replaces the duplicated lockup in
+  `Login.tsx` / `App.tsx`, driven by the build-time `BRAND` config. It keeps
+  each surface's own CSS class set (so per-surface size/shadow still apply —
+  "same structure, only size differs"), renders the chosen `mode`
+  (lockup/wordmark/image), flows the `layout` via `data-brand-layout`
+  (`Brand.css`), and consumes the `--brand-logo-*` alignment knobs.
+  *Caveat:* `shift-x` is the meaningful nudge axis for the side-by-side
+  layouts and `shift-y` for the stacked ones; the knobs aren't auto-swapped by
+  layout, so a non-default `layout` may need the knobs re-tuned.
 - **Page classification:** a single predicate for "working area"
   (authenticated **and** on a music/audio task route) decides theme source and
   which brand mark + size apply.

@@ -1,0 +1,18 @@
+/*
+ * Brand-mark layout — the one piece of styling shared across surfaces (the
+ * per-surface size / shadow / position stay in Login.css and App.css). Both
+ * lockup wrappers are flex rows by default (image-left); `data-brand-layout`
+ * (owner config, lib/brand.ts) re-flows them. The `--brand-logo-gap` knob is
+ * a flex `gap`, so it works on either axis automatically.
+ */
+[data-brand-layout="image-right"] {
+  flex-direction: row-reverse;
+}
+
+[data-brand-layout="image-above"] {
+  flex-direction: column;
+}
+
+[data-brand-layout="image-below"] {
+  flex-direction: column-reverse;
+}

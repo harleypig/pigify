@@ -1,6 +1,6 @@
 import { useState } from "react";
-import logoUrl from "../assets/pigify-logo.png";
 import { flipTheme, resolveOwnerDefault } from "../lib/ownerTheme";
+import { Brand } from "./Brand";
 import { authMessageFromSearch } from "./Login.helpers";
 import { OwnerThemeToggle } from "./OwnerThemeToggle";
 import "./Login.css";
@@ -55,18 +55,7 @@ function Login({ onLogin }: LoginProps) {
           onToggle={() => setOwnerTheme(flipTheme)}
         />
 
-        <div className="console__lockup">
-          <img
-            className={`console__logo${error ? " is-error" : ""}`}
-            src={logoUrl}
-            alt=""
-            width={120}
-            height={128}
-          />
-          <h1 id="console-wordmark" className="console__wordmark">
-            pigify
-          </h1>
-        </div>
+        <Brand surface="login" wordmarkId="console-wordmark" error={!!error} />
 
         <p className="console__kicker">Personal Spotify console</p>
 
