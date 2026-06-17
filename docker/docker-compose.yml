@@ -19,12 +19,18 @@ volumes:
 
 secrets:
   # ---- required ----
-  spotify_client_id:
-    file: ${SECRETS_DIR:-./secrets}/spotify_client_id.txt
-  spotify_client_secret:
-    file: ${SECRETS_DIR:-./secrets}/spotify_client_secret.txt
   secret_key:
     file: ${SECRETS_DIR:-./secrets}/secret_key.txt
+  # ---- Spotify client id/secret: file OR .env (file wins) ----
+  # Use Docker secrets by pointing SPOTIFY_CLIENT_ID_FILE /
+  # SPOTIFY_CLIENT_SECRET_FILE (in .env) at host files, or set
+  # SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET directly in .env (the /dev/null
+  # default leaves the .env value in place). Production refuses to boot if
+  # neither source provides them (config guard).
+  spotify_client_id:
+    file: ${SPOTIFY_CLIENT_ID_FILE:-/dev/null}
+  spotify_client_secret:
+    file: ${SPOTIFY_CLIENT_SECRET_FILE:-/dev/null}
   # ---- optional: Last.fm ----
   # Default to /dev/null (empty) so the stack runs without Last.fm. To
   # enable it, set LASTFM_API_KEY_FILE / LASTFM_SHARED_SECRET_FILE in .env

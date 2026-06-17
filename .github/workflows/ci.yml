@@ -250,6 +250,11 @@ jobs:
 
       - name: Bring up the stack
         if: ${{ steps.changes.outputs.src == 'true' }}
+        # Spotify client id/secret are now optional secrets (file-or-env), so
+        # point the *_FILE vars at the dummy files written above.
+        env:
+          SPOTIFY_CLIENT_ID_FILE: docker/secrets/spotify_client_id.txt
+          SPOTIFY_CLIENT_SECRET_FILE: docker/secrets/spotify_client_secret.txt
         run: docker compose up -d --build
 
       - name: Wait for the stack to be ready

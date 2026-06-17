@@ -123,6 +123,8 @@ class TestSecretFileOverride(unittest.TestCase):
             _env_file=None,
             ENVIRONMENT="production",
             SECRET_KEY_FILE=path,
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
         )
         self.assertEqual(s.SECRET_KEY, "a-strong-production-key")
 
@@ -141,6 +143,8 @@ class TestProductionSecretKeyGuard(unittest.TestCase):
             _env_file=None,
             ENVIRONMENT="production",
             SECRET_KEY="a-real-strong-key",
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
         )
         self.assertEqual(s.SECRET_KEY, "a-real-strong-key")
 
@@ -148,6 +152,33 @@ class TestProductionSecretKeyGuard(unittest.TestCase):
         s = Settings(_env_file=None)
         self.assertEqual(s.ENVIRONMENT, "development")
         self.assertEqual(s.SECRET_KEY, _INSECURE_SECRET_KEY)
+
+
+class TestProductionSpotifyCredentialsGuard(unittest.TestCase):
+    def test_production_without_spotify_creds_raises(self):
+        # SECRET_KEY satisfied so the guard under test is the Spotify one.
+        with self.assertRaises(ValueError):
+            Settings(
+                _env_file=None,
+                ENVIRONMENT="production",
+                SECRET_KEY="a-real-strong-key",
+            )
+
+    def test_production_with_spotify_creds_passes(self):
+        s = Settings(
+            _env_file=None,
+            ENVIRONMENT="production",
+            SECRET_KEY="a-real-strong-key",
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
+        )
+        self.assertEqual(s.SPOTIFY_CLIENT_ID, "id")
+
+    def test_development_without_spotify_creds_passes(self):
+        # Development must boot without Spotify creds (dev-bypass / UI work).
+        s = Settings(_env_file=None)
+        self.assertEqual(s.ENVIRONMENT, "development")
+        self.assertEqual(s.SPOTIFY_CLIENT_ID, "")
 
 
 class TestDevAuthBypassGuard(unittest.TestCase):
@@ -161,6 +192,8 @@ class TestDevAuthBypassGuard(unittest.TestCase):
                 _env_file=None,
                 ENVIRONMENT="production",
                 SECRET_KEY="a-real-strong-key",
+                SPOTIFY_CLIENT_ID="id",
+                SPOTIFY_CLIENT_SECRET="secret",
                 DEV_AUTH_BYPASS=True,
             )
 
@@ -178,6 +211,8 @@ class TestDevAuthBypassGuard(unittest.TestCase):
             _env_file=None,
             ENVIRONMENT="production",
             SECRET_KEY="a-real-strong-key",
+            SPOTIFY_CLIENT_ID="id",
+            SPOTIFY_CLIENT_SECRET="secret",
         )
         self.assertFalse(s.DEV_AUTH_BYPASS)
 

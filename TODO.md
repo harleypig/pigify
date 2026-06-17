@@ -18,20 +18,16 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
       `'unsafe-inline'` for inline styles; the ZAP baseline allowlists the
       finding (`.zap/baseline-rules.tsv`, rule `10055`). Remove the inline
       styles (or move to nonces/hashes) and drop that allowlist line.
-- [ ] **Uniform file-or-env sourcing — finish the compose half.** Config
-      done: `_load_secret_files` now file-backs `ALLOWED_SPOTIFY_IDS`,
-      `DEV_SPOTIFY_ID`, and `DEV_SPOTIFY_REFRESH_TOKEN` (file wins), and the
-      Spotify client id/secret are already file-or-env at the config level
-      (plain field + `*_FILE` override). **Remaining:** the docker stack still
-      *requires* the Spotify client id/secret as secret files — to let it
-      source them from `.env` instead, flip the `spotify_client_id` /
-      `spotify_client_secret` compose secrets to the optional
-      `${…_FILE:-/dev/null}` pattern (mirroring Last.fm) in
-      `docker/docker-compose.yml` + `examples/docker-compose.yml`, and update
-      `.env.example`. **Trade-off:** that moves the default away from
-      `./secrets/*.txt`, so an existing secret-file deploy must then set
-      `SPOTIFY_CLIENT_ID_FILE` / `_SECRET_FILE` in `.env` — a (pre-1.0,
-      acceptable) breaking change. Confirm before flipping.
+- [x] **Uniform file-or-env sourcing.** Done. `_load_secret_files` file-backs
+      `ALLOWED_SPOTIFY_IDS` / `DEV_SPOTIFY_ID` / `DEV_SPOTIFY_REFRESH_TOKEN`
+      (file wins). The Spotify client id/secret are now file-or-`.env`
+      everywhere: the docker stack's `spotify_client_id` / `_secret` secrets
+      are optional (`${…_FILE:-/dev/null}`, both compose files + `.env.example`
+      updated), with a production config guard
+      (`_require_spotify_credentials_in_prod`) preserving fail-fast. Tests +
+      the CI dummy-secret wiring updated. **Breaking (pre-1.0):** an existing
+      secret-file deploy must now set `SPOTIFY_CLIENT_ID_FILE` / `_SECRET_FILE`
+      in `.env` (or set the plain values).
 
 ## Theming & branding
 

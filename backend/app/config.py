@@ -211,6 +211,23 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _require_spotify_credentials_in_prod(self) -> "Settings":
+        # The Spotify client id/secret may come from a file OR .env, so the
+        # compose no longer forces them as required Docker secrets. Re-assert
+        # the fail-fast here: production must not boot without them, or OAuth
+        # would only fail later, at sign-in. (Runs after _load_secret_files,
+        # so a file-provided value counts.)
+        if self.ENVIRONMENT.lower() == "production" and not (
+            self.SPOTIFY_CLIENT_ID and self.SPOTIFY_CLIENT_SECRET
+        ):
+            raise ValueError(
+                "SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET must be set in "
+                "production (via .env or a *_FILE secret); refusing to boot "
+                "without them."
+            )
+        return self
+
+    @model_validator(mode="after")
     def _dev_bypass_only_in_development(self) -> "Settings":
         # Fail closed: the auth bypass must never be reachable outside local
         # development. Enabling it in any other environment aborts boot.
