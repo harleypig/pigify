@@ -5,7 +5,25 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 
 ## Bugs
 
-*No open bugs.*
+- [ ] **Flaky CI: `Pre-commit checks (3.12)` hangs on "Run check hooks".**
+      The 3.12 pre-commit job intermittently hangs (~20 min, no progress) on
+      the *Run check hooks* step (which runs the full `pytest` suite); the
+      identical **3.14** job passes every time. Seen **twice on PR #74**, both
+      cleared by cancel + `gh run rerun --failed`. Not a code defect — a flaky
+      runner/teardown deadlock. **Likely cause:** the async DB teardown — the
+      suite emits `RuntimeError: Event loop is closed` and a `disk I/O error`
+      from aiosqlite's connection-worker thread at shutdown (a connection or
+      engine not disposed before the event loop closes); usually just a
+      warning, but it occasionally wedges the pytest process.
+      **Suggested fixes (future me):**
+      (a) *Stop the bleed* — add `timeout-minutes: 10` to the pre-commit CI
+      job so a hang fails fast instead of burning ~20 min, and add
+      `pytest-timeout` (`--timeout=60`) so a stuck test dies with a traceback
+      naming the culprit instead of hanging.
+      (b) *Root cause* — dispose async engines / close aiosqlite sessions in
+      test teardown (`await engine.dispose()` in the DB fixture; ensure
+      `reset_db_caches` disposes engines) so no worker-thread callback fires
+      into a closed loop; check the pytest-asyncio loop scope.
 
 > The **Spotify audit record + the deprecated-endpoint watch list** (the
 > "re-evaluate each `/spotify-audit` run" items) live in
