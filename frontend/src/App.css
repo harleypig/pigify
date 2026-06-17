@@ -60,25 +60,36 @@
     0 12px 30px -22px rgba(var(--brand-shadow-rgb), 0.95);
 }
 
-/* Brand lockup: small medallion + wordmark (mirrors the login). */
+/* Brand lockup: small medallion + wordmark (mirrors the login). The compact
+   header overrides two --brand-logo-* knobs to its smaller scale / nudge; gap,
+   trim, and tint inherit the owner-level defaults (see theme.css › Branding). */
 .app-brand {
+  --brand-logo-scale: 1.15;
+  --brand-logo-shift-y: 0.06em;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--brand-logo-gap);
   justify-self: start;
   margin: 0;
-  /* Shared lockup scale — the wordmark is 1em of this, the logo a touch
-     taller (see the login lockup). */
-  font-size: 1.55rem;
+  /* Per-surface "size of the whole" lockup — the wordmark is 1em of this, the
+     logo a touch taller (see the login lockup). Enlarged to fill the header
+     bar's vertical slack (the now-playing deck sets the bar height, so the
+     brand grows into the dead space without making the bar taller); kept below
+     the 1fr column's width so it never steals room from the now-playing
+     centre. */
+  font-size: 2.7rem;
 }
 
 .app-brand__logo {
-  height: 1.15em;
+  height: calc(var(--brand-logo-scale) * 1em);
   width: auto;
+  /* Crop a transparent/empty margin (knob; 0 for the pigify logo). */
+  margin: calc(-1 * var(--brand-logo-trim));
   /* Nudge down so the medallion's circle (not its bounding box, which the
      beard extends) centres on the wordmark. */
-  transform: translateY(0.06em);
-  filter: drop-shadow(0 0 10px rgba(var(--brand-accent-rgb), 0.3));
+  transform: translateY(var(--brand-logo-shift-y));
+  filter: var(--brand-logo-tint)
+    drop-shadow(0 0 10px rgba(var(--brand-accent-rgb), 0.3));
 }
 
 .app-brand__word {

@@ -77,6 +77,31 @@ this CSS file (or override individual tokens), then `@import` it from
 `theme.css` and register the name in `theme.ts`. Anything CSS can express is
 available at this level.
 
+## Branding the logo (owner-only)
+
+The brand **logo** is a deployer concern, not a user setting — there is no
+Settings control for it. Like the colour tokens, the logo is fitted with CSS
+custom properties so a white-label deploy can drop in its own artwork and
+align it **without code edits**. These `--brand-logo-*` knobs live in
+[`frontend/src/theme.css`](../frontend/src/theme.css) (not in the per-theme
+files — logo *geometry* is the same whatever the colour theme):
+
+| Knob | Default | What it does |
+|------|---------|--------------|
+| `--brand-logo-scale` | `1.25` | logo height as a multiple of the wordmark |
+| `--brand-logo-shift-y` | `0.1em` | vertical nudge so the artwork's visual anchor (the medallion circle), not its bounding box, centres on the wordmark |
+| `--brand-logo-shift-x` | `-0.28em` | horizontal optical-balance nudge for the lockup |
+| `--brand-logo-gap` | `0.2em` | space between the logo and the wordmark |
+| `--brand-logo-trim` | `0em` | inset that crops a transparent/empty margin around a logo so it sits flush (0 for the edge-to-edge pigify medallion) |
+| `--brand-logo-tint` | `opacity(1)` | optional `filter` to recolour the logo toward the active theme; `opacity(1)` is the identity (off) |
+
+The defaults are the hero (login) values. The compact app-header lockup
+overrides `--brand-logo-scale` / `--brand-logo-shift-y` in
+[`frontend/src/App.css`](../frontend/src/App.css); both lockups consume the
+rest. To rebrand: replace `frontend/src/assets/pigify-logo.png`, then tune the
+knobs above (override them in a hand-written theme CSS or directly in
+`theme.css`) until the new logo sits right against the wordmark.
+
 ## Adding a theme — checklist
 
 1. Create `frontend/src/themes/<name>.theme.yaml` (copy `dark.theme.yaml`) —
