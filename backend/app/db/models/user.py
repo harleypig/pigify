@@ -150,3 +150,17 @@ class SyncLog(UserBase):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(32), nullable=False)
     detail: Mapped[dict | None] = mapped_column(JSON)
+
+
+class UserSetting(UserBase, TimestampMixin):
+    """A durable per-user key/value setting (in the per-user DB).
+
+    The first general per-user settings store; the enrichment-cache TTL is the
+    first key. Values are stored as text and parsed by the typed accessors in
+    the user_settings repository.
+    """
+
+    __tablename__ = "user_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str | None] = mapped_column(Text)

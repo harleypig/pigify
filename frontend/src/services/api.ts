@@ -434,6 +434,23 @@ export const apiService = {
     return response.data;
   },
 
+  async getEnrichmentCacheSettings(): Promise<EnrichmentCacheSettings> {
+    const r = await apiClient.get(
+      "/api/integrations/enrichment-cache/settings",
+    );
+    return r.data;
+  },
+
+  async updateEnrichmentCacheSettings(
+    ttlDays: number,
+  ): Promise<EnrichmentCacheSettings> {
+    const r = await apiClient.put(
+      "/api/integrations/enrichment-cache/settings",
+      { ttl_days: ttlDays },
+    );
+    return r.data;
+  },
+
   // -------- Favorites / likes sync --------
   async getFavoritesStatus(): Promise<FavoritesStatus> {
     const r = await apiClient.get("/api/favorites/status");
@@ -674,6 +691,13 @@ export interface LastfmQueueFlushResult {
 export interface LastfmQueueClearResult {
   deleted: number;
   remaining: number;
+}
+
+export interface EnrichmentCacheSettings {
+  /** Cache lifetime in days; 0 disables caching (always refetch). */
+  ttl_days: number;
+  min_days: number;
+  max_days: number;
 }
 
 export interface LastfmStatus {

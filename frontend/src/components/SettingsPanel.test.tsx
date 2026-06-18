@@ -21,6 +21,8 @@ const flushLastfmQueue = vi.fn();
 const deleteLastfmQueueEntry = vi.fn();
 const clearLastfmQueue = vi.fn();
 const clearEnrichmentCache = vi.fn();
+const getEnrichmentCacheSettings = vi.fn();
+const updateEnrichmentCacheSettings = vi.fn();
 const getVersionInfo = vi.fn();
 
 vi.mock("../services/api", () => ({
@@ -39,6 +41,10 @@ vi.mock("../services/api", () => ({
     deleteLastfmQueueEntry: (...a: unknown[]) => deleteLastfmQueueEntry(...a),
     clearLastfmQueue: (...a: unknown[]) => clearLastfmQueue(...a),
     clearEnrichmentCache: (...a: unknown[]) => clearEnrichmentCache(...a),
+    getEnrichmentCacheSettings: (...a: unknown[]) =>
+      getEnrichmentCacheSettings(...a),
+    updateEnrichmentCacheSettings: (...a: unknown[]) =>
+      updateEnrichmentCacheSettings(...a),
     getVersionInfo: (...a: unknown[]) => getVersionInfo(...a),
   },
 }));
@@ -144,6 +150,16 @@ describe("SettingsPanel", () => {
     deleteLastfmQueueEntry.mockResolvedValue(undefined);
     clearLastfmQueue.mockResolvedValue({ deleted: 0, remaining: 0 });
     clearEnrichmentCache.mockResolvedValue({ deleted: 0, scope: "user" });
+    getEnrichmentCacheSettings.mockResolvedValue({
+      ttl_days: 7,
+      min_days: 0,
+      max_days: 30,
+    });
+    updateEnrichmentCacheSettings.mockResolvedValue({
+      ttl_days: 0,
+      min_days: 0,
+      max_days: 30,
+    });
     getVersionInfo.mockResolvedValue({
       backend_version: "1.2.3",
       python_version: "3.12.0",
@@ -398,6 +414,46 @@ describe("SettingsPanel", () => {
       expect(
         screen.getByRole("button", { name: "Clear cached track trivia" }),
       ).toBeInTheDocument();
+    });
+
+    it("loads and saves the cache TTL", async () => {
+      renderPanel({ initialTab: "connections" });
+
+      // The control populates from the loaded setting (7 days).
+      const input = (await screen.findByLabelText(
+        /Keep for/,
+      )) as HTMLInputElement;
+      expect(input.value).toBe("7");
+
+      // Set it to 0 (caching off) and save.
+      await userEvent.clear(input);
+      await userEvent.type(input, "0");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save cache lifetime" }),
+      );
+
+      await waitFor(() =>
+        expect(updateEnrichmentCacheSettings).toHaveBeenCalledWith(0),
+      );
+      expect(await screen.findByText(/Caching off/)).toBeInTheDocument();
+    });
+
+    it("rejects an out-of-range TTL client-side with an explanation", async () => {
+      renderPanel({ initialTab: "connections" });
+
+      const input = (await screen.findByLabelText(
+        /Keep for/,
+      )) as HTMLInputElement;
+      await userEvent.clear(input);
+      await userEvent.type(input, "99");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save cache lifetime" }),
+      );
+
+      // Explains the valid range (electric-red alert), and never hits the API.
+      const alert = await screen.findByRole("alert");
+      expect(alert).toHaveTextContent("from 0 to 30");
+      expect(updateEnrichmentCacheSettings).not.toHaveBeenCalled();
     });
   });
 

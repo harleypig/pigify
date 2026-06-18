@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Configurable per-user enrichment-cache TTL.",
       "Text-size control for the Settings window.",
       "Brand-mark config + shared <Brand> component.",
       "Dispose portal-loop engines in sync TestClient tests.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Prune backlog, record SQLite-only decision (ADR-0003).",
       "Bump the backend group across 1 directory with 4 updates.",
       "Bump the frontend group across 1 directory with 4 updates.",
-      "Spotify audit: scopes, rate limiting, Feb-2026 endpoint migrations + decisions.",
-      "…and 165 earlier changes."
+      "…and 166 earlier changes."
     ]
   },
   {

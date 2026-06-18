@@ -540,6 +540,64 @@ function ConnectionsTab({ onProfileChange }: ConnectionsTabProps) {
 function EnrichmentCacheCard() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  // The per-user cache TTL (days); `null` until loaded. `ttlDraft` is the
+  // editable input; `bounds` come from the server (0 … ~1 month).
+  const [ttlDraft, setTtlDraft] = useState(0);
+  const [bounds, setBounds] = useState<{ min: number; max: number } | null>(
+    null,
+  );
+  const [savedTtl, setSavedTtl] = useState<number | null>(null);
+  // Inline feedback shown to the RIGHT of Save. `error` drives the standout
+  // (electric-red) styling and carries the reason (e.g. the valid range).
+  const [ttlMsg, setTtlMsg] = useState<{ text: string; error: boolean } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    apiService
+      .getEnrichmentCacheSettings()
+      .then((s) => {
+        setTtlDraft(s.ttl_days);
+        setSavedTtl(s.ttl_days);
+        setBounds({ min: s.min_days, max: s.max_days });
+      })
+      .catch(() => {
+        /* leave defaults; the control just won't show until reachable */
+      });
+  }, []);
+
+  const saveTtl = async () => {
+    // Validate client-side so the message explains *why*, not a bare failure.
+    if (
+      bounds &&
+      (!Number.isInteger(ttlDraft) ||
+        ttlDraft < bounds.min ||
+        ttlDraft > bounds.max)
+    ) {
+      setTtlMsg({
+        text: `Enter a whole number from ${bounds.min} to ${bounds.max} (${bounds.min} turns caching off).`,
+        error: true,
+      });
+      return;
+    }
+    try {
+      const s = await apiService.updateEnrichmentCacheSettings(ttlDraft);
+      setSavedTtl(s.ttl_days);
+      setTtlDraft(s.ttl_days);
+      setTtlMsg({
+        text:
+          s.ttl_days === 0
+            ? "Caching off — fetched fresh every time."
+            : `Saved — kept for ${s.ttl_days} day${s.ttl_days === 1 ? "" : "s"}.`,
+        error: false,
+      });
+    } catch {
+      setTtlMsg({
+        text: "Couldn't reach the server — try again.",
+        error: true,
+      });
+    }
+  };
 
   const clear = async () => {
     if (!window.confirm("Clear all cached track trivia for your account?"))
@@ -566,11 +624,46 @@ function EnrichmentCacheCard() {
         <h3>Cached track trivia</h3>
       </header>
       <p className="sp-meta">
-        Last.fm, MusicBrainz and Wikipedia results are cached for up to a week
-        so track details open instantly. If a Wikipedia article was fixed or a
-        Last.fm tag changed, clear the cache to force fresh lookups on the next
-        open.
+        Last.fm, MusicBrainz and Wikipedia results are cached so track details
+        open instantly. Set how long an entry stays fresh — <strong>0</strong>{" "}
+        turns caching off (every open refetches). Clear the cache to force fresh
+        lookups now (e.g. a Wikipedia article was fixed or a Last.fm tag
+        changed).
       </p>
+      {bounds && (
+        <div className="sp-row">
+          <label>
+            Keep for (days, {bounds.min} to disable):{" "}
+            <input
+              type="number"
+              min={bounds.min}
+              max={bounds.max}
+              value={ttlDraft}
+              onChange={(e) => {
+                setTtlDraft(Number(e.target.value));
+                setTtlMsg(null);
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            className="sp-btn"
+            onClick={saveTtl}
+            disabled={ttlDraft === savedTtl}
+            aria-label="Save cache lifetime"
+          >
+            Save
+          </button>
+          {ttlMsg && (
+            <span
+              className={`sp-ttl-msg${ttlMsg.error ? " is-error" : ""}`}
+              role={ttlMsg.error ? "alert" : undefined}
+            >
+              {ttlMsg.text}
+            </span>
+          )}
+        </div>
+      )}
       <button
         type="button"
         className="sp-btn-danger"
