@@ -227,6 +227,59 @@ Last.fm). Each is a real public API with docs worth codifying. These are
 `ship-pr`, surfaced from here like the nginx rule was), per the
 tool-rule-coverage policy in `CLAUDE.md`.
 
+**Spotify** — unlike the providers below, Spotify *does* already have a global
+`rules/spotify.md` plus the `spotify-patterns` and `spotify-audit` skills.
+They cover the Web API mechanics (auth/PKCE, token refresh, relinking, 429s,
+deprecations) but not Spotify's **non-API obligations**, and they lean on
+prior knowledge rather than the current official docs. Extend them (also a
+global-config task — dotfiles via `claude-audit` + `ship-pr`):
+
+- [ ] **Fold in Spotify's design, terms, and accessibility requirements.**
+      Ground each against the *current* official pages, not memory:
+  - [ ] **Design guidelines** (<https://developer.spotify.com/documentation/design>)
+        — attribution, logo/mark usage, "powered by Spotify", green-vs-black
+        rules, track/artist/album metadata display, and the don'ts (no
+        re-skinning the Spotify brand, no implying endorsement). These bind
+        the **frontend**, so capture the UI-facing rules where they'll be seen
+        (likely `rules/spotify.md` plus a pointer from `.claude/CONVENTIONS.md`
+        for pigify-specific UI usage).
+  - [ ] **Developer Terms** (<https://developer.spotify.com/terms>) — the hard
+        prohibitions: no storing/caching beyond what's allowed, no audio
+        downloading, no using Spotify data to train models, no commercial use
+        without approval, rate-limit/abuse clauses, user-data handling. Codify
+        the ones an integration can violate so `spotify-audit` can check them.
+  - [ ] **Accessibility** (<https://developer.spotify.com/documentation/accessibility>)
+        — overlaps the global `a11y-review` skill; reconcile rather than
+        duplicate (link the canonical a11y bar, add only Spotify-specific
+        guidance).
+- [ ] **Use the official Web API + Web Playback SDK docs as the grounding
+      source** for the rule/skills' concepts, how-tos, and tutorials — not
+      just the spotipy wrapper. spotipy is a Web-API client, but **Spotify
+      enforces against *us*, not spotipy**: if the wrapper uses a deprecated
+      endpoint, an over-broad scope, or a disallowed call pattern, that's our
+      violation. Note in `rules/spotify.md` that spotipy's behaviour must be
+      audited against Spotify's own rules (the `spotify-audit` skill is the
+      forcing function), and capture any Web Playback SDK concepts pigify
+      relies on (EME/DRM prerequisites, device/transfer model).
+- [ ] **Decide how to gate the "have Spotify's docs changed?" check** so
+      `spotify-audit` doesn't re-fetch and diff the official pages on every
+      run (expensive, and usually nothing's changed). Likely a **last-checked
+      date** recorded in the rule/skill (or a small sidecar), with a staleness
+      threshold — if enough time has passed, the audit re-pulls the design /
+      terms / accessibility / Web API pages and refreshes; otherwise it trusts
+      the cached understanding. Pin down where the date lives, the interval,
+      and how a check updates it.
+- [ ] **Consider whether/how to consult the Spotify for Developers forum**
+      (<https://community.spotify.com/t5/Spotify-for-Developers/bd-p/Spotify_Developer>
+      — the *developer* board only; the bare `community.spotify.com` domain
+      covers all Spotify use and is out of scope). It's a source for
+      deprecation notices, undocumented behaviour changes, and breakage that
+      lands there before (or instead of) the formal docs. Decide if the audit
+      should scan it (and for what — pinned/announcement threads, recent
+      high-traffic issues), fold any check into the staleness-gated pass
+      above, and treat forum posts as **signals to verify against official
+      docs**, not authoritative on their own.
+
 **MusicBrainz** — resolves a Spotify track → MBID (ISRC-first, then a fuzzy
 artist+title recording search) for the Track Info panel and enrichment
 (`backend/app/services/musicbrainz.py`):

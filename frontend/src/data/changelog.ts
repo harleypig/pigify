@@ -14,7 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Shared horizontal-resize capability + resizable sidebar.",
+      "Expand Spotify rule/skill audit task.",
+      "Shared horizontal-resize + resizable sidebar.",
       "White-label 'bring your own brand' guide.",
       "Configurable per-user enrichment-cache TTL.",
       "Text-size control for the Settings window.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Centralise upstream Spotify 401 → clean 401 across the API.",
       "Track Info panel overhaul + per-component versioning scheme.",
       "Day-glo console rollout: Settings, UserMenu, RecipeBuilder + fixes.",
-      "Prune backlog, record SQLite-only decision (ADR-0003).",
-      "…and 168 earlier changes."
+      "…and 169 earlier changes."
     ]
   },
   {
