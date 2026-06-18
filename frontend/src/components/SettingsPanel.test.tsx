@@ -203,6 +203,29 @@ describe("SettingsPanel", () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
+    it("scales the body via the A− / A+ text-size control", async () => {
+      localStorage.removeItem("pigify.settingsPanel.fontScale");
+      const { container } = renderPanel();
+      const body = container.querySelector(".sp-body") as HTMLElement;
+
+      // Default scale is 1 (no zoom applied beyond the var default).
+      expect(body.style.getPropertyValue("--sp-scale")).toBe("1");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Increase text size" }),
+      );
+      expect(body.style.getPropertyValue("--sp-scale")).toBe("1.1");
+      // Persisted under its own key, independent of the track-info panel.
+      expect(localStorage.getItem("pigify.settingsPanel.fontScale")).toBe(
+        "1.1",
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Decrease text size" }),
+      );
+      expect(body.style.getPropertyValue("--sp-scale")).toBe("1");
+    });
+
     it("switches to the Connections tab when its tab is clicked", async () => {
       renderPanel();
 

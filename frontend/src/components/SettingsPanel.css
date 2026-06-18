@@ -50,11 +50,18 @@
   font-weight: 700;
 }
 
-.sp-close {
+/* Upper-right header controls: A− / A+ text-size, then close. */
+.sp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.sp-close,
+.sp-font {
   background: transparent;
   border: none;
   color: var(--brand-ink-dim);
-  font-size: 18px;
   cursor: pointer;
   line-height: 1;
   padding: 2px 6px;
@@ -63,9 +70,25 @@
     color 0.15s,
     background-color 0.15s;
 }
-.sp-close:hover {
+
+.sp-close {
+  font-size: 18px;
+}
+
+.sp-font {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sp-close:hover:not(:disabled),
+.sp-font:hover:not(:disabled) {
   color: var(--brand-accent-bright);
   background: rgba(var(--brand-accent-rgb), 0.12);
+}
+
+.sp-font:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .sp-tabs {
@@ -106,6 +129,9 @@
   overflow-y: auto;
   padding: 12px 14px 16px;
   flex: 1;
+  /* A− / A+ text scale; `zoom` scales text + spacing together, leaving the
+     header / tabs chrome fixed. Graceful no-op on engines without `zoom`. */
+  zoom: var(--sp-scale, 1);
 }
 
 .sp-tabpanel {

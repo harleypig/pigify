@@ -208,11 +208,6 @@ authored on the brand from the start.
       **min 0 (no caching) … max 1 month**, wired to the backend
       enrichment-cache expiry as a per-user setting; `0` bypasses the cache
       entirely. (Covers all three providers, not just Last.fm.)
-- [ ] **Text-size control for the Settings window.** Add a simple
-      increase/decrease text-size button in the **upper-right** corner of the
-      Settings window — a local, persisted UI preference scaling the panel's
-      text. Pairs with the track-info *Font-size control + default* item
-      (*Track info panel*); share the default-size setting if practical.
 
 ## Last.fm
 

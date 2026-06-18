@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { FONT_MAX, FONT_MIN, FONT_STEP, useFontScale } from "../lib/fontScale";
 import { apiService, type TrackDetail } from "../services/api";
 import {
   formatDuration,
@@ -28,9 +29,6 @@ const PANEL_FONT_KEY = "pigify.trackInfoPanel.fontScale";
 const MIN_W = 280;
 const MIN_H = 200;
 const EDGE = 8; // keep this gap from the viewport edges
-const FONT_MIN = 0.8;
-const FONT_MAX = 1.6;
-const FONT_STEP = 0.1;
 
 interface Size {
   w: number;
@@ -217,25 +215,10 @@ function TrackInfoPanel({
   // Wikipedia starts collapsed; opened on demand via the "+" toggle.
   const [wikiOpen, setWikiOpen] = useState(false);
   // Body text scale (A− / A+), persisted. Applied as `zoom` on the body so
-  // text + spacing scale together; the header chrome stays fixed.
-  const [fontScale, setFontScale] = useState<number>(
-    () => readStored<number>(PANEL_FONT_KEY) ?? 1,
-  );
+  // text + spacing scale together; the header chrome stays fixed. Bounds /
+  // step / default are shared with the Settings panel (lib/fontScale).
+  const [fontScale, adjustFont] = useFontScale(PANEL_FONT_KEY);
   const reqRef = useRef(0);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PANEL_FONT_KEY, JSON.stringify(fontScale));
-    } catch {
-      /* ignore */
-    }
-  }, [fontScale]);
-
-  const adjustFont = (delta: number) =>
-    setFontScale(
-      (s) =>
-        Math.round(Math.min(FONT_MAX, Math.max(FONT_MIN, s + delta)) * 10) / 10,
-    );
 
   // Floating-window geometry, both persisted: a top-left position and a size.
   // Drag the header to move; drag the bottom-right grip to resize. `null`
