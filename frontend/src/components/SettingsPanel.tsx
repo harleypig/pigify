@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { CHANGELOG, type ChangelogEntry } from "../data/changelog";
+import { FONT_MAX, FONT_MIN, FONT_STEP, useFontScale } from "../lib/fontScale";
 import {
   getThemeChoice,
   setThemeChoice,
@@ -42,12 +49,18 @@ const TABS: TabDef[] = [
 
 const GITHUB_REPO_URL = "https://github.com/harleypig/pigify";
 
+// Its own persisted scale (independent of the track-info panel's), sharing the
+// bounds/step/default from lib/fontScale.
+const SETTINGS_FONT_KEY = "pigify.settingsPanel.fontScale";
+
 function SettingsPanel({
   onClose,
   onProfileChange,
   initialTab = "favorites",
 }: Props) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
+  // Panel text scale (A− / A+), persisted; applied as `zoom` on the body.
+  const [fontScale, adjustFont] = useFontScale(SETTINGS_FONT_KEY);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -57,15 +70,37 @@ function SettingsPanel({
     <aside className="settings-panel" aria-label="Settings">
       <header className="sp-header">
         <span className="sp-title-tag">Settings</span>
-        <button
-          type="button"
-          className="sp-close"
-          onClick={onClose}
-          aria-label="Close settings"
-          title="Close settings"
-        >
-          ×
-        </button>
+        <div className="sp-header-actions">
+          <button
+            type="button"
+            className="sp-font"
+            onClick={() => adjustFont(-FONT_STEP)}
+            disabled={fontScale <= FONT_MIN}
+            aria-label="Decrease text size"
+            title="Decrease text size"
+          >
+            A−
+          </button>
+          <button
+            type="button"
+            className="sp-font"
+            onClick={() => adjustFont(FONT_STEP)}
+            disabled={fontScale >= FONT_MAX}
+            aria-label="Increase text size"
+            title="Increase text size"
+          >
+            A+
+          </button>
+          <button
+            type="button"
+            className="sp-close"
+            onClick={onClose}
+            aria-label="Close settings"
+            title="Close settings"
+          >
+            ×
+          </button>
+        </div>
       </header>
       <div className="sp-tabs" role="tablist">
         {TABS.map((t) => (
@@ -81,7 +116,13 @@ function SettingsPanel({
           </button>
         ))}
       </div>
-      <div className="sp-body">
+      <div
+        className="sp-body"
+        style={
+          { "--sp-scale": fontScale } as CSSProperties &
+            Record<"--sp-scale", number>
+        }
+      >
         <div hidden={activeTab !== "favorites"} role="tabpanel">
           <FavoritesTab />
         </div>
