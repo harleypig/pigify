@@ -168,3 +168,11 @@ CI publishes `ghcr.io/<owner>/pigify-backend` and `-frontend` on `v*` tags.
 Authenticate to pull private packages
 (`docker login ghcr.io`), then reference those images in your own compose /
 orchestration files instead of building locally.
+
+## Re-branding (white-label)
+
+To re-skin pigify — colours, fonts, logo, wordmark, and the pre-login look —
+see [`THEMING.md` › Bring your own brand](THEMING.md). It's **build-time**:
+edit the brand config + theme and rebuild the frontend image (a no-rebuild
+runtime path is a planned future enhancement). The published images carry the
+default pigify brand.

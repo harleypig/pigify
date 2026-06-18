@@ -8,6 +8,16 @@
  * value can replace this constant later without touching `<Brand>` — see
  * docs/branding-design.md › Provisioning.
  *
+ * ICEBOX: 2026-06-18 — runtime brand injection / no-rebuild white-label.
+ * To let the *average owner* re-skin the published image WITHOUT a rebuild
+ * (no toolchain, no source edit), have the SPA fetch a mounted brand config +
+ * logo at startup (e.g. /brand/config.json, /brand/logo.png served by nginx)
+ * and feed it here / into OWNER_THEME_DEFAULT / the theme. The compiled-CSS
+ * theme is the biggest blocker (colours/fonts need the YAML→CSS build), so a
+ * runtime path would also serve a mounted theme CSS. Deferred (build-time was
+ * chosen); revisit on request. Full sketch in branding-design.md › Runtime
+ * branding (future).
+ *
  * One structure is shared across surfaces (same `mode` and `layout`
  * everywhere); only the overall *size* differs per surface, which stays in
  * each surface's CSS. The `--brand-logo-*` alignment knobs (theme.css) tune
