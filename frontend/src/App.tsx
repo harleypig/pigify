@@ -12,15 +12,18 @@ import Login from "./components/Login";
 import NowPlayingBar from "./components/NowPlayingBar";
 import PlaylistSelector from "./components/PlaylistSelector";
 import RecipesSidebar from "./components/RecipesSidebar";
+import { ResizeHandle } from "./components/ResizeHandle";
 import SettingsPanel from "./components/SettingsPanel";
 import TrackInfoPanel from "./components/TrackInfoPanel";
 import TrackList from "./components/TrackList";
 import UserMenu from "./components/UserMenu";
+import { useResizableWidth } from "./lib/useResizableWidth";
 import { apiService, type Profile, type User } from "./services/api";
 import "./App.css";
 
 const PANEL_OPEN_KEY = "pigify.trackInfoPanel.open";
 const SELECTED_PLAYLIST_KEY = "pigify.selectedPlaylist";
+const SIDEBAR_WIDTH_KEY = "pigify.sidebar.width";
 const SCROBBLE_POLL_MS = 60 * 1000; // 60s
 
 function App() {
@@ -63,6 +66,15 @@ function App() {
     } catch {
       return true;
     }
+  });
+  // Resizable left sidebar (the standard panel-resize capability; a future
+  // right-docked queue sidebar reuses the same hook with edge="left").
+  const sidebar = useResizableWidth({
+    storageKey: SIDEBAR_WIDTH_KEY,
+    min: 220,
+    max: 600,
+    defaultWidth: 300,
+    edge: "right",
   });
 
   useEffect(() => {
@@ -286,12 +298,15 @@ function App() {
         </div>
       )}
       <main className="app-main">
-        <div className="sidebar">
-          <PlaylistSelector
-            onSelectPlaylist={setSelectedPlaylist}
-            selectedPlaylist={selectedPlaylist}
-          />
-          <RecipesSidebar />
+        <div className="sidebar" style={{ width: sidebar.width }}>
+          <div className="sidebar-scroll">
+            <PlaylistSelector
+              onSelectPlaylist={setSelectedPlaylist}
+              selectedPlaylist={selectedPlaylist}
+            />
+            <RecipesSidebar />
+          </div>
+          <ResizeHandle resize={sidebar} label="Resize playlist sidebar" />
         </div>
         <div className="content">
           {/* Settings lives in the main content panel rather than a floating

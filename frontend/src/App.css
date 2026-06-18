@@ -210,8 +210,14 @@
 }
 
 .sidebar {
-  width: 300px;
-  overflow-y: auto;
+  /* Width is owned by the resize hook (inline style); default 300px. Keep the
+     panel from flexing so its width is exactly what the user set, and anchor
+     the absolute resize grip on its (non-scrolling) edge. Scrolling lives on
+     the inner .sidebar-scroll so the grip stays full-height. */
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   background:
     linear-gradient(
       180deg,
@@ -220,6 +226,12 @@
     ),
     var(--app-panel);
   border-right: 1px solid var(--app-edge);
+}
+
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .content {
