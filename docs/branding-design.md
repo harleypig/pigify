@@ -100,6 +100,40 @@ options weighed:
   at startup. True no-rebuild white-label, at the cost of runtime config
   injection into the static SPA + nginx serving the mounted asset.
 
+## Runtime branding (future)
+
+**Status:** deferred enhancement (`ICEBOX:` in `lib/brand.ts`, dated
+2026-06-18). The build-time white-label flow is documented and shippable
+([`THEMING.md` › Bring your own brand](THEMING.md)); this is the *next* step,
+to be picked up on request.
+
+**Goal:** let the **average owner** re-skin the **published** image with **no
+rebuild and no source edit** — drop files beside the container, restart. The
+**compiled-CSS theme is the biggest blocker** today: colours/fonts require
+authoring a theme and running the YAML→CSS build, which a non-technical owner
+can't do. Runtime injection is what removes that blocker.
+
+**Sketch:**
+
+- **Mount + serve:** a compose volume maps an owner dir to the frontend image
+  (e.g. `./brand → /usr/share/nginx/html/brand`); nginx serves `/brand/*`
+  (config JSON, `logo.png`, and a `theme.css` overriding the `--brand-*`
+  tokens under a selector).
+- **SPA bootstrap:** before first render, fetch `/brand/config.json` (mode /
+  layout / wordmark / logo path / owner-theme default) and, if present, inject
+  `<link rel="stylesheet" href="/brand/theme.css">`. Feed the config to
+  `BRAND` / `OWNER_THEME_DEFAULT` (they already read a constant the callers
+  don't touch, so only the source of that constant changes).
+- **Costs / risks:** a blocking startup fetch (avoid a flash of the default
+  brand — FOUC), a versioned runtime-config contract, and serving
+  owner-supplied files (scope the mount; don't serve arbitrary paths). Weaker
+  type-safety than the build-time constants (validate the JSON at startup).
+
+**Why not now:** build-time was chosen (the owner already builds the dogfood
+stack), so runtime injection buys little for the current single-owner use and
+adds permanent surface. It earns its keep once pigify is distributed to owners
+who run the published images without a toolchain.
+
 ## Implementation seams
 
 - **Theme state (shipped):** working area uses `pigify.theme` on `<html>`; the

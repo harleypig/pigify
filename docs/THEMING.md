@@ -141,6 +141,60 @@ export const BRAND: BrandConfig = {
    `frontend/src/lib/theme.ts` so it appears in Settings › Theme.
 5. Run the tests — the parity test will flag any token the new theme misses.
 
+## Bring your own brand (white-label)
+
+A deployer (the "owner") can re-skin pigify end to end — colours, fonts,
+logo, wordmark, and the pre-login look — by changing config and **rebuilding
+the frontend image**. Everything below is **build-time**: the brand is
+compiled into the bundle, so a rebrand is "edit the source, rebuild", not a
+runtime setting. (A no-rebuild *runtime* path is a planned future enhancement
+— see *Runtime branding* in [`branding-design.md`](branding-design.md).)
+
+The four levers, each documented in its own section above:
+
+1. **Colours & fonts** → a **custom theme**. Author it as YAML (level 2) or
+   hand-write the CSS (level 3), then make it the default. This is the most
+   involved step — see *Compiling a theme* below.
+2. **Logo & wordmark** → the **`BRAND` config** (`frontend/src/lib/brand.ts`):
+   `mode` (lockup / wordmark / image), `layout`, the `wordmark` text, and the
+   `image` asset. Replace `frontend/src/assets/pigify-logo.png` (or point
+   `image` at your own file). See *The brand mark*.
+3. **Logo fit** → the **`--brand-logo-*` knobs** (`theme.css`) — scale, gap,
+   nudge, trim, tint — so a new logo sits right against the wordmark. See
+   *Branding the logo*.
+4. **Pre-login look** → **`OWNER_THEME_DEFAULT`**
+   (`frontend/src/lib/ownerTheme.ts`) — the theme the login / system pages
+   default to (`system` / `dark` / `light`), independent of any user's pick.
+
+Then rebuild: `docker compose up -d --build frontend` (or your deploy's image
+build). No code edits beyond these config files and the asset are needed.
+
+### Compiling a theme
+
+Colours and fonts live in a **compiled CSS** theme, so changing them is the
+one step that needs the build toolchain — the biggest hurdle to a
+minimal-effort rebrand. The flow (also in *Adding a theme — checklist*):
+
+```bash
+cd frontend
+# 1. Author the palette as a friendly YAML map (copy an existing one):
+cp src/themes/dark.theme.yaml src/themes/mybrand.theme.yaml
+#    …edit the token values (bg / surface / ink / accent / fonts / …)…
+
+# 2. Compile YAML → CSS (writes src/themes/mybrand.css):
+npm run generate:themes
+
+# 3. Make it the default: set `_default: true` in mybrand.theme.yaml (and
+#    false on the old default), recompile, then @import it in src/theme.css
+#    and register it in src/lib/theme.ts (see the checklist above).
+
+# 4. npm run build   # or rebuild the image
+```
+
+Hand-writing `src/themes/mybrand.css` directly (level 3) skips the YAML +
+`generate:themes` step — anything CSS can express is available, at the cost
+of writing raw token declarations.
+
 ## Files
 
 | Path | Role |
@@ -150,3 +204,6 @@ export const BRAND: BrandConfig = {
 | `frontend/src/themes/*.css` | level-3 artifacts (generated from YAML) |
 | `frontend/scripts/generate-themes.mjs` | YAML → CSS compiler |
 | `frontend/src/lib/theme.ts` | level-1 selection + persistence + apply |
+| `frontend/src/lib/brand.ts` | the `BRAND` mark config (mode/layout/wordmark/image) |
+| `frontend/src/lib/ownerTheme.ts` | `OWNER_THEME_DEFAULT` (pre-login theme) |
+| `frontend/src/assets/pigify-logo.png` | the default logo asset |

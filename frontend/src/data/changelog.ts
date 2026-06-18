@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "White-label \"bring your own brand\" guide.",
       "Configurable per-user enrichment-cache TTL.",
       "Text-size control for the Settings window.",
       "Brand-mark config + shared <Brand> component.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Day-glo console rollout: Settings, UserMenu, RecipeBuilder + fixes.",
       "Prune backlog, record SQLite-only decision (ADR-0003).",
       "Bump the backend group across 1 directory with 4 updates.",
-      "Bump the frontend group across 1 directory with 4 updates.",
-      "…and 166 earlier changes."
+      "…and 167 earlier changes."
     ]
   },
   {

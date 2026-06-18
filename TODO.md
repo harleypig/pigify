@@ -49,19 +49,6 @@ rules/mixes DSL, etc.) lives in `docs/ROADMAP.md`.
 > [`docs/watch-list.md`](docs/watch-list.md) — re-evaluation, not actionable
 > work.
 
-## Theming & branding
-
-- [ ] **White-label re-branding (theme foundation shipped).** The 3-level
-      theme system is in place — Settings › Theme (dark / light / system,
-      persisted), YAML-authored themes compiled to per-theme CSS, and the
-      full component colour→token migration (see `docs/THEMING.md`). The
-      `--brand-*` **token contract** in `frontend/src/theme.css` is now the
-      single interface — *not* a single swap file; each theme is its own file
-      under `src/themes/`. **Remaining for white-label:** expose wordmark /
-      logo re-branding (the configurable logo knobs below) and document a
-      deployer "bring your own brand" flow (a custom theme file + assets) so
-      colours / fonts / logo swap without code edits.
-
 ## Frontend design
 
 Roll the **day-glo console** brand (the aesthetic from the recent Login /
