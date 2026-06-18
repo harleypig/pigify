@@ -93,6 +93,8 @@
 }
 
 .app-brand__word {
+  /* An <h1> via <Brand>; reset the default heading margin so it sits inline. */
+  margin: 0;
   font-family: var(--brand-font-display);
   font-weight: 800;
   font-size: 1em;

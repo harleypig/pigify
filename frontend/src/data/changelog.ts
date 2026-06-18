@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Brand-mark config + shared <Brand> component.",
       "Dispose portal-loop engines in sync TestClient tests.",
       "Re-open flaky CI hang (recurred despite PR #77).",
       "Owner-surface theme + ephemeral login toggle.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Bump the frontend group across 1 directory with 4 updates.",
       "Spotify audit: scopes, rate limiting, Feb-2026 endpoint migrations + decisions.",
       "Fix .claude version drift and the stale Biome claim.",
-      "Silent Spotify token refresh to keep sessions alive.",
-      "…and 163 earlier changes."
+      "…and 164 earlier changes."
     ]
   },
   {

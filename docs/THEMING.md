@@ -102,6 +102,35 @@ rest. To rebrand: replace `frontend/src/assets/pigify-logo.png`, then tune the
 knobs above (override them in a hand-written theme CSS or directly in
 `theme.css`) until the new logo sits right against the wordmark.
 
+## The brand mark (owner-only)
+
+*What* the brand mark is — image, text, or both, and how they're arranged —
+is owner config in [`frontend/src/lib/brand.ts`](../frontend/src/lib/brand.ts)
+(build-time; edit + rebuild). A shared
+[`<Brand>`](../frontend/src/components/Brand.tsx) component renders it on
+every surface (login hero, app header) from one structure, so there's no
+duplicated markup; each surface keeps only its own *size*.
+
+```ts
+// frontend/src/lib/brand.ts
+export const BRAND: BrandConfig = {
+  mode: "lockup", // "lockup" (image + text) | "wordmark" (text) | "image" (logotype)
+  layout: "image-left", // image-left | image-right | image-above | image-below
+  wordmark: "pigify",
+  image: logoUrl, // unused in "wordmark" mode
+};
+```
+
+- **`mode`** picks what shows: both, text only, or the logo alone (in `image`
+  mode the image's `alt` carries the name).
+- **`layout`** flows the lockup via `data-brand-layout` (`Brand.css` maps it
+  to `flex-direction`). The app header is height-constrained, so the stacked
+  arrangements (`image-above` / `image-below`) suit the login hero more than
+  the bar.
+- Fit/alignment is still the `--brand-logo-*` knobs above. Note `-shift-x`
+  nudges the side-by-side layouts and `-shift-y` the stacked ones — they
+  aren't auto-swapped, so a non-default `layout` may want them re-tuned.
+
 ## Adding a theme — checklist
 
 1. Create `frontend/src/themes/<name>.theme.yaml` (copy `dark.theme.yaml`) —
