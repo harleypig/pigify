@@ -14,7 +14,8 @@ playlist recipes, sync state, and so on.
 - **Per-user DB** — one SQLite file per Spotify user, by default
   `$DATA_DIR/users/<spotify_id>.db`. Holds the user's `service_connections`,
   `track_stats`, `enrichment_cache`, `saved_sorts`, `saved_filters`,
-  `sync_state`, and `sync_log`.
+  `sync_state`, `sync_log`, and `user_settings` (durable per-user
+  preferences, e.g. the enrichment-cache TTL).
 
 Per-user files keep writers from contending, make backup/export/delete
 trivially per-user, and isolate corruption blast radius.

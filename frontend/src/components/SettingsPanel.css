@@ -552,3 +552,16 @@
   background: var(--brand-accent);
   border-color: var(--brand-accent);
 }
+
+/* Inline feedback to the right of the cache-TTL Save button. Errors stand out
+   in the theme's electric red and explain the reason (e.g. the valid range). */
+.sp-ttl-msg {
+  font-size: 12px;
+  color: var(--brand-ink-dim);
+}
+
+.sp-ttl-msg.is-error {
+  color: var(--brand-red-bright);
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(var(--brand-red-rgb), 0.45);
+}

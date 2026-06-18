@@ -350,6 +350,41 @@ class IntegrationsApiTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, resp.text)
         self.assertEqual(resp.json()["scope"], "all")
 
+    # ----- enrichment-cache TTL settings ----------------------------------
+
+    def test_cache_settings_default_then_persist(self) -> None:
+        client = self._client()
+        # Unset → the repository default, with the UI bounds.
+        resp = client.get("/api/integrations/enrichment-cache/settings")
+        self.assertEqual(resp.status_code, 200, resp.text)
+        body = resp.json()
+        self.assertEqual(body["ttl_days"], 7)
+        self.assertEqual(body["min_days"], 0)
+        self.assertEqual(body["max_days"], 30)
+
+        # Persist a new value and read it back on a fresh client/session.
+        put = client.put(
+            "/api/integrations/enrichment-cache/settings", json={"ttl_days": 0}
+        )
+        self.assertEqual(put.status_code, 200, put.text)
+        self.assertEqual(put.json()["ttl_days"], 0)
+
+        client2 = self._client()
+        again = client2.get("/api/integrations/enrichment-cache/settings")
+        self.assertEqual(again.json()["ttl_days"], 0)
+
+    def test_cache_settings_rejects_out_of_range(self) -> None:
+        client = self._client()
+        resp = client.put(
+            "/api/integrations/enrichment-cache/settings", json={"ttl_days": 99}
+        )
+        self.assertEqual(resp.status_code, 422)
+
+    def test_cache_settings_requires_auth(self) -> None:
+        client = self._client(authenticated=False)
+        resp = client.get("/api/integrations/enrichment-cache/settings")
+        self.assertEqual(resp.status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()

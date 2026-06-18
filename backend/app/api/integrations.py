@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.auth.session import read_grant, require_fresh_token, require_spotify_id
 from app.config import settings
-from app.db.repositories import enrichment_cache
+from app.db.repositories import enrichment_cache, user_settings
 from app.db.session import user_session_scope
 from app.services import lastfm, musicbrainz, scrobbler, wikipedia
 from app.services.connections import (
@@ -29,11 +29,10 @@ from app.services.connections import (
 )
 from app.services.spotify import SpotifyService
 
-# Cache TTLs per provider. Wikipedia/MusicBrainz change rarely so we keep
-# them for a week; Last.fm playcount/listeners drift more so 1 day.
-_TTL_LASTFM = timedelta(days=1)
-_TTL_MUSICBRAINZ = timedelta(days=7)
-_TTL_WIKIPEDIA = timedelta(days=7)
+# The enrichment-cache TTL is a single per-user setting covering all three
+# providers (Last.fm / MusicBrainz / Wikipedia), read per request from the
+# per-user DB; `0` days bypasses the cache entirely. See the user_settings
+# repo for the default and bounds.
 
 router = APIRouter()
 
@@ -305,6 +304,48 @@ async def wikipedia_track(spotify_track_id: str, request: Request):
 # ------------------------------- Combined detail -------------------------------
 
 
+class EnrichmentCacheSettings(BaseModel):
+    """The per-user enrichment-cache TTL, with the allowed bounds for the UI."""
+
+    ttl_days: int = Field(
+        ...,
+        ge=user_settings.ENRICHMENT_TTL_MIN_DAYS,
+        le=user_settings.ENRICHMENT_TTL_MAX_DAYS,
+        description="Cache lifetime in days; 0 disables caching (always refetch).",
+    )
+    min_days: int = user_settings.ENRICHMENT_TTL_MIN_DAYS
+    max_days: int = user_settings.ENRICHMENT_TTL_MAX_DAYS
+
+
+@router.get("/enrichment-cache/settings", response_model=EnrichmentCacheSettings)
+async def get_enrichment_cache_settings(request: Request) -> EnrichmentCacheSettings:
+    """Return the signed-in user's enrichment-cache TTL (+ the UI bounds)."""
+    spotify_id = _require_spotify_id(request)
+    async with user_session_scope(spotify_id) as db:
+        ttl_days = await user_settings.get_enrichment_ttl_days(db)
+    return EnrichmentCacheSettings(ttl_days=ttl_days)
+
+
+class EnrichmentCacheSettingsBody(BaseModel):
+    ttl_days: int = Field(
+        ...,
+        ge=user_settings.ENRICHMENT_TTL_MIN_DAYS,
+        le=user_settings.ENRICHMENT_TTL_MAX_DAYS,
+    )
+
+
+@router.put("/enrichment-cache/settings", response_model=EnrichmentCacheSettings)
+async def update_enrichment_cache_settings(
+    request: Request, body: EnrichmentCacheSettingsBody
+) -> EnrichmentCacheSettings:
+    """Persist the user's enrichment-cache TTL (durable, in the per-user DB)."""
+    spotify_id = _require_spotify_id(request)
+    async with user_session_scope(spotify_id) as db:
+        stored = await user_settings.set_enrichment_ttl_days(db, body.ttl_days)
+        await db.commit()
+    return EnrichmentCacheSettings(ttl_days=stored)
+
+
 @router.delete("/enrichment-cache")
 async def clear_enrichment_cache(
     request: Request,
@@ -417,6 +458,13 @@ async def combined_track_detail(
     pa_key = f"{primary_artist.lower()}|{title.lower()}"
 
     async with user_session_scope(spotify_user_id) as db:
+        # The per-user cache TTL: 0 disables caching (skip reads + writes), so
+        # every open refetches; otherwise entries live `cache_ttl`.
+        ttl_days = await user_settings.get_enrichment_ttl_days(db)
+        cache_enabled = ttl_days > 0
+        cache_ttl = timedelta(days=ttl_days)
+        skip_read = refresh or not cache_enabled
+
         if lfm_conn and lfm_conn.tier != "none" and primary_artist and title:
             username = (
                 lfm_conn.connected_account if lfm_conn.tier == "authenticated" else None
@@ -427,7 +475,7 @@ async def combined_track_detail(
             info_key = f"{pa_key}|{username or '_'}"
             cached_info = (
                 None
-                if refresh
+                if skip_read
                 else await enrichment_cache.get(db, "lastfm", "track-info", info_key)
             )
             if cached_info is not None:
@@ -438,14 +486,14 @@ async def combined_track_detail(
                 )
                 # Only cache successful responses; transient errors should
                 # be retried on the next open.
-                if info:
+                if info and cache_enabled:
                     await enrichment_cache.put(
                         db,
                         "lastfm",
                         "track-info",
                         info_key,
                         {"info": info, "err": None},
-                        ttl=_TTL_LASTFM,
+                        ttl=cache_ttl,
                     )
             if info:
                 t = info.get("track", {})
@@ -476,7 +524,7 @@ async def combined_track_detail(
 
             cached_sim = (
                 None
-                if refresh
+                if skip_read
                 else await enrichment_cache.get(db, "lastfm", "similar", pa_key)
             )
             if cached_sim is not None:
@@ -485,14 +533,14 @@ async def combined_track_detail(
                 sim, _ = await lastfm.safe_call(
                     lastfm.get_similar_tracks(primary_artist, title, 8)
                 )
-                if sim:
+                if sim and cache_enabled:
                     await enrichment_cache.put(
                         db,
                         "lastfm",
                         "similar",
                         pa_key,
                         {"similar": sim},
-                        ttl=_TTL_LASTFM,
+                        ttl=cache_ttl,
                     )
             if sim:
                 out.setdefault("lastfm", {})["similar"] = [
@@ -511,7 +559,7 @@ async def combined_track_detail(
             mb_key = f"isrc:{isrc}" if isrc else f"at:{pa_key}"
             cached_mb = (
                 None
-                if refresh
+                if skip_read
                 else await enrichment_cache.get(db, "musicbrainz", "recording", mb_key)
             )
             if cached_mb is not None:
@@ -520,14 +568,14 @@ async def combined_track_detail(
                 mb = await musicbrainz.resolve_spotify_track(
                     isrc=isrc, artist=primary_artist, title=title
                 )
-                if mb:
+                if mb and cache_enabled:
                     await enrichment_cache.put(
                         db,
                         "musicbrainz",
                         "recording",
                         mb_key,
                         {"data": mb},
-                        ttl=_TTL_MUSICBRAINZ,
+                        ttl=cache_ttl,
                     )
             if mb:
                 out["musicbrainz"] = mb
@@ -536,7 +584,7 @@ async def combined_track_detail(
         if (everything or "wikipedia" in want) and primary_artist and title:
             cached_wiki = (
                 None
-                if refresh
+                if skip_read
                 else await enrichment_cache.get(db, "wikipedia", "article", pa_key)
             )
             if cached_wiki is not None:
@@ -547,14 +595,14 @@ async def combined_track_detail(
                     title=title,
                     album=(track.get("album") or {}).get("name"),
                 )
-                if article:
+                if article and cache_enabled:
                     await enrichment_cache.put(
                         db,
                         "wikipedia",
                         "article",
                         pa_key,
                         {"article": article},
-                        ttl=_TTL_WIKIPEDIA,
+                        ttl=cache_ttl,
                     )
             if article:
                 out["wikipedia"] = {"tier": "public", **article}
