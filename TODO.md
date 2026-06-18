@@ -163,12 +163,6 @@ authored on the brand from the start.
 
 ## Track info panel
 
-- [ ] **Font-size control + default.** Shipped: **A− / A+** buttons in the
-      track-info panel header scale the body text (CSS `zoom` driven by
-      `--tip-scale`, clamped 0.8–1.6), persisted
-      (`pigify.trackInfoPanel.fontScale`); the header chrome stays fixed.
-      **Remaining:** a default-size setting in Settings (the settings pass)
-      that seeds the initial scale.
 - [ ] **Contact Songfacts about API access.** Songfacts *does* have an API
       (<https://www.songfacts.com/blog/pages/songfacts-api>), but it's
       "contact us for pricing" — likely too costly here. Ask anyway: email
