@@ -200,15 +200,6 @@ authored on the brand from the start.
       could replace the search-only links with inline facts; if not, record
       the decline as an `ICEBOX:` and keep the links.
 
-## Settings
-
-- [ ] **Configurable track-trivia cache TTL.** Settings › Connections › the
-      cached-trivia card (`EnrichmentCacheCard`) caches Last.fm / MusicBrainz
-      / Wikipedia results for a fixed ~week. Add a control to set the TTL,
-      **min 0 (no caching) … max 1 month**, wired to the backend
-      enrichment-cache expiry as a per-user setting; `0` bypasses the cache
-      entirely. (Covers all three providers, not just Last.fm.)
-
 ## Last.fm
 
 All Last.fm work lives here (public + connected tiers, scrobbling, favorites
