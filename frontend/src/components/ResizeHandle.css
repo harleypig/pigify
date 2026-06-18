@@ -1,0 +1,33 @@
+/*
+ * Draggable resize grip for a layout panel (see lib/useResizableWidth). A thin
+ * strip straddling the panel's edge; invisible until hover/focus, when it lights
+ * up as an electric-blue rail (the day-glo console identity). The panel must be
+ * `position: relative` for this to anchor.
+ */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 5;
+  cursor: ew-resize;
+  touch-action: none;
+  /* Centre the active rail over the panel border. */
+  background-clip: content-box;
+  transition: background-color 0.15s ease;
+}
+
+.resize-handle--right {
+  right: -4px;
+}
+
+.resize-handle--left {
+  left: -4px;
+}
+
+.resize-handle:hover,
+.resize-handle:focus-visible {
+  background: rgba(var(--brand-accent-rgb), 0.35);
+  box-shadow: 0 0 8px rgba(var(--brand-accent-rgb), 0.4);
+  outline: none;
+}
