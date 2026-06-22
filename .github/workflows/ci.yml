@@ -43,7 +43,7 @@ jobs:
       matrix:
         python-version: ["3.12", "3.14"]
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: actions/setup-python@v6.2.0
         with:
@@ -88,7 +88,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: dorny/paths-filter@v4.0.1
         id: changes
@@ -162,7 +162,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: dorny/paths-filter@v4.0.1
         id: changes
@@ -198,7 +198,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - name: OSV scan (lockfiles; hard-gate)
         run: |
@@ -227,7 +227,7 @@ jobs:
       # `docker compose` calls below find it without -f (CI has no .env).
       COMPOSE_FILE: docker/docker-compose.yml
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
 
       - uses: dorny/paths-filter@v4.0.1
         id: changes
@@ -299,7 +299,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.0
         with:
           # Full history + tags so `git log -- <dir>` (component hash) resolves.
           fetch-depth: 0
