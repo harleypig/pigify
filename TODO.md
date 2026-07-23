@@ -596,6 +596,19 @@ resumable-session item rides along with the safety work.
       placeholder *grant* stays — `DEV_AUTH_BYPASS` still uses it for UI-only
       frontend dev.
 
+## Agent config
+
+- [ ] **Add a `.claude/CLAUDE.md` import stub so the repo conventions
+  auto-load.** `.claude/` currently holds `CONVENTIONS.md`, `WORKFLOW.md`, and
+  `TESTS.md` but no `CLAUDE.md`. Claude Code auto-loads only `CLAUDE.md` /
+  `.claude/CLAUDE.md` and `.claude/rules/*.md`, so these bare docs are **never
+  loaded into agent context** — the agent works without the repo's own
+  conventions unless it happens to read them. Add a `.claude/CLAUDE.md` stub
+  that `@`-imports them (`@WORKFLOW.md`, `@CONVENTIONS.md`, `@TESTS.md` — the
+  `dotfiles` pattern; ansible-stuff did the same in its PR #7). The underlying
+  `new-project` scaffolding gap that produced this is tracked in the dotagents
+  audit backlog.
+
 ## Tests
 
 - [ ] **Browser e2e (Playwright).** Pure helpers are extracted into
