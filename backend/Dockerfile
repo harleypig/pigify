@@ -24,7 +24,11 @@ WORKDIR /app
 # that Alembic's migrations path (resolved relative to app/db/bootstrap.py)
 # points at /app/migrations rather than a site-packages copy.
 COPY pyproject.toml poetry.lock README.md ./
-RUN poetry install --only main --no-root
+# pip is only the installer for Poetry; its vendored copies (msgpack,
+# urllib3, certifi, setuptools) are what trivy flags, so drop it once the
+# dependencies are in.
+RUN poetry install --only main --no-root \
+    && python -m pip uninstall -y pip
 
 # Layer 2: application + Alembic migrations.
 COPY app ./app
