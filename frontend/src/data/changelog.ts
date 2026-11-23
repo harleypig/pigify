@@ -14,6 +14,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
+      "Drop pip from the backend runtime image.",
+      "Bump frontend lockfile for OSV advisories.",
+      "Bump backend lockfile for OSV advisories.",
+      "Use system node for node hooks.",
+      "Track adding a .claude/CLAUDE.md import stub.",
+      "Bump pyasn1, pydantic-settings, undici for OSV advisories.",
       "Drop completed Track-info font-size task.",
       "Expand Spotify rule/skill audit task.",
       "Shared horizontal-resize + resizable sidebar.",
@@ -33,13 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Declare the subdir tagging method.",
       "Move the Spotify-audit watch list to docs.",
       "3-level theme system with dark + light.",
-      "Opt in to the merge-finalization hook.",
-      "Prune completed items merged in #63–#66.",
-      "Attribute Spotify in the UI + document retention posture.",
-      "Spotify audit: Premium gating message + saved-tracks read decision.",
-      "Centralise upstream Spotify 401 → clean 401 across the API.",
-      "Track Info panel overhaul + per-component versioning scheme.",
-      "…and 170 earlier changes."
+      "…and 176 earlier changes."
     ]
   },
   {
