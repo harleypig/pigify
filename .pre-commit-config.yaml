@@ -2,6 +2,11 @@
 # Auto-fixing hooks live in .pre-commit-config-fix.yaml; run that as a
 # final step before committing (see .claude/WORKFLOW.md).
 ---
+# pre-commit ignores a node under $HOME (mise, nvm), then nodeenv picks a
+# prerelease it cannot parse; use the node already on PATH instead.
+default_language_version:
+  node: system
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
