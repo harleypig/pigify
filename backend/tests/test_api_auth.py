@@ -32,6 +32,9 @@ from app.db.models import system as _system_models  # noqa: F401  (register)
 from app.models.playlist import User
 from tests._helpers import disposal_lifespan, entered_client
 
+# Stands in for upstream text that must reach the log but never the client.
+_LEAK = "internal-detail-access_token=abc123"
+
 
 def _build_test_app() -> FastAPI:
     app = FastAPI(lifespan=disposal_lifespan)
@@ -127,10 +130,13 @@ class AuthApiTest(unittest.TestCase):
         client = self._client()
         client.post("/__test__/session", json={"oauth_state": "s1"})
 
-        with patch.object(
-            auth_mod.SpotifyService,
-            "exchange_code_for_tokens",
-            AsyncMock(side_effect=RuntimeError("denied")),
+        with (
+            patch.object(
+                auth_mod.SpotifyService,
+                "exchange_code_for_tokens",
+                AsyncMock(side_effect=RuntimeError(_LEAK)),
+            ),
+            self.assertLogs("app.api.auth", level="ERROR") as logs,
         ):
             resp = client.get(
                 "/api/auth/spotify/callback?code=abc&state=s1",
@@ -138,7 +144,9 @@ class AuthApiTest(unittest.TestCase):
             )
 
         self.assertEqual(resp.status_code, 500)
-        self.assertIn("exchange tokens", resp.json()["detail"])
+        self.assertEqual(resp.json()["detail"], "Failed to exchange tokens")
+        self.assertNotIn(_LEAK, resp.text)
+        self.assertIn(_LEAK, logs.records[0].exc_text or "")
 
     def test_callback_success_publishes_session_and_redirects(self) -> None:
         client = self._client()
@@ -255,13 +263,42 @@ class AuthApiTest(unittest.TestCase):
         client.post("/__test__/session", json={"access_token": "tok"})
 
         instance = MagicMock()
-        instance.get_current_user = AsyncMock(side_effect=RuntimeError("x"))
+        instance.get_current_user = AsyncMock(side_effect=RuntimeError(_LEAK))
         cls = MagicMock(return_value=instance)
 
-        with patch.object(auth_mod, "SpotifyService", cls):
+        with (
+            patch.object(auth_mod, "SpotifyService", cls),
+            self.assertLogs("app.api.auth", level="ERROR") as logs,
+        ):
             resp = client.get("/api/auth/me")
 
         self.assertEqual(resp.status_code, 500)
+        self.assertEqual(resp.json()["detail"], "Failed to get user info")
+        self.assertNotIn(_LEAK, resp.text)
+        self.assertIn(_LEAK, logs.records[0].exc_text or "")
+
+    def test_me_upstream_error_is_generic_502(self) -> None:
+        client = self._client()
+        client.post("/__test__/session", json={"access_token": "tok"})
+
+        request = httpx.Request("GET", "https://api.spotify.com/v1/me")
+        response = httpx.Response(503, request=request)
+        instance = MagicMock()
+        instance.get_current_user = AsyncMock(
+            side_effect=httpx.HTTPStatusError(_LEAK, request=request, response=response)
+        )
+        cls = MagicMock(return_value=instance)
+
+        with (
+            patch.object(auth_mod, "SpotifyService", cls),
+            self.assertLogs("app.api.auth", level="ERROR") as logs,
+        ):
+            resp = client.get("/api/auth/me")
+
+        self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp.json()["detail"], "Spotify API error")
+        self.assertNotIn(_LEAK, resp.text)
+        self.assertIn(_LEAK, logs.records[0].exc_text or "")
 
     def test_me_expired_spotify_token_is_401_and_clears_session(self) -> None:
         # A stale session whose Spotify token Spotify itself rejects with 401

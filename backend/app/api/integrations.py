@@ -9,6 +9,7 @@ Per the graceful degradation policy:
   trivia/context provider (Songfacts has no public API).
 """
 
+import logging
 from datetime import timedelta
 from typing import Any, cast
 
@@ -33,6 +34,8 @@ from app.services.spotify import SpotifyService
 # providers (Last.fm / MusicBrainz / Wikipedia), read per request from the
 # per-user DB; `0` days bypasses the cache entirely. See the user_settings
 # repo for the default and bounds.
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -70,7 +73,8 @@ async def lastfm_callback(request: Request, token: str | None = None):
     try:
         session = await lastfm.get_session(token)
     except lastfm.LastFMError as e:
-        raise HTTPException(502, f"Last.fm auth failed: {e}") from e
+        logger.exception("Last.fm auth failed")
+        raise HTTPException(502, "Last.fm auth failed") from e
 
     await save_lastfm_credentials(
         spotify_id,
@@ -182,7 +186,8 @@ async def lastfm_track_info(
     try:
         data = await lastfm.get_track_info(artist, track, username=username)
     except lastfm.LastFMError as e:
-        raise HTTPException(502, str(e)) from e
+        logger.exception("Last.fm request failed")
+        raise HTTPException(502, "Last.fm request failed") from e
 
     info = data.get("track", {})
     tags = info.get("toptags", {}).get("tag", [])
@@ -221,7 +226,8 @@ async def lastfm_similar(
     try:
         sim = await lastfm.get_similar_tracks(artist, track, limit)
     except lastfm.LastFMError as e:
-        raise HTTPException(502, str(e)) from e
+        logger.exception("Last.fm request failed")
+        raise HTTPException(502, "Last.fm request failed") from e
     return [
         {
             "name": t.get("name"),
