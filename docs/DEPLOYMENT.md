@@ -162,6 +162,45 @@ Set the runtime config via env / Docker secrets (see `.env.example` and
 - `SPOTIFY_CLIENT_SECRET` + `SECRET_KEY` via files (Docker secrets).
 - `ENVIRONMENT=production` refuses the built-in dev `SECRET_KEY`.
 
+## Threat model & residual risks
+
+pigify is built for a self-hosted install with one owner. Read this before
+you expose an instance beyond a network you trust.
+
+- **Trust boundary.** pigify assumes a trusted network, or an external
+  forward-auth / reverse proxy in front of it (see *Access control* above).
+  The built-in gate decides who gets a session. It is not hardening for an
+  internet-facing service.
+- **`SECRET_KEY` and the data volume are the high-value secrets.**
+  `SECRET_KEY` signs the session cookie, so anyone who holds it can forge a
+  session. The `pigify-data` volume holds the SQLite databases, which store
+  long-lived credentials unencrypted: demo-invite Spotify refresh tokens in
+  the system database, and linked-service credentials such as the Last.fm
+  session key in each user's database. A leak of either one means lasting
+  access to the Spotify or Last.fm accounts involved. Guard both, and any
+  backup of the volume, like passwords.
+- **The session cookie carries the Spotify refresh token.** The cookie lasts
+  7 days and is `HttpOnly` and `SameSite=Lax`. It is also `Secure` whenever
+  `ENVIRONMENT` is anything but `development`. It is **signed, not
+  encrypted**: its contents, refresh token included, are base64-encoded JSON
+  that whoever holds the cookie can read. A stolen cookie therefore yields
+  a refresh token that outlives the session.
+- **Demo invites store a refresh token.** A real invite's refresh token is
+  kept in the system database, and it stays there after the invite is
+  redeemed or revoked. Redeeming copies it into the guest's session cookie,
+  so a guest who decodes that cookie keeps the demo account's token past
+  the time box. That is why a real invite must use a throwaway account.
+- **No application-level rate limiting.** The backend limits no inbound
+  requests (its only throttling is backing off when Spotify returns 429),
+  and the shipped nginx configs set no limits either. If you expose the
+  instance, rate-limit at your reverse proxy.
+- **Development-only paths are gated on `ENVIRONMENT`.** The backend refuses
+  to boot with `DEV_AUTH_BYPASS=true` unless `ENVIRONMENT=development`, and
+  `GET /api/auth/dev/refresh-token` returns 404 in any other environment.
+  The backend's own default is `ENVIRONMENT=development`, so set
+  `ENVIRONMENT=production`, as `examples/docker-compose.yml` does. That is
+  also the value that refuses the built-in dev `SECRET_KEY`.
+
 ## Images
 
 CI publishes `ghcr.io/<owner>/pigify-backend` and `-frontend` on `v*` tags.
