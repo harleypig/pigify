@@ -14,7 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Run trivy as the runner user so its DB cache saves.",
+      "Regenerate changelog.",
+      "Document threat model and residual risks.",
       "Clear OSV advisories; use system node for pre-commit.",
       "Track adding a .claude/CLAUDE.md import stub.",
       "Bump pyasn1, pydantic-settings, undici for OSV advisories.",
@@ -38,8 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Move the Spotify-audit watch list to docs.",
       "3-level theme system with dark + light.",
       "Opt in to the merge-finalization hook.",
-      "Prune completed items merged in #63–#66.",
-      "…and 174 earlier changes."
+      "…and 175 earlier changes."
     ]
   },
   {
