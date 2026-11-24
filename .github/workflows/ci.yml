@@ -96,12 +96,19 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
+              - '.github/workflows/ci.yml'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/ci.yml'
 
       - uses: docker/setup-buildx-action@v4.1.0
         if: ${{ steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true' }}
 
+      # The scans run trivy as the runner user, so the cache it writes is
+      # one the post-step's tar can read: as root it left fanal/ at 0700 and
+      # the save failed. --group-add is the docker socket's group; without
+      # it trivy cannot reach the local daemon and exits 1, the same code a
+      # finding gives. mkdir first, or docker creates the dir root-owned.
       - name: Cache trivy DB
         if: ${{ steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true' }}
         uses: actions/cache@v5
@@ -122,10 +129,13 @@ jobs:
       - name: Scan backend image (trivy)
         if: ${{ steps.changes.outputs.backend == 'true' }}
         run: |
+          mkdir -p "${{ runner.temp }}/trivy-cache"
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --group-add "$(stat -c %g /var/run/docker.sock)" \
             --volume /var/run/docker.sock:/var/run/docker.sock \
-            --volume "${{ runner.temp }}/trivy-cache:/root/.cache/trivy" \
-            "$TRIVY_IMAGE" image \
+            --volume "${{ runner.temp }}/trivy-cache:/trivy-cache" \
+            "$TRIVY_IMAGE" image --cache-dir /trivy-cache \
             --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
             --no-progress pigify-backend:ci
 
@@ -141,10 +151,13 @@ jobs:
       - name: Scan frontend image (trivy)
         if: ${{ steps.changes.outputs.frontend == 'true' }}
         run: |
+          mkdir -p "${{ runner.temp }}/trivy-cache"
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --group-add "$(stat -c %g /var/run/docker.sock)" \
             --volume /var/run/docker.sock:/var/run/docker.sock \
-            --volume "${{ runner.temp }}/trivy-cache:/root/.cache/trivy" \
-            "$TRIVY_IMAGE" image \
+            --volume "${{ runner.temp }}/trivy-cache:/trivy-cache" \
+            "$TRIVY_IMAGE" image --cache-dir /trivy-cache \
             --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
             --no-progress pigify-frontend:ci
 
