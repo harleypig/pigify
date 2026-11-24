@@ -111,7 +111,7 @@ jobs:
       # finding gives. mkdir first, or docker creates the dir root-owned.
       - name: Cache trivy DB
         if: ${{ steps.changes.outputs.backend == 'true' || steps.changes.outputs.frontend == 'true' }}
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/trivy-cache
           key: trivy-db-${{ github.run_id }}
