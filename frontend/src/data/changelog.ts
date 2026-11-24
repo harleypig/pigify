@@ -14,8 +14,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Regenerate changelog.",
       "Document threat model and residual risks.",
+      "Run trivy as the runner user so its DB cache saves.",
+      "Stop returning exception text in 5xx error bodies.",
+      "Keep app loggers enabled when migrations configure logging.",
       "Clear OSV advisories; use system node for pre-commit.",
       "Track adding a .claude/CLAUDE.md import stub.",
       "Bump pyasn1, pydantic-settings, undici for OSV advisories.",
@@ -37,9 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Security hardening: tighten CSP + uniform file-or-env config sourcing.",
       "Declare the subdir tagging method.",
       "Move the Spotify-audit watch list to docs.",
-      "3-level theme system with dark + light.",
-      "Opt in to the merge-finalization hook.",
-      "…and 175 earlier changes."
+      "…and 177 earlier changes."
     ]
   },
   {

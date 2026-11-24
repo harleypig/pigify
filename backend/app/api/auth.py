@@ -152,9 +152,8 @@ async def spotify_callback(
     try:
         token_data = await SpotifyService.exchange_code_for_tokens(code)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to exchange tokens: {e!s}"
-        ) from e
+        logger.exception("login aborted: token exchange failed")
+        raise HTTPException(status_code=500, detail="Failed to exchange tokens") from e
 
     access_token = token_data["access_token"]
 
@@ -245,11 +244,11 @@ async def get_current_user(request: Request):
             ) from e
 
         # Any other upstream status is a bad-gateway condition, not ours.
-        raise HTTPException(status_code=502, detail=f"Spotify API error: {e!s}") from e
+        logger.exception("/me: Spotify returned %s", e.response.status_code)
+        raise HTTPException(status_code=502, detail="Spotify API error") from e
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get user info: {e!s}"
-        ) from e
+        logger.exception("/me: failed to get user info")
+        raise HTTPException(status_code=500, detail="Failed to get user info") from e
 
 
 @router.get("/token")

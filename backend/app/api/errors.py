@@ -9,11 +9,15 @@ handler translates the upstream status once, app-wide.
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.auth.session import clear_session
+
+logger = logging.getLogger(__name__)
 
 
 async def spotify_http_status_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -36,9 +40,9 @@ async def spotify_http_status_handler(request: Request, exc: Exception) -> JSONR
             content={"detail": "Spotify session expired; please log in again."},
         )
 
-    return JSONResponse(
-        status_code=502, content={"detail": f"Spotify API error: {exc!s}"}
-    )
+    # The exception text carries the upstream URL, so it goes to the log only.
+    logger.error("Spotify returned %s", exc.response.status_code, exc_info=exc)
+    return JSONResponse(status_code=502, content={"detail": "Spotify API error"})
 
 
 def register_error_handlers(app: FastAPI) -> None:

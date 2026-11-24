@@ -57,6 +57,10 @@ def _build_test_app() -> FastAPI:
     return app
 
 
+# Stands in for upstream text that must reach the log but never the client.
+_LEAK = "internal-detail-api_key=abc123"
+
+
 class IntegrationsApiTest(unittest.TestCase):
     def setUp(self) -> None:
         self._old_data_dir = settings.DATA_DIR
@@ -139,14 +143,17 @@ class IntegrationsApiTest(unittest.TestCase):
             patch.object(
                 integ_mod.lastfm,
                 "get_track_info",
-                AsyncMock(side_effect=LastFMError("upstream down")),
+                AsyncMock(side_effect=LastFMError(_LEAK)),
             ),
+            self.assertLogs("app.api.integrations", level="ERROR") as logs,
         ):
             client = self._client()
             resp = client.get("/api/integrations/lastfm/track-info?artist=a&track=b")
 
         self.assertEqual(resp.status_code, 502)
-        self.assertIn("upstream down", resp.json()["detail"])
+        self.assertEqual(resp.json()["detail"], "Last.fm request failed")
+        self.assertNotIn(_LEAK, resp.text)
+        self.assertIn(_LEAK, logs.records[0].exc_text or "")
 
     # ----- similar --------------------------------------------------------
 
@@ -184,13 +191,38 @@ class IntegrationsApiTest(unittest.TestCase):
             patch.object(
                 integ_mod.lastfm,
                 "get_similar_tracks",
-                AsyncMock(side_effect=LastFMError("boom")),
+                AsyncMock(side_effect=LastFMError(_LEAK)),
             ),
+            self.assertLogs("app.api.integrations", level="ERROR") as logs,
         ):
             client = self._client()
             resp = client.get("/api/integrations/lastfm/similar?artist=a&track=b")
 
         self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp.json()["detail"], "Last.fm request failed")
+        self.assertNotIn(_LEAK, resp.text)
+        self.assertIn(_LEAK, logs.records[0].exc_text or "")
+
+    # ----- callback -------------------------------------------------------
+
+    def test_lastfm_callback_auth_error_is_generic_502(self) -> None:
+        with (
+            patch.object(
+                integ_mod.lastfm,
+                "get_session",
+                AsyncMock(side_effect=LastFMError(_LEAK)),
+            ),
+            self.assertLogs("app.api.integrations", level="ERROR") as logs,
+        ):
+            client = self._client()
+            resp = client.get(
+                "/api/integrations/lastfm/callback?token=t", follow_redirects=False
+            )
+
+        self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp.json()["detail"], "Last.fm auth failed")
+        self.assertNotIn(_LEAK, resp.text)
+        self.assertIn(_LEAK, logs.records[0].exc_text or "")
 
     # ----- combined track-detail -----------------------------------------
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.middleware.sessions import SessionMiddleware
@@ -235,6 +236,30 @@ class PlayerApiTest(unittest.TestCase):
             resp = self.client.get("/api/player/devices")
 
         self.assertEqual(resp.status_code, 502)
+
+    def test_upstream_error_body_is_generic_and_logged(self) -> None:
+        # httpx puts the request URL in the exception text; it must reach the
+        # log and never the client.
+        leak = "https://api.spotify.com/v1/me/player/devices?secret=abc123"
+        request = httpx.Request("GET", leak)
+        error = httpx.HTTPStatusError(
+            f"Server error '503' for url '{leak}'",
+            request=request,
+            response=httpx.Response(503, request=request),
+        )
+        cls, _ = _make_spotify(get_devices=AsyncMock(side_effect=error))
+
+        with (
+            patch.object(player_mod, "_get_token", AsyncMock(return_value="tok")),
+            patch.object(player_mod, "SpotifyService", cls),
+            self.assertLogs("app.api.errors", level="ERROR") as logs,
+        ):
+            resp = self.client.get("/api/player/devices")
+
+        self.assertEqual(resp.status_code, 502)
+        self.assertEqual(resp.json()["detail"], "Spotify API error")
+        self.assertNotIn("secret=abc123", resp.text)
+        self.assertIn("secret=abc123", logs.records[0].exc_text or "")
 
 
 if __name__ == "__main__":
