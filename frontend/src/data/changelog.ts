@@ -14,10 +14,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     "version": "Unreleased",
     "date": "",
     "highlights": [
-      "Drop pip from the backend runtime image.",
-      "Bump frontend lockfile for OSV advisories.",
-      "Bump backend lockfile for OSV advisories.",
-      "Use system node for node hooks.",
+      "Run trivy as the runner user so its DB cache saves.",
+      "Clear OSV advisories; use system node for pre-commit.",
       "Track adding a .claude/CLAUDE.md import stub.",
       "Bump pyasn1, pydantic-settings, undici for OSV advisories.",
       "Drop completed Track-info font-size task.",
@@ -39,7 +37,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Declare the subdir tagging method.",
       "Move the Spotify-audit watch list to docs.",
       "3-level theme system with dark + light.",
-      "…and 176 earlier changes."
+      "Opt in to the merge-finalization hook.",
+      "Prune completed items merged in #63–#66.",
+      "…and 174 earlier changes."
     ]
   },
   {
